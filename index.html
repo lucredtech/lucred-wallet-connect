@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LCRD Wallet Connect</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -25,6 +31,7 @@
           <div class="divider"><span>or</span></div>
 
           <form id="paste-form" class="paste-form">
+            <label for="paste-input" class="sr-only">Wallet address</label>
             <input
               id="paste-input"
               type="text"
@@ -69,7 +76,7 @@
           </div>
         </div>
 
-        <p id="error-banner" class="error hidden"></p>
+        <p id="error-banner" class="error hidden" role="alert"></p>
       </section>
 
       <footer>

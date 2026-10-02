@@ -1,10 +1,10 @@
 .info-shell {
   max-width: 680px;
   margin: 0 auto;
-  padding: 48px 24px 64px;
+  padding: var(--space-12) var(--space-6) 64px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-6);
 }
 
 .info-masthead {
@@ -14,14 +14,12 @@
 }
 
 .info-masthead .wordmark {
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: -0.02em;
+  margin-bottom: 0;
 }
 
 .info-intro h1 {
   font-size: 28px;
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
 }
 
 .info-intro .subtext {
@@ -30,23 +28,30 @@
 }
 
 .info-card {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-border);
   border-radius: 16px;
-  padding: 22px 24px;
+  padding: var(--space-6);
   text-align: left;
+  transition: box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.info-card:hover {
+  box-shadow: var(--shadow-border-hover);
 }
 
 .info-card h2 {
-  font-size: 18px;
-  margin: 0 0 12px;
+  font-size: var(--text-title);
+  margin: 0 0 var(--space-3);
+  text-wrap: balance;
 }
 
 .info-card p {
-  font-size: 14px;
+  font-size: var(--text-body-sm);
   line-height: 1.65;
-  color: #d4d4d4;
-  margin: 0 0 12px;
+  color: var(--color-text-on-surface-light);
+  margin: 0 0 var(--space-3);
+  text-wrap: pretty;
 }
 
 .info-card p:last-child {
@@ -60,9 +65,8 @@
 
 code {
   font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
-  font-size: 12.5px;
-  background: #1b1b1b;
-  border: 1px solid var(--border);
+  font-size: var(--text-caption);
+  background: var(--color-bg-raised);
   border-radius: 5px;
   padding: 1px 6px;
   overflow-wrap: break-word;
@@ -71,58 +75,59 @@ code {
 .path-badge {
   display: inline-flex;
   align-items: center;
-  font-size: 11px;
+  font-size: var(--text-label);
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-radius: 999px;
   padding: 4px 11px;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2);
 }
 
 .path-badge.lending {
-  background: rgba(53, 208, 143, 0.15);
-  color: var(--tier-a);
+  background: var(--color-tier-a-bg);
+  color: var(--color-tier-a-text);
 }
 
 .path-badge.activity {
-  background: var(--accent-dim);
-  color: var(--accent);
+  background: var(--color-tier-b-bg);
+  color: var(--color-tier-b-text);
 }
 
 .path-badge.floor {
-  background: rgba(154, 154, 154, 0.15);
-  color: var(--tier-c);
+  background: var(--color-tier-c-bg);
+  color: var(--color-tier-c-text);
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  margin: 8px 0 4px;
-  font-size: 13px;
+  margin: var(--space-2) 0 4px;
+  font-size: var(--text-body-sm);
 }
 
 th,
 td {
   text-align: left;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
+  padding: var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--color-border-subtle);
   vertical-align: top;
-  color: #d4d4d4;
+  color: var(--color-text-on-surface-light);
 }
 
 th {
-  color: var(--muted);
+  color: var(--color-text-secondary);
   font-weight: 600;
-  font-size: 11px;
+  font-size: var(--text-label);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 td.term {
   font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
-  font-size: 12px;
+  font-size: var(--text-caption);
   white-space: nowrap;
-  color: var(--text);
+  color: var(--color-text-primary);
 }
 
 tr:last-child td {
@@ -131,16 +136,16 @@ tr:last-child td {
 
 .tier-row {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
-  margin: 10px 0 4px;
+  margin: var(--space-3) 0 4px;
 }
 
 .tier-chip {
   flex: 1 1 160px;
-  border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 12px 14px;
+  box-shadow: var(--shadow-border);
+  padding: var(--space-3) 14px;
 }
 
 .tier-chip .tier-name {
@@ -149,20 +154,20 @@ tr:last-child td {
 }
 
 .tier-chip.a .tier-name {
-  color: var(--tier-a);
+  color: var(--color-tier-a-text);
 }
 
 .tier-chip.b .tier-name {
-  color: var(--tier-b);
+  color: var(--color-tier-b-text);
 }
 
 .tier-chip.c .tier-name {
-  color: var(--tier-c);
+  color: var(--color-tier-c-text);
 }
 
 .tier-chip .tier-range {
-  font-size: 12px;
-  color: var(--muted);
+  font-size: var(--text-caption);
+  color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -172,12 +177,12 @@ tr:last-child td {
 }
 
 .info-card li {
-  font-size: 14px;
+  font-size: var(--text-body-sm);
   line-height: 1.6;
-  color: #d4d4d4;
-  margin-bottom: 6px;
+  color: var(--color-text-on-surface-light);
+  margin-bottom: var(--space-2);
 }
 
 .info-shell footer {
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
