@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LCRD Wallet Connect</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div class="wordmark">LCRD</div>
+        <h1>
+          Your on-chain history,<br />
+          <span class="accent">turned into a score</span>
+        </h1>
+        <p class="subtext">
+          Connect your Stellar wallet, prove it's yours, and see the credit score
+          built from your real on-chain activity.
+        </p>
+
+        <div id="connect-stage">
+          <button id="connect-btn" class="btn-primary">Connect Wallet</button>
+
+          <div class="divider"><span>or</span></div>
+
+          <form id="paste-form" class="paste-form">
+            <label for="paste-input" class="sr-only">Wallet address</label>
+            <input
+              id="paste-input"
+              type="text"
+              placeholder="Paste a wallet address (G... or C...)"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button type="submit" id="paste-btn" class="btn-secondary">View Score</button>
+          </form>
+          <p class="paste-hint">Can't connect a wallet? Paste any address to view its public score — read-only, no signature needed.</p>
+        </div>
+
+        <div id="connected-stage" class="hidden">
+          <div class="address-pill">
+            <span class="dot" id="status-dot"></span>
+            <span id="address-label">—</span>
+            <span id="unverified-tag" class="unverified-tag hidden">unverified</span>
+            <button id="disconnect-btn" class="btn-link">Disconnect</button>
+          </div>
+
+          <div id="verify-stage">
+            <p class="step-copy">
+              One more step: sign a free, off-chain message to prove you control
+              this wallet. This never touches the network and costs nothing.
+            </p>
+            <button id="verify-btn" class="btn-primary">Verify Ownership</button>
+          </div>
+
+          <div id="score-stage" class="hidden">
+            <div class="score-card">
+              <div class="tier-badge" id="tier-badge">—</div>
+              <div class="score-number" id="score-number">—</div>
+              <div class="score-sub" id="score-sub">—</div>
+              <ul class="reasons" id="reasons-list"></ul>
+              <div class="result-links">
+                <a id="explorer-link" class="btn-link" target="_blank" rel="noopener">
+                  View wallet on stellar.expert →
+                </a>
+                <a href="/how-it-works.html" class="btn-link">How this score works →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p id="error-banner" class="error hidden" role="alert"></p>
+      </section>
+
+      <footer>
+        <span>LCRD</span>
+        <a href="/how-it-works.html" class="footer-link">How scoring works</a>
+      </footer>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

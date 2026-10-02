@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How Scoring Works — LCRD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="/src/how-it-works.css" />
+  </head>
+  <body>
+    <main class="info-shell">
+      <header class="info-masthead">
+        <span class="wordmark">LCRD</span>
+        <a class="btn-link" href="/">&larr; Back to lookup</a>
+      </header>
+
+      <div class="info-intro">
+        <h1>How the score is calculated</h1>
+        <p class="subtext">
+          The score is derived entirely from public, on-chain activity indexed from
+          the Stellar network — no off-chain data, no self-reported information. It
+          measures how a wallet has actually used DeFi protocols over time.
+        </p>
+      </div>
+
+      <section class="info-card">
+        <h2>Two scoring paths</h2>
+        <p>
+          Every wallet is scored one of two ways, depending on what it's done
+          on-chain. Whichever applies, only the highest-signal path is used — a
+          wallet is never scored both ways.
+        </p>
+
+        <span class="path-badge lending">Lending path</span>
+        <p>
+          Used when a wallet has at least one completed <strong>borrow → repay
+          cycle</strong> on a lending protocol (currently Blend). This is the
+          strongest signal available, since repaying debt is the clearest evidence
+          of creditworthiness — so this path can reach tier A.
+        </p>
+
+        <span class="path-badge activity">Activity path</span>
+        <p>
+          Used when a wallet has no lending cycles, but has meaningful breadth or
+          volume of other DeFi activity (swaps, liquidity provision, yield
+          deposits, claims, transfers). This path can reach tier A only above a
+          high score threshold — most activity-only wallets land in tier B.
+        </p>
+
+        <span class="path-badge floor">Floor</span>
+        <p>
+          Used when a wallet has very little indexed activity (fewer than 3
+          meaningful events, fewer than 2 protocols, and fewer than 2 months of
+          distribution-claim income). Score is simply capped at a low tier-C value
+          based on event count.
+        </p>
+      </section>
+
+      <section class="info-card">
+        <h2>Lending path breakdown</h2>
+        <p class="example">
+          <code
+            >LENDING path: 3 cycles, speed 34, cyclecount 12, income 8
+            [participation 2, months 3 (2pts), net $61.40 realized (4pts)],
+            distribution 0 [no distribution claims], tenure 11, raw 67</code
+          >
+        </p>
+        <table>
+          <tr>
+            <th scope="col">Term</th>
+            <th scope="col">What it means</th>
+          </tr>
+          <tr>
+            <td class="term">cycles</td>
+            <td>Number of completed borrow→repay cycles found (a debt opened and later fully closed).</td>
+          </tr>
+          <tr>
+            <td class="term">speed</td>
+            <td>Points for how quickly debt was typically repaid, from the <em>median</em> cycle duration — faster repayment scores higher.</td>
+          </tr>
+          <tr>
+            <td class="term">cyclecount</td>
+            <td>Points for having multiple cycles: <code>min(cycles, 5) × 4</code> — repeat, completed borrowing is rewarded, up to 5 cycles.</td>
+          </tr>
+          <tr>
+            <td class="term">income</td>
+            <td>Points for real yield income (see "Realized yield income" below) — up to 10 points here.</td>
+          </tr>
+          <tr>
+            <td class="term">distribution</td>
+            <td>Points for recurring payroll/mass-distribution claims (see "Distribution income" below) — up to 4 points here.</td>
+          </tr>
+          <tr>
+            <td class="term">tenure</td>
+            <td>Points for how long ago the wallet's cycle activity spans — longer track record scores higher.</td>
+          </tr>
+          <tr>
+            <td class="term">raw</td>
+            <td>Sum of the above. If a wallet has only 1 cycle, the score is provisionally capped lower until a second cycle confirms the pattern.</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="info-card">
+        <h2>Activity path breakdown</h2>
+        <p class="example">
+          <code
+            >ACTIVITY path: protocols 5, events 784, days 44, breadth 15, volume
+            25, consistency 20, tenure 15, income 6 [participation 2, months 4
+            (3pts), net $128.07 realized (1pts)], distribution 2 [participation
+            1, months 2 (1pts), $40.00 claimed (0pts)], raw 83</code
+          >
+        </p>
+        <table>
+          <tr>
+            <th scope="col">Term</th>
+            <th scope="col">What it means</th>
+          </tr>
+          <tr>
+            <td class="term">protocols</td>
+            <td>Number of distinct DeFi protocols the wallet has touched (e.g. Blend, Soroswap, Aquarius, Sushi, DeFindex).</td>
+          </tr>
+          <tr>
+            <td class="term">events</td>
+            <td>Count of "meaningful" on-chain events — everything except generic contract calls with no clear economic action.</td>
+          </tr>
+          <tr>
+            <td class="term">days</td>
+            <td>Number of distinct calendar days the wallet was active on.</td>
+          </tr>
+          <tr>
+            <td class="term">breadth</td>
+            <td>Points for protocol diversity: <code>min(protocols × 5, 15)</code>.</td>
+          </tr>
+          <tr>
+            <td class="term">volume</td>
+            <td>Points for activity volume: <code>min(events, 25)</code> — capped so very high-frequency wallets don't automatically dominate the score.</td>
+          </tr>
+          <tr>
+            <td class="term">consistency</td>
+            <td>Points for how spread out the activity is across distinct days.</td>
+          </tr>
+          <tr>
+            <td class="term">tenure</td>
+            <td>Points for the time span between the wallet's first and last meaningful event.</td>
+          </tr>
+          <tr>
+            <td class="term">income</td>
+            <td>Points for real yield income (see "Realized yield income" below) — up to 12 points here.</td>
+          </tr>
+          <tr>
+            <td class="term">distribution</td>
+            <td>Points for recurring payroll/mass-distribution claims (see "Distribution income" below) — up to 6 points here.</td>
+          </tr>
+          <tr>
+            <td class="term">raw</td>
+            <td>Sum of the above.</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="info-card">
+        <h2>From raw score to final tier</h2>
+        <p>
+          The raw point total isn't the displayed score — it's run through a
+          scaling curve that concentrates most wallets in the middle of the range
+          and reserves the top end for genuinely strong track records, then mapped
+          to a tier:
+        </p>
+        <div class="tier-row">
+          <div class="tier-chip a">
+            <div class="tier-name">Tier A</div>
+            <div class="tier-range">67 – 100</div>
+          </div>
+          <div class="tier-chip b">
+            <div class="tier-name">Tier B</div>
+            <div class="tier-range">34 – 66</div>
+          </div>
+          <div class="tier-chip c">
+            <div class="tier-name">Tier C</div>
+            <div class="tier-range">0 – 33</div>
+          </div>
+        </div>
+        <p>
+          The lending path and activity path use separate scaling curves
+          calibrated to their own raw-score ranges, which is why the same raw
+          number can map to different final scores depending on path.
+        </p>
+      </section>
+
+      <section class="info-card">
+        <h2>Realized yield income</h2>
+        <p>
+          Beyond lending and activity, the score looks at real yield/savings
+          income — deposits and withdrawals on yield products like DeFindex
+          vaults, Stellar DeFi Hub, and Upshift/Gami. This only counts
+          <strong>realized</strong> income: USD a wallet actually withdrew above
+          what it had deposited into that position, not paper gains from a
+          balance that's still parked. A wallet that deposits and never withdraws
+          gets a small flat credit for participating, but the bulk of the income
+          score comes from cashing out more than was put in.
+        </p>
+        <p>
+          Amounts across different assets (USDC, EURC, XLM, and tokenized bonds
+          like CETES, TESOURO, USTRY) are converted to USD using live prices,
+          refreshed every 6 hours.
+        </p>
+        <table>
+          <tr>
+            <th scope="col">Term</th>
+            <th scope="col">What it means</th>
+          </tr>
+          <tr>
+            <td class="term">participation</td>
+            <td>A small flat bonus just for having any yield deposit/withdraw history at all, whether or not income has been realized yet.</td>
+          </tr>
+          <tr>
+            <td class="term">months (Npts)</td>
+            <td>Number of distinct calendar months in which the wallet realized net-positive income — rewards income spread over time, not one lucky cash-out.</td>
+          </tr>
+          <tr>
+            <td class="term">net $X realized (Npts)</td>
+            <td>Total USD withdrawn above total USD deposited, across all yield positions. Scored as a <em>rate</em> relative to how much was deposited, so a small active saver and a large passive one are compared fairly.</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="info-card">
+        <h2>Distribution income</h2>
+        <p>
+          Some wallets receive income a different way: a recurring claim from a
+          mass-distribution / payroll-style contract (e.g. Fundable), rather than
+          depositing and withdrawing from a yield position. A single claim has no
+          deposit side to measure a "return" against, so it can't be scored the
+          same way as yield income — instead it's weighted heavily toward
+          <strong>consistency</strong> over magnitude. A wallet claiming something
+          every month looks like real, recurring income; a single claim ever looks
+          like a one-time windfall and is scored accordingly low. Claiming
+          activity is deliberately excluded from the breadth/volume/consistency
+          numbers above — passively receiving an allocation doesn't demonstrate
+          protocol sophistication the way actively swapping or depositing does —
+          but it can still qualify a wallet for the activity path on its own if
+          claims span 2 or more distinct months.
+        </p>
+        <table>
+          <tr>
+            <th scope="col">Term</th>
+            <th scope="col">What it means</th>
+          </tr>
+          <tr>
+            <td class="term">participation</td>
+            <td>A small flat bonus just for having any claim history at all.</td>
+          </tr>
+          <tr>
+            <td class="term">months (Npts)</td>
+            <td>Number of distinct calendar months with a claim — the main driver of this score.</td>
+          </tr>
+          <tr>
+            <td class="term">$X claimed (Npts)</td>
+            <td>Total USD value claimed across all distributions — a smaller, secondary factor.</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="info-card">
+        <h2>A few notes</h2>
+        <ul>
+          <li>Scores are computed live from indexed on-chain history on every lookup — nothing is cached or pre-stored per wallet.</li>
+          <li>Looking up a smart-wallet (<code>C...</code>) address that was self-deployed by its own owner (e.g. a Veil passkey wallet) automatically merges in that owner's direct <code>G...</code> address activity too, so the same person isn't scored as two disconnected partial identities.</li>
+          <li>Very high-activity wallets are capped at 50,000 most-recent events per lookup for performance — this rarely changes the outcome, since the volume, breadth and consistency components already cap out well before that.</li>
+          <li>This tool only sees activity the indexer has captured (currently Blend, Soroswap, Aquarius, Sushi, DeFindex, Fundable and a growing set of others) — it is not a complete picture of a wallet's full on-chain history.</li>
+          <li>This is not a regulated credit score and isn't financial advice — it's an experimental measure of on-chain DeFi behavior.</li>
+        </ul>
+      </section>
+
+      <footer>LCRD — scored from indexed Stellar DeFi activity.</footer>
+    </main>
+  </body>
+</html>
