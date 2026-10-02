@@ -286,4 +286,29 @@ footer {
   margin-top: 48px;
   color: var(--muted);
   font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.footer-link {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.footer-link:hover {
+  color: var(--text);
+}
+
+.result-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 16px;
+}
+
+.result-links .btn-link {
+  margin-top: 0;
 }
