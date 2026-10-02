@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LCRD Wallet Connect</title>
+    <title>LCRD - Stellar Credit Score</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -68,10 +68,47 @@
 
           <div id="score-stage" class="hidden">
             <div class="score-card">
-              <div class="tier-badge" id="tier-badge">—</div>
-              <div class="score-number" id="score-number">—</div>
-              <div class="score-sub" id="score-sub">—</div>
-              <ul class="reasons" id="reasons-list"></ul>
+              <div class="result-top">
+                <div class="tier-badge" id="tier-badge" aria-hidden="true">—</div>
+                <div class="score-block">
+                  <div class="score-number">
+                    <span id="score-number">—</span><span class="out-of">/ 100</span>
+                  </div>
+                  <div class="score-track" aria-hidden="true">
+                    <div class="score-fill" id="score-fill"></div>
+                  </div>
+                  <div class="wallet-row">
+                    <span class="score-wallet" id="result-wallet"></span>
+                    <button class="copy-btn" id="copy-btn" type="button">Copy</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="path-pill" id="path-pill">
+                <span class="path-dot"></span><span id="path-label"></span>
+              </div>
+
+              <div class="stat-row">
+                <div class="stat">
+                  <div class="stat-value" id="stat-events">—</div>
+                  <div class="stat-key">On-chain events</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value" id="stat-tier">—</div>
+                  <div class="stat-key">Tier</div>
+                </div>
+              </div>
+
+              <div class="reasons">
+                <div class="reasons-label">
+                  Scoring breakdown ·
+                  <a class="reasons-link" href="/how-it-works.html">What do these mean?</a>
+                </div>
+                <div id="reason-lines"></div>
+              </div>
+
+              <p class="sr-only" id="sr-announce" role="status" aria-live="polite"></p>
+
               <div class="result-links">
                 <a id="explorer-link" class="btn-link" target="_blank" rel="noopener">
                   View wallet on stellar.expert →
@@ -81,6 +118,8 @@
             </div>
           </div>
         </div>
+
+        <p id="loading-note" class="loading-note hidden" role="status"></p>
 
         <p id="error-banner" class="error hidden" role="alert"></p>
       </section>
