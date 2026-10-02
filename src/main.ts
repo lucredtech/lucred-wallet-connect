@@ -18,10 +18,17 @@ const verifyStage = document.getElementById("verify-stage")!;
 const verifyBtn = document.getElementById("verify-btn") as HTMLButtonElement;
 const unverifiableNote = document.getElementById("unverifiable-note")!;
 const scoreStage = document.getElementById("score-stage")!;
+const scoreCard = scoreStage.querySelector<HTMLElement>(".score-card")!;
 const tierBadge = document.getElementById("tier-badge")!;
 const scoreNumber = document.getElementById("score-number")!;
-const scoreSub = document.getElementById("score-sub")!;
-const reasonsList = document.getElementById("reasons-list")!;
+const scoreFill = document.getElementById("score-fill")!;
+const resultWallet = document.getElementById("result-wallet")!;
+const copyBtn = document.getElementById("copy-btn") as HTMLButtonElement;
+const pathLabel = document.getElementById("path-label")!;
+const statEvents = document.getElementById("stat-events")!;
+const statTier = document.getElementById("stat-tier")!;
+const reasonLines = document.getElementById("reason-lines")!;
+const srAnnounce = document.getElementById("sr-announce")!;
 const explorerLink = document.getElementById("explorer-link") as HTMLAnchorElement;
 const errorBanner = document.getElementById("error-banner")!;
 const loadingNote = document.getElementById("loading-note")!;
@@ -97,25 +104,56 @@ function enterConnectedState(address: string, mode: Mode) {
   scoreStage.classList.add("hidden");
 }
 
-function renderScore(result: ScoreResult) {
-  tierBadge.textContent = `TIER ${result.tier}`;
-  tierBadge.dataset.tier = result.tier;
-  scoreNumber.textContent = String(result.score);
-  scoreSub.textContent = `${result.eventCount} on-chain event${result.eventCount === 1 ? "" : "s"} · ${result.path} path`;
+const PATH_TEXT: Record<string, string> = {
+  lending: "Scored via lending history",
+  activity: "Scored via broad DeFi activity",
+  floor: "Limited on-chain history",
+  "no-history": "No activity found",
+};
 
-  reasonsList.innerHTML = "";
-  for (const reason of result.reasons) {
-    const li = document.createElement("li");
-    li.textContent = reason;
-    reasonsList.appendChild(li);
+function renderScore(result: ScoreResult) {
+  const tier = result.tier || "C";
+  const score = Math.max(0, Math.min(100, result.score));
+  const pathText = PATH_TEXT[result.path] || result.path;
+
+  scoreCard.dataset.tier = tier;
+  tierBadge.textContent = tier;
+  scoreNumber.textContent = String(result.score);
+  scoreFill.style.width = `${score}%`;
+  resultWallet.textContent = result.wallet;
+  pathLabel.textContent = pathText;
+  statEvents.textContent = (result.eventCount ?? 0).toLocaleString();
+  statTier.textContent = `Tier ${tier}`;
+
+  reasonLines.innerHTML = "";
+  for (const reason of result.reasons ?? []) {
+    const div = document.createElement("div");
+    div.className = "reason-line";
+    div.textContent = reason;
+    reasonLines.appendChild(div);
   }
 
+  srAnnounce.textContent = `Score ${result.score} out of 100, tier ${tier}. ${pathText}.`;
   explorerLink.href = `https://stellar.expert/explorer/public/account/${result.wallet}`;
 
   verifyStage.classList.add("hidden");
   unverifiableNote.classList.add("hidden");
   scoreStage.classList.remove("hidden");
 }
+
+copyBtn.addEventListener("click", async () => {
+  const wallet = resultWallet.textContent;
+  if (!wallet) return;
+  try {
+    await navigator.clipboard.writeText(wallet);
+    copyBtn.textContent = "Copied";
+  } catch {
+    copyBtn.textContent = "Select to copy";
+  }
+  setTimeout(() => {
+    copyBtn.textContent = "Copy";
+  }, 1500);
+});
 
 connectBtn.addEventListener("click", async () => {
   clearError();
