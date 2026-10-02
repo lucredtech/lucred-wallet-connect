@@ -1,0 +1,19 @@
+{
+  "name": "lucred-wallet-connect",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@creit.tech/stellar-wallets-kit": "^2.7.0",
+    "@stellar/stellar-sdk": "^17.2.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
