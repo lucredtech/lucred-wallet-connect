@@ -351,6 +351,7 @@ a.btn-link {
   border-radius: 20px;
   padding: var(--space-8) var(--space-6);
   text-align: center;
+  overflow-wrap: break-word;
 }
 
 .tier-badge {
@@ -399,6 +400,7 @@ a.btn-link {
   color: var(--color-text-secondary);
   line-height: 1.6;
   text-wrap: pretty;
+  overflow-wrap: break-word;
 }
 
 .reasons li {
