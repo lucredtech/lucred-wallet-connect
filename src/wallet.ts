@@ -32,6 +32,15 @@ export async function connectWallet(): Promise<string> {
   return address;
 }
 
+// v1 scope: only classic accounts (G...) can prove ownership here - see
+// proveOwnership's docstring and the README's scope note. A connected
+// smart-contract wallet (C...), e.g. Veil, still works for viewing its
+// score, just without a signature step.
+const G_ADDRESS_PATTERN = /^G[A-Z2-7]{55}$/;
+export function isGAddress(address: string): boolean {
+  return G_ADDRESS_PATTERN.test(address);
+}
+
 export async function disconnectWallet(): Promise<void> {
   await StellarWalletsKit.disconnect();
 }
