@@ -24,6 +24,7 @@ const scoreSub = document.getElementById("score-sub")!;
 const reasonsList = document.getElementById("reasons-list")!;
 const explorerLink = document.getElementById("explorer-link") as HTMLAnchorElement;
 const errorBanner = document.getElementById("error-banner")!;
+const loadingNote = document.getElementById("loading-note")!;
 
 type Mode = "wallet" | "pasted";
 
@@ -42,6 +43,22 @@ function showError(message: string) {
 function clearError() {
   errorBanner.classList.add("hidden");
   errorBanner.textContent = "";
+}
+
+// Smart wallets (C...) are slower: the API also checks whether the contract
+// has a linked owner account to merge in, which can take 10+ seconds. Say so,
+// otherwise a bare "Loading…" reads like a hang.
+async function fetchScoreWithNotice(address: string): Promise<ScoreResult> {
+  loadingNote.textContent = isGAddress(address)
+    ? "Scoring this wallet from its on-chain history… usually a few seconds."
+    : "Scoring this smart wallet… this can take up to 15 seconds while we check for a linked owner account.";
+  loadingNote.classList.remove("hidden");
+  try {
+    return await fetchScore(address);
+  } finally {
+    loadingNote.classList.add("hidden");
+    loadingNote.textContent = "";
+  }
 }
 
 function setVerified(verified: boolean) {
@@ -112,7 +129,8 @@ connectBtn.addEventListener("click", async () => {
     // isGAddress) - go straight to the score instead of offering a
     // "Verify Ownership" step that would be guaranteed to fail.
     if (!isGAddress(address)) {
-      const result = await fetchScore(address);
+      connectBtn.textContent = "Scoring…";
+      const result = await fetchScoreWithNotice(address);
       renderScore(result);
     }
   } catch (err: any) {
@@ -134,9 +152,9 @@ pasteForm.addEventListener("submit", async (e) => {
   }
 
   pasteBtn.disabled = true;
-  pasteBtn.textContent = "Loading…";
+  pasteBtn.textContent = "Scoring…";
   try {
-    const result = await fetchScore(address);
+    const result = await fetchScoreWithNotice(address);
     enterConnectedState(address, "pasted");
     renderScore(result);
   } catch (err: any) {
@@ -159,8 +177,8 @@ verifyBtn.addEventListener("click", async () => {
       return;
     }
     setVerified(true);
-    verifyBtn.textContent = "Fetching score…";
-    const result = await fetchScore(currentAddress);
+    verifyBtn.textContent = "Scoring…";
+    const result = await fetchScoreWithNotice(currentAddress);
     renderScore(result);
   } catch (err: any) {
     showError(err?.message || "Verification failed.");

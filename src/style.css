@@ -415,6 +415,14 @@ a.btn-link {
   margin-top: var(--space-4);
 }
 
+.loading-note {
+  color: var(--color-text-secondary);
+  font-size: var(--text-body-sm);
+  line-height: 1.55;
+  margin: var(--space-4) 0 0;
+  text-wrap: pretty;
+}
+
 .error {
   color: var(--color-danger-text);
   font-size: var(--text-body-sm);
