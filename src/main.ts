@@ -1,5 +1,5 @@
 import "./style.css";
-import { connectWallet, disconnectWallet, proveOwnership } from "./wallet";
+import { connectWallet, disconnectWallet, proveOwnership, isGAddress } from "./wallet";
 import { fetchScore, type ScoreResult } from "./score";
 
 const STELLAR_ADDRESS_PATTERN = /^[GC][A-Z2-7]{55}$/;
@@ -16,6 +16,7 @@ const statusDot = document.getElementById("status-dot")!;
 const unverifiedTag = document.getElementById("unverified-tag")!;
 const verifyStage = document.getElementById("verify-stage")!;
 const verifyBtn = document.getElementById("verify-btn") as HTMLButtonElement;
+const unverifiableNote = document.getElementById("unverifiable-note")!;
 const scoreStage = document.getElementById("score-stage")!;
 const tierBadge = document.getElementById("tier-badge")!;
 const scoreNumber = document.getElementById("score-number")!;
@@ -43,28 +44,39 @@ function clearError() {
   errorBanner.textContent = "";
 }
 
+function setVerified(verified: boolean) {
+  statusDot.dataset.verified = String(verified);
+  unverifiedTag.classList.toggle("hidden", verified);
+}
+
 function resetToDisconnected() {
   currentAddress = null;
   currentMode = null;
   connectStage.classList.remove("hidden");
   connectedStage.classList.add("hidden");
   verifyStage.classList.remove("hidden");
+  unverifiableNote.classList.add("hidden");
   scoreStage.classList.add("hidden");
   pasteInput.value = "";
 }
 
+// Entered immediately on connect/paste, before anything is actually proven -
+// always starts unverified. Signing (G-address wallets only) can upgrade it
+// via setVerified(true) afterwards; pasted addresses and connected
+// smart-contract (C...) wallets have nothing to sign, so they stay
+// unverified and skip straight to the score once fetched.
 function enterConnectedState(address: string, mode: Mode) {
   currentAddress = address;
   currentMode = mode;
   addressLabel.textContent = truncate(address);
-  statusDot.dataset.verified = mode === "wallet" ? "true" : "false";
-  unverifiedTag.classList.toggle("hidden", mode === "wallet");
+  setVerified(false);
   disconnectBtn.textContent = mode === "wallet" ? "Disconnect" : "Change address";
   connectStage.classList.add("hidden");
   connectedStage.classList.remove("hidden");
 
-  // A pasted address has nothing to sign with - skip straight to the score.
-  verifyStage.classList.toggle("hidden", mode === "pasted");
+  const canSign = mode === "wallet" && isGAddress(address);
+  verifyStage.classList.toggle("hidden", !canSign);
+  unverifiableNote.classList.toggle("hidden", !(mode === "wallet" && !canSign));
   scoreStage.classList.add("hidden");
 }
 
@@ -84,6 +96,7 @@ function renderScore(result: ScoreResult) {
   explorerLink.href = `https://stellar.expert/explorer/public/account/${result.wallet}`;
 
   verifyStage.classList.add("hidden");
+  unverifiableNote.classList.add("hidden");
   scoreStage.classList.remove("hidden");
 }
 
@@ -94,6 +107,14 @@ connectBtn.addEventListener("click", async () => {
   try {
     const address = await connectWallet();
     enterConnectedState(address, "wallet");
+
+    // A connected smart-contract wallet has no signing path yet (see
+    // isGAddress) - go straight to the score instead of offering a
+    // "Verify Ownership" step that would be guaranteed to fail.
+    if (!isGAddress(address)) {
+      const result = await fetchScore(address);
+      renderScore(result);
+    }
   } catch (err: any) {
     showError(err?.message || "Could not connect wallet.");
   } finally {
@@ -137,6 +158,7 @@ verifyBtn.addEventListener("click", async () => {
       showError("Signature did not match this wallet. Please try again.");
       return;
     }
+    setVerified(true);
     verifyBtn.textContent = "Fetching score…";
     const result = await fetchScore(currentAddress);
     renderScore(result);
