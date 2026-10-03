@@ -1,6 +1,7 @@
 import "./style.css";
 import { connectWallet, disconnectWallet, proveOwnership, isGAddress } from "./wallet";
 import { fetchScore, type ScoreResult } from "./score";
+import { loadPortfolio, resetPortfolio } from "./portfolioView";
 
 const STELLAR_ADDRESS_PATTERN = /^[GC][A-Z2-7]{55}$/;
 
@@ -74,6 +75,7 @@ function setVerified(verified: boolean) {
 }
 
 function resetToDisconnected() {
+  resetPortfolio();
   currentAddress = null;
   currentMode = null;
   connectStage.classList.remove("hidden");
@@ -139,6 +141,9 @@ function renderScore(result: ScoreResult) {
   verifyStage.classList.add("hidden");
   unverifiableNote.classList.add("hidden");
   scoreStage.classList.remove("hidden");
+
+  // Holdings load in the background - the score never waits on them.
+  void loadPortfolio(result.wallet);
 }
 
 copyBtn.addEventListener("click", async () => {

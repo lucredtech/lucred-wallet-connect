@@ -690,3 +690,214 @@ footer {
 .nowrap {
   white-space: nowrap;
 }
+
+/* ---- Holdings (token balances + DeFi positions) ---- */
+.portfolio-card {
+  margin-top: var(--space-6);
+  background: var(--color-bg-surface);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-border);
+  border-radius: 24px;
+  padding: var(--space-6);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  overflow-wrap: break-word;
+}
+
+#portfolio-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.portfolio-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.portfolio-head h2 {
+  margin: 0;
+  font-size: var(--text-title);
+}
+
+.portfolio-asof {
+  color: var(--color-text-secondary);
+  font-size: var(--text-caption);
+}
+
+.portfolio-loading,
+.portfolio-error,
+.pf-empty,
+.pf-notes {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-body-sm);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.portfolio-error {
+  color: var(--color-danger-text);
+}
+
+.pf-notes {
+  font-size: var(--text-caption);
+}
+
+.pf-total-value {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.pf-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-top: 1px solid var(--color-border-subtle);
+  padding-top: var(--space-4);
+}
+
+.pf-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) auto;
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: var(--text-body-sm);
+}
+
+.pf-row:last-child {
+  border-bottom: none;
+}
+
+.pf-name {
+  font-weight: 600;
+}
+
+.pf-proto {
+  color: var(--color-accent-text);
+}
+
+.pf-amount,
+.pf-usd {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-on-surface-light);
+  overflow-wrap: anywhere;
+}
+
+.pf-usd {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pf-debt {
+  color: var(--color-danger-text);
+}
+
+.pf-muted {
+  color: var(--color-text-secondary);
+}
+
+.pf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.pf-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  font-size: var(--text-label);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.pf-chip-lp {
+  color: var(--color-accent-text);
+  border-color: var(--color-accent-text);
+}
+
+.pf-chip-warn {
+  color: var(--color-text-on-surface-light);
+}
+
+.pf-partial {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-label);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pf-more summary {
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: var(--text-caption);
+  padding: var(--space-2) 0;
+}
+
+.pf-more summary:hover {
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 460px) {
+  .pf-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .pf-amount {
+    grid-column: 1 / -1;
+    order: 3;
+    color: var(--color-text-secondary);
+  }
+}
+
+.pf-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: 14px;
+  background: var(--color-neutral-subtle-bg);
+}
+
+.pf-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-body-sm);
+}
+
+.pf-summary-row span:last-child {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-summary-debt {
+  color: var(--color-danger-text);
+}
+
+.pf-summary-net {
+  font-weight: 700;
+  font-size: var(--text-body);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-subtle);
+}

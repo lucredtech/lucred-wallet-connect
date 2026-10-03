@@ -116,6 +116,51 @@
                 <a href="/how-it-works.html" class="btn-link">How this score works →</a>
               </div>
             </div>
+
+            <section id="portfolio" class="portfolio-card hidden" aria-labelledby="portfolio-title">
+              <div class="portfolio-head">
+                <h2 id="portfolio-title">Holdings</h2>
+                <span id="portfolio-asof" class="portfolio-asof"></span>
+              </div>
+
+              <p id="portfolio-loading" class="portfolio-loading" role="status">
+                Reading balances and DeFi positions from the chain…
+              </p>
+              <p id="portfolio-error" class="portfolio-error hidden"></p>
+
+              <div id="portfolio-body" class="hidden">
+                <div class="pf-total">
+                  <div class="stat-key">Portfolio value</div>
+                  <div class="pf-total-value" id="pf-gross">—</div>
+                </div>
+                <div class="stat-row" id="pf-subtotals"></div>
+
+                <div class="pf-summary hidden" id="pf-summary">
+                  <div class="pf-summary-row pf-summary-debt">
+                    <span>Debt</span><span id="pf-debt">—</span>
+                  </div>
+                  <div class="pf-summary-row pf-summary-net">
+                    <span>Net value</span><span id="pf-net">—</span>
+                  </div>
+                </div>
+
+                <div class="pf-section" id="pf-tokens-section">
+                  <div class="reasons-label">Tokens</div>
+                  <div id="pf-tokens"></div>
+                  <details class="pf-more" id="pf-unpriced-wrap">
+                    <summary id="pf-unpriced-summary"></summary>
+                    <div id="pf-unpriced"></div>
+                  </details>
+                </div>
+
+                <div class="pf-section" id="pf-positions-section">
+                  <div class="reasons-label">DeFi positions</div>
+                  <div id="pf-positions"></div>
+                </div>
+
+                <p class="pf-notes" id="pf-notes"></p>
+              </div>
+            </section>
           </div>
         </div>
 
