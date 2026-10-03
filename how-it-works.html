@@ -282,7 +282,9 @@
           Protocols also pay out reward tokens: <strong>AQUA</strong> to Aquarius
           liquidity providers (plus Aquarius gauge rewards, paid in assets like
           USDC and XLM) and <strong>BLND</strong> to Blend lenders and backstop
-          depositors. These are scored as their own signal, and deliberately the
+          depositors, and reward tokens to Phoenix liquidity providers who stake
+          their LP tokens (Phoenix doesn't record the amount of a reward claim, so
+          those count toward the months-claimed factor only, never the dollar one). These are scored as their own signal, and deliberately the
           smallest of the three income signals (at most 3 points on the lending
           path and 4 on the activity path). Rewards are incentives, not organic
           income: they scale with how much a wallet has staked, they are
