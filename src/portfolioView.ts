@@ -1,4 +1,4 @@
-import { fetchPortfolio, type Portfolio, type PortfolioPosition } from "./portfolio";
+import { fetchPortfolio, type Portfolio, type PortfolioPosition, type PortfolioToken } from "./portfolio";
 
 const $ = (id: string) => document.getElementById(id)!;
 const card = $("portfolio");
@@ -30,12 +30,13 @@ const protocolName = (p: string) => {
   return p.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
-const POSITION_LABELS: Record<string, string> = {
-  collateral: "Collateral",
-  supply: "Supplied",
-  debt: "Borrowed",
+// What kind of holding this is, shown as a chip under the protocol name.
+const POSITION_CATEGORIES: Record<string, string> = {
+  collateral: "Lending · Collateral",
+  supply: "Lending · Supplied",
+  debt: "Lending · Borrowed",
   liquidity: "Liquidity pool",
-  vault: "Vault",
+  vault: "Yield vault",
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string) {
@@ -45,24 +46,46 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   return node;
 }
 
-function row(left: string, middle: string, right: string, rightClass = "") {
+function chip(text: string, className = "pf-chip") {
+  return el("span", className, text);
+}
+
+// One holding = name block (name + category chip + status tags) | amounts | value.
+function holdingRow(
+  title: string,
+  titleClass: string,
+  chips: HTMLElement[],
+  middle: string,
+  value: string,
+  valueClass = "",
+) {
   const r = el("div", "pf-row");
-  r.append(el("span", "pf-name", left), el("span", "pf-amount", middle), el("span", `pf-usd ${rightClass}`.trim(), right));
+  const name = el("div", "pf-name");
+  name.append(el("span", titleClass, title));
+  const chipLine = el("div", "pf-chips");
+  chipLine.append(...chips);
+  name.append(chipLine);
+  r.append(name, el("span", "pf-amount", middle), el("span", `pf-usd ${valueClass}`.trim(), value));
   return r;
+}
+
+function renderToken(t: PortfolioToken) {
+  const priced = t.usdValue !== null;
+  const chips = [chip(t.kind === "classic_lp_shares" ? "Pool shares" : "Token")];
+  if (!priced) chips.push(chip("Unpriced", "pf-chip pf-chip-warn"));
+  return holdingRow(t.code, "pf-token", chips, amount(t.balance), priced ? usd(t.usdValue as number) : "—", priced ? "" : "pf-muted");
 }
 
 function renderPosition(p: PortfolioPosition) {
   const assets = p.assets.map((a) => `${amount(a.amount)} ${a.code ?? "?"}`).join(" + ");
   const isDebt = p.type === "debt";
-  const value = p.usdValue === null ? "unpriced" : `${isDebt ? "−" : ""}${usd(p.usdValue)}`;
-  const r = el("div", "pf-row pf-position");
-  const name = el("span", "pf-name");
-  name.append(el("span", "pf-proto", protocolName(p.protocol)), document.createTextNode(` ${POSITION_LABELS[p.type] ?? p.type}`));
-  if (!p.fullyPriced && p.usdValue !== null) name.append(el("span", "pf-partial", "partly priced"));
-  // Vault shares / pool shares we can't value stay out of the totals, but say what they are.
-  if (p.lpToken && p.usdValue === null) name.append(el("span", "pf-tag", "LP token · unpriced"));
-  r.append(name, el("span", "pf-amount", assets), el("span", `pf-usd ${isDebt ? "pf-debt" : ""}`.trim(), value));
-  return r;
+  const chips = [chip(POSITION_CATEGORIES[p.type] ?? p.type)];
+  if (p.lpToken) chips.push(chip("LP token", "pf-chip pf-chip-lp"));
+  if (p.usdValue === null) chips.push(chip("Unpriced", "pf-chip pf-chip-warn"));
+  else if (!p.fullyPriced) chips.push(chip("Partly priced", "pf-chip pf-chip-warn"));
+  const value = p.usdValue === null ? "Unpriced" : `${isDebt ? "−" : ""}${usd(p.usdValue)}`;
+  const valueClass = p.usdValue === null ? "pf-muted" : isDebt ? "pf-debt" : "";
+  return holdingRow(protocolName(p.protocol), "pf-proto", chips, assets, value, valueClass);
 }
 
 function render(p: Portfolio) {
@@ -97,7 +120,7 @@ function render(p: Portfolio) {
   const tokensEl = $("pf-tokens");
   tokensEl.replaceChildren();
   if (priced.length === 0) tokensEl.append(el("p", "pf-empty", "No priced token balances."));
-  for (const t of priced) tokensEl.append(row(t.code, amount(t.balance), usd(t.usdValue as number)));
+  for (const t of priced) tokensEl.append(renderToken(t));
 
   const wrap = $("pf-unpriced-wrap") as HTMLDetailsElement;
   const unpricedEl = $("pf-unpriced");
@@ -106,7 +129,7 @@ function render(p: Portfolio) {
   wrap.classList.toggle("hidden", unpricedTotal === 0);
   wrap.open = false;
   $("pf-unpriced-summary").textContent = `${unpricedTotal} other token${unpricedTotal === 1 ? "" : "s"} we can't price`;
-  for (const t of unpriced) unpricedEl.append(row(t.code, amount(t.balance), "—", "pf-muted"));
+  for (const t of unpriced) unpricedEl.append(renderToken(t));
   if (p.hiddenUnpricedTokens > 0) unpricedEl.append(el("p", "pf-empty", `…and ${p.hiddenUnpricedTokens} more`));
 
   // Dust (under a cent) is still in the totals but isn't worth a row.

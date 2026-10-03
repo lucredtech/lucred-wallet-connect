@@ -808,9 +808,15 @@ footer {
   color: var(--color-text-secondary);
 }
 
-.pf-tag {
+.pf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.pf-chip {
   display: inline-block;
-  margin: 2px 0 0 8px;
   padding: 1px 8px;
   border-radius: 999px;
   border: 1px solid var(--color-border-strong);
@@ -820,6 +826,15 @@ footer {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   white-space: nowrap;
+}
+
+.pf-chip-lp {
+  color: var(--color-accent-text);
+  border-color: var(--color-accent-text);
+}
+
+.pf-chip-warn {
+  color: var(--color-text-on-surface-light);
 }
 
 .pf-partial {
