@@ -833,6 +833,10 @@ footer {
   border-color: var(--color-accent-text);
 }
 
+.pf-chip-ok {
+  color: var(--color-text-on-surface-light);
+}
+
 .pf-chip-warn {
   color: var(--color-text-on-surface-light);
 }

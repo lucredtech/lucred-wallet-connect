@@ -7,6 +7,9 @@ export interface PortfolioToken {
   usdValue: number | null;
   priceSource?: "verified" | "stellar.expert";
   note?: string;
+  transferable?: boolean | null;
+  transferNote?: string;
+  clawback?: boolean;
 }
 
 export interface PositionAsset {
@@ -16,13 +19,15 @@ export interface PositionAsset {
 }
 
 export interface PortfolioPosition {
-  protocol: "blend" | "aquarius" | "defindex";
+  protocol: "blend" | "aquarius" | "defindex" | "untangled_rwa";
   pool: string;
   type: string;
   assets: PositionAsset[];
   usdValue: number | null;
   fullyPriced: boolean;
   lpToken?: boolean;
+  transferable?: boolean | null;
+  transferNote?: string;
   sharePct?: number;
 }
 
@@ -36,6 +41,7 @@ export interface Portfolio {
     tokensUsd: number;
     positionsUsd: number;
     debtUsd: number;
+    transferableUsd?: number;
     grossUsd: number;
     netUsd: number;
     unpricedAssets: string[];
