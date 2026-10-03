@@ -787,9 +787,9 @@ app.get("/credit-line", async (req, res) => {
   }
 });
 
-// ---- Credit-line waitlist: email only, stored in credit_bureau.waitlist ----
-// Created on first use (the service account owns the dataset). No wallet or IP is stored; the IP is
-// used only for an in-memory rate limit. Duplicates are ignored, and the response never reveals
+// ---- Credit-line waitlist: email (+ the connected wallet), stored in credit_bureau.waitlist ----
+// Created on first use (the service account owns the dataset). No IP is stored; it is used only for
+// an in-memory rate limit. Duplicates are ignored, and the response never reveals
 // whether an address was already on the list.
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 const waitlistHits = new Map(); // ip -> [timestamps]
@@ -798,9 +798,12 @@ let waitlistTableReady = null;
 
 function ensureWaitlistTable() {
   if (!waitlistTableReady) {
-    waitlistTableReady = bq.query(
-      "CREATE TABLE IF NOT EXISTS `credit_bureau.waitlist` (email STRING NOT NULL, source STRING, createdAt TIMESTAMP NOT NULL)"
-    ).catch((e) => { waitlistTableReady = null; throw e; });
+    waitlistTableReady = (async () => {
+      await bq.query("CREATE TABLE IF NOT EXISTS `credit_bureau.waitlist` (email STRING NOT NULL, source STRING, createdAt TIMESTAMP NOT NULL)");
+      // Added later: the wallet the person had connected when they signed up. `walletVerified` is
+      // reported by the web app (the signature check happens in the browser), so treat it as a hint.
+      await bq.query("ALTER TABLE `credit_bureau.waitlist` ADD COLUMN IF NOT EXISTS wallet STRING, ADD COLUMN IF NOT EXISTS walletVerified BOOL");
+    })().catch((e) => { waitlistTableReady = null; throw e; });
   }
   return waitlistTableReady;
 }
@@ -828,12 +831,25 @@ app.post("/waitlist", express.json({ limit: "2kb" }), async (req, res) => {
     return res.status(429).json({ error: "Too many sign-ups from this connection. Please try again later." });
   }
   const source = "credit-line";
+  // The wallet is optional (the web app sends it for a connected wallet, so people never type it).
+  let wallet = null;
+  if (body.wallet !== undefined && body.wallet !== null && body.wallet !== "") {
+    wallet = String(body.wallet).trim().toUpperCase();
+    if (!STELLAR_ADDRESS_RE.test(wallet)) return res.status(400).json({ error: "That wallet address isn't valid." });
+  }
+  const walletVerified = wallet ? body.walletVerified === true : null;
   try {
     await ensureWaitlistTable();
+    // One row per email + wallet pair; signing up again changes nothing, except that a wallet
+    // later proven by signature upgrades its flag.
     await bq.query({
-      query: "INSERT INTO `credit_bureau.waitlist` (email, source, createdAt) SELECT @email, @source, CURRENT_TIMESTAMP() FROM (SELECT 1) WHERE NOT EXISTS (SELECT 1 FROM `credit_bureau.waitlist` WHERE email = @email)",
-      params: { email, source },
-      types: { email: "STRING", source: "STRING" }
+      query: `MERGE \`credit_bureau.waitlist\` T
+              USING (SELECT @email AS email, @source AS source, @wallet AS wallet, @walletVerified AS walletVerified) S
+              ON T.email = S.email AND IFNULL(T.wallet, '') = IFNULL(S.wallet, '')
+              WHEN MATCHED AND S.walletVerified AND NOT IFNULL(T.walletVerified, FALSE) THEN UPDATE SET walletVerified = TRUE
+              WHEN NOT MATCHED THEN INSERT (email, source, createdAt, wallet, walletVerified) VALUES (S.email, S.source, CURRENT_TIMESTAMP(), S.wallet, S.walletVerified)`,
+      params: { email, source, wallet, walletVerified },
+      types: { email: "STRING", source: "STRING", wallet: "STRING", walletVerified: "BOOL" }
     });
     res.json({ ok: true });
   } catch (err) {

@@ -2,7 +2,7 @@ import "./style.css";
 import { connectWallet, disconnectWallet, proveOwnership, isGAddress } from "./wallet";
 import { fetchScore, type ScoreResult } from "./score";
 import { loadPortfolio, resetPortfolio } from "./portfolioView";
-import { loadCreditLine, resetCreditLine, showCreditLineLocked } from "./creditLineView";
+import { loadCreditLine, resetCreditLine, showCreditLineLocked, setWaitlistWallet } from "./creditLineView";
 
 const STELLAR_ADDRESS_PATTERN = /^[GC][A-Z2-7]{55}$/;
 
@@ -149,7 +149,11 @@ function renderScore(result: ScoreResult) {
 
   // An indicative credit line is only shown for a wallet whose owner has proven it - a
   // pasted address is somebody else's public data. Flip this if a partner embed wants it open.
-  if (statusDot.dataset.verified === "true") {
+  // A connected wallet is saved with the waitlist email (so nobody retypes it); a pasted address is
+  // someone else's public data and is never attached.
+  const verified = statusDot.dataset.verified === "true";
+  setWaitlistWallet(currentMode === "wallet" ? { address: result.wallet, verified } : null);
+  if (verified) {
     void loadCreditLine(result.wallet);
   } else {
     showCreditLineLocked(

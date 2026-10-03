@@ -1,5 +1,5 @@
 import { fetchCreditLine, type CreditLine, type CreditModel, type CreditOffer } from "./creditLine";
-import { joinWaitlist } from "./waitlist";
+import { joinWaitlist, type WaitlistWallet } from "./waitlist";
 
 const $ = (id: string) => document.getElementById(id)!;
 const card = $("credit-line");
@@ -169,6 +169,17 @@ const wlEmail = $("cl-email") as HTMLInputElement;
 const wlHoneypot = $("cl-website") as HTMLInputElement;
 const wlBtn = $("cl-join") as HTMLButtonElement;
 const wlMsg = $("cl-waitlist-msg");
+const wlFine = $("cl-fineprint");
+const FINEPRINT_EMAIL = "We'll only use your email to tell you about LCRD credit lines, and you can ask us to delete it any time.";
+let wlWallet: WaitlistWallet | null = null;
+
+/** The connected wallet is saved with the email, so people never have to type it. */
+export function setWaitlistWallet(wallet: WaitlistWallet | null) {
+  wlWallet = wallet;
+  wlFine.textContent = wallet
+    ? `We'll save your email together with your connected wallet (${wallet.address.slice(0, 4)}…${wallet.address.slice(-4)}) so we know which credit line to tell you about. We only use them for LCRD credit lines, and you can ask us to delete them any time.`
+    : FINEPRINT_EMAIL;
+}
 
 function markJoined() {
   wlForm.dataset.joined = "true";
@@ -193,7 +204,7 @@ wlForm.addEventListener("submit", async (e) => {
   wlBtn.textContent = "Joining…";
   wlMsg.textContent = "";
   try {
-    await joinWaitlist(email, wlHoneypot.value);
+    await joinWaitlist(email, wlHoneypot.value, wlWallet);
     try { localStorage.setItem(JOINED_KEY, "1"); } catch { /* storage unavailable */ }
     markJoined();
   } catch (err) {
