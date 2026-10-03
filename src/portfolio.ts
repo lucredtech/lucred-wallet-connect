@@ -16,7 +16,7 @@ export interface PositionAsset {
 }
 
 export interface PortfolioPosition {
-  protocol: "blend" | "aquarius" | "defindex";
+  protocol: "blend" | "aquarius" | "defindex" | "untangled_rwa";
   pool: string;
   type: string;
   assets: PositionAsset[];
