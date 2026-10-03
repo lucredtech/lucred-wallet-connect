@@ -808,6 +808,20 @@ footer {
   color: var(--color-text-secondary);
 }
 
+.pf-tag {
+  display: inline-block;
+  margin: 2px 0 0 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  font-size: var(--text-label);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
 .pf-partial {
   display: block;
   margin-top: 2px;

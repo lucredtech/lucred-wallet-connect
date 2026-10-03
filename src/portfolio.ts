@@ -22,6 +22,7 @@ export interface PortfolioPosition {
   assets: PositionAsset[];
   usdValue: number | null;
   fullyPriced: boolean;
+  lpToken?: boolean;
   sharePct?: number;
 }
 

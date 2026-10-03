@@ -20,6 +20,7 @@ const PROTOCOL_NAMES: Record<string, string> = {
   phoenix_defi_hub: "Phoenix",
   sushi_stellar: "Sushi",
   etherfuse: "Etherfuse",
+  untangled_rwa: "Untangled",
   spiko: "Spiko",
 };
 const protocolName = (p: string) => {
@@ -58,6 +59,8 @@ function renderPosition(p: PortfolioPosition) {
   const name = el("span", "pf-name");
   name.append(el("span", "pf-proto", protocolName(p.protocol)), document.createTextNode(` ${POSITION_LABELS[p.type] ?? p.type}`));
   if (!p.fullyPriced && p.usdValue !== null) name.append(el("span", "pf-partial", "partly priced"));
+  // Vault shares / pool shares we can't value stay out of the totals, but say what they are.
+  if (p.lpToken && p.usdValue === null) name.append(el("span", "pf-tag", "LP token · unpriced"));
   r.append(name, el("span", "pf-amount", assets), el("span", `pf-usd ${isDebt ? "pf-debt" : ""}`.trim(), value));
   return r;
 }
