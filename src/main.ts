@@ -2,6 +2,7 @@ import "./style.css";
 import { connectWallet, disconnectWallet, proveOwnership, isGAddress } from "./wallet";
 import { fetchScore, type ScoreResult } from "./score";
 import { loadPortfolio, resetPortfolio } from "./portfolioView";
+import { loadCreditLine, resetCreditLine, showCreditLineLocked } from "./creditLineView";
 
 const STELLAR_ADDRESS_PATTERN = /^[GC][A-Z2-7]{55}$/;
 
@@ -76,6 +77,7 @@ function setVerified(verified: boolean) {
 
 function resetToDisconnected() {
   resetPortfolio();
+  resetCreditLine();
   currentAddress = null;
   currentMode = null;
   connectStage.classList.remove("hidden");
@@ -144,6 +146,18 @@ function renderScore(result: ScoreResult) {
 
   // Holdings load in the background - the score never waits on them.
   void loadPortfolio(result.wallet);
+
+  // An indicative credit line is only shown for a wallet whose owner has proven it - a
+  // pasted address is somebody else's public data. Flip this if a partner embed wants it open.
+  if (statusDot.dataset.verified === "true") {
+    void loadCreditLine(result.wallet);
+  } else {
+    showCreditLineLocked(
+      currentMode === "pasted"
+        ? "Connect your wallet and verify ownership to see an indicative credit line. A pasted address is read-only."
+        : "Smart-contract wallets can't be verified yet, so an indicative credit line isn't available for this one.",
+    );
+  }
 }
 
 copyBtn.addEventListener("click", async () => {

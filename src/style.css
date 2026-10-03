@@ -905,3 +905,108 @@ footer {
   padding-top: var(--space-2);
   border-top: 1px solid var(--color-border-subtle);
 }
+
+/* Indicative credit line */
+.cl-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.cl-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  text-align: left;
+  font: inherit;
+  color: var(--color-text-on-surface-light);
+  background: transparent;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.cl-tab:hover {
+  border-color: var(--color-border-strong);
+}
+
+.cl-tab[aria-selected="true"] {
+  border-color: var(--color-accent-text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.cl-tab:focus-visible {
+  outline: 2px solid var(--color-accent-text);
+  outline-offset: 2px;
+}
+
+.cl-tab-name {
+  font-weight: 600;
+  font-size: var(--text-body-sm);
+}
+
+.cl-tab-limit {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-body-sm);
+}
+
+.cl-tab-blurb {
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+  line-height: 1.35;
+}
+
+.cl-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5, 24px);
+  margin-bottom: var(--space-3);
+}
+
+.cl-limit {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.cl-note,
+.cl-none {
+  color: var(--color-text-secondary);
+  font-size: var(--text-body-sm);
+  margin: var(--space-2) 0;
+}
+
+.cl-breakdown,
+.cl-collateral {
+  margin-top: var(--space-4);
+}
+
+.cl-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1, 4px) 0;
+  font-size: var(--text-body-sm);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.cl-val {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.cl-total {
+  font-weight: 600;
+  border-bottom: none;
+}
+
+@media (max-width: 560px) {
+  .cl-tabs {
+    grid-template-columns: 1fr;
+  }
+}
