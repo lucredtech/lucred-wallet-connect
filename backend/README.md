@@ -28,7 +28,7 @@ Node.js (Express) on Cloud Run, reading the BigQuery table the indexer feeds.
 
 | File | What it does |
 |---|---|
-| `index.js` | The HTTP API and the **score**: a lending path (completed borrow → repay cycles) and an activity path (breadth, volume, consistency, tenure), plus income signals (realized yield, distributions, incentive rewards). Methodology: `public/how-it-works.html`. Also `POST /waitlist` (email only). |
+| `index.js` | The HTTP API and the **score**: a lending path (completed borrow → repay cycles) and an activity path (breadth, volume, consistency, tenure), plus income signals (realized yield, distributions, incentive rewards). Methodology: `public/how-it-works.html`. Also `POST /waitlist` (email, plus the connected wallet when the app has one). |
 | `portfolio.js` | **Holdings.** Reads a wallet's balances live from Horizon and Soroban RPC (free, read-only), values Blend, Aquarius, DeFindex and Untangled positions, prices tokens by contract id (never by ticker), and flags which holdings are transferable. |
 | `credit-line.js` | **Indicative credit line and APR** for three lending models (secured, unsecured, score + collateral). Pure functions: every business parameter sits in one `POLICY` object, so a partner can supply its own. |
 
@@ -39,7 +39,7 @@ Node.js (Express) on Cloud Run, reading the BigQuery table the indexer feeds.
 | `GET /score?wallet=G…` | Tier A/B/C, 0–100 score and the reasons behind it |
 | `GET /portfolio?wallet=G…` | Tokens and DeFi positions, value, debt, net value, transferability |
 | `GET /credit-line?wallet=G…` | Limit and APR under each lending model, with the full breakdown |
-| `POST /waitlist` | `{ "email": "…" }`: join the credit-line waitlist |
+| `POST /waitlist` | `{ "email": "…", "wallet": "G…" }` (wallet optional): join the credit-line waitlist. Stored per email + wallet pair. |
 
 ### Tests
 
