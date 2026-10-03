@@ -5,6 +5,7 @@ export interface PortfolioToken {
   balance: number;
   usdPrice: number | null;
   usdValue: number | null;
+  priceSource?: "verified" | "stellar.expert";
   note?: string;
 }
 
@@ -34,6 +35,7 @@ export interface Portfolio {
     tokensUsd: number;
     positionsUsd: number;
     debtUsd: number;
+    grossUsd: number;
     netUsd: number;
     unpricedAssets: string[];
   };

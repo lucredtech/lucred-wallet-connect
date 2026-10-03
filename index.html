@@ -130,10 +130,19 @@
 
               <div id="portfolio-body" class="hidden">
                 <div class="pf-total">
-                  <div class="pf-total-value" id="pf-net">—</div>
-                  <div class="stat-key">Estimated net value · priced assets only</div>
+                  <div class="stat-key">Portfolio value</div>
+                  <div class="pf-total-value" id="pf-gross">—</div>
                 </div>
                 <div class="stat-row" id="pf-subtotals"></div>
+
+                <div class="pf-summary hidden" id="pf-summary">
+                  <div class="pf-summary-row pf-summary-debt">
+                    <span>Debt</span><span id="pf-debt">—</span>
+                  </div>
+                  <div class="pf-summary-row pf-summary-net">
+                    <span>Net value</span><span id="pf-net">—</span>
+                  </div>
+                </div>
 
                 <div class="pf-section" id="pf-tokens-section">
                   <div class="reasons-label">Tokens</div>

@@ -840,3 +840,35 @@ footer {
     color: var(--color-text-secondary);
   }
 }
+
+.pf-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: 14px;
+  background: var(--color-neutral-subtle-bg);
+}
+
+.pf-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-body-sm);
+}
+
+.pf-summary-row span:last-child {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-summary-debt {
+  color: var(--color-danger-text);
+}
+
+.pf-summary-net {
+  font-weight: 700;
+  font-size: var(--text-body);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-subtle);
+}

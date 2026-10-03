@@ -68,7 +68,16 @@ function render(p: Portfolio) {
   body.classList.remove("hidden");
   asOf.textContent = `as of ${new Date(p.asOf).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 
-  $("pf-net").textContent = usd(p.totals.netUsd);
+  // Portfolio value = everything the wallet holds (tokens + DeFi positions). When it
+  // owes anything, debt and the resulting net value get their own rows so the
+  // headline number can't be mistaken for what is actually theirs.
+  $("pf-gross").textContent = usd(p.totals.grossUsd);
+  const hasDebt = p.totals.debtUsd > 0;
+  $("pf-summary").classList.toggle("hidden", !hasDebt);
+  if (hasDebt) {
+    $("pf-debt").textContent = `−${usd(p.totals.debtUsd)}`;
+    $("pf-net").textContent = usd(p.totals.netUsd);
+  }
 
   const subs = $("pf-subtotals");
   subs.replaceChildren();
@@ -78,7 +87,6 @@ function render(p: Portfolio) {
     return s;
   };
   subs.append(stat(usd(p.totals.tokensUsd), "Tokens"), stat(usd(p.totals.positionsUsd), "In DeFi"));
-  if (p.totals.debtUsd > 0) subs.append(stat(`−${usd(p.totals.debtUsd)}`, "Borrowed"));
 
   const priced = p.tokens.filter((t) => t.usdValue !== null);
   const unpriced = p.tokens.filter((t) => t.usdValue === null);
@@ -107,7 +115,7 @@ function render(p: Portfolio) {
   for (const pos of shownPositions) posEl.append(renderPosition(pos));
 
   const notes: string[] = [
-    "Estimates use live prices for XLM, USDC, EURC, PYUSD, AQUA and BLND only. Other tokens are listed but not counted, and a pool with one unpriced side counts only the priced side.",
+    "Estimates use live prices for verified tokens (XLM, USDC, EURC, PYUSD, AQUA, BLND, Etherfuse bonds) and for tokens on stellar.expert's curated list that trade at least $100K a week. Other tokens are listed but not counted, and a pool with one unpriced side counts only the priced side.",
   ];
   if (p.notShown.length) notes.push(`Not shown yet: ${p.notShown.map(protocolName).join(", ")}.`);
   if (p.partial) notes.push("Some positions couldn't be read just now, so totals may be incomplete.");
