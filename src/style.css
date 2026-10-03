@@ -1,49 +1,43 @@
 :root {
-  /* ---- Primitives: neutral ramp (hue-constant, perceptually spaced) ---- */
-  --neutral-0: oklch(0.145 0 0);
-  --neutral-50: oklch(0.195 0 0);
-  --neutral-100: oklch(0.235 0 0);
-  --neutral-200: oklch(0.3 0 0);
-  --neutral-300: oklch(0.45 0 0);
-  --neutral-500: oklch(0.68 0 0);
-  --neutral-900: oklch(0.96 0 0);
+  /* ---- Primitives (futuristic glass palette; semantic tokens below are what components use) ---- */
+  --navy-950: #0a0e1a;
+  --indigo-300: #a5b4fc;
+  --indigo-600: #5b4fe9;
+  --violet-600: #6d3fea;
+  --cyan-300: #67e8f9;
+  --emerald-400: #34d399;
+  --emerald-500: #10b981;
+  --red-400: #f87171;
 
-  /* ---- Primitives: accent ramp (blue) ---- */
-  --blue-400: oklch(0.78 0.13 259);
-  --blue-500: oklch(0.64 0.19 259);
-  --blue-600: oklch(0.56 0.19 259);
+  /* ---- Semantics: surfaces (translucent glass over the navy page) ---- */
+  --color-bg: var(--navy-950);
+  --color-bg-surface: rgba(255, 255, 255, 0.06);
+  --color-bg-raised: rgba(255, 255, 255, 0.1);
 
-  /* ---- Primitives: status ---- */
-  --green-500: oklch(0.72 0.17 152);
-  --red-500: oklch(0.68 0.19 25);
-
-  /* ---- Semantics: surfaces ---- */
-  --color-bg: var(--neutral-0);
-  --color-bg-surface: var(--neutral-50);
-  --color-bg-raised: var(--neutral-100);
-
-  /* ---- Semantics: text ---- */
-  --color-text-primary: var(--neutral-900);
-  --color-text-secondary: var(--neutral-500);
-  --color-text-disabled: var(--neutral-300);
-  --color-text-on-surface-light: oklch(0.86 0 0);
+  /* ---- Semantics: text (all measured >= 7.2:1 on glass) ---- */
+  --color-text-primary: #f5f7ff;
+  --color-text-secondary: rgba(255, 255, 255, 0.64);
+  --color-text-disabled: rgba(255, 255, 255, 0.38);
+  --color-text-on-surface-light: rgba(255, 255, 255, 0.84);
 
   /* ---- Semantics: borders ---- */
-  --color-border-subtle: oklch(1 0 0 / 0.08);
-  --color-border-strong: oklch(1 0 0 / 0.16);
-  --color-focus-ring: var(--blue-400);
+  --color-border-subtle: rgba(255, 255, 255, 0.1);
+  --color-border-strong: rgba(255, 255, 255, 0.2);
+  --color-focus-ring: var(--cyan-300);
 
   /* ---- Semantics: accent ---- */
-  --color-accent-subtle-bg: oklch(0.64 0.19 259 / 0.16);
-  --color-accent-text: var(--blue-400);
-  --color-accent-solid: var(--blue-500);
-  --color-accent-solid-hover: var(--blue-600);
+  --color-accent-subtle-bg: rgba(99, 102, 241, 0.2);
+  --color-accent-text: var(--indigo-300);
+  --color-accent-solid: var(--indigo-600);
+  --color-accent-solid-hover: var(--violet-600);
+  --gradient-accent: linear-gradient(135deg, var(--indigo-600), var(--violet-600));
+  --gradient-text: linear-gradient(120deg, var(--indigo-300), var(--cyan-300));
 
   /* ---- Semantics: status ---- */
-  --color-success-subtle-bg: oklch(0.72 0.17 152 / 0.16);
-  --color-success-text: var(--green-500);
-  --color-neutral-subtle-bg: oklch(1 0 0 / 0.08);
-  --color-danger-text: var(--red-500);
+  --color-success-subtle-bg: rgba(16, 185, 129, 0.18);
+  --color-success-text: var(--emerald-400);
+  --color-neutral-subtle-bg: rgba(255, 255, 255, 0.08);
+  --color-danger-text: var(--red-400);
 
   /* ---- Semantics: tier (maps onto status/accent/neutral roles above) ---- */
   --color-tier-a-bg: var(--color-success-subtle-bg);
@@ -53,10 +47,12 @@
   --color-tier-c-bg: var(--color-neutral-subtle-bg);
   --color-tier-c-text: var(--color-text-secondary);
 
-  /* ---- Elevation (shadow-as-border; dark mode simplifies to a light ring) ---- */
-  --shadow-border: 0 0 0 1px var(--color-border-subtle);
-  --shadow-border-hover: 0 0 0 1px var(--color-border-strong);
-  --shadow-elevated: 0 0 0 1px var(--color-border-subtle), 0 12px 32px oklch(0 0 0 / 0.45);
+  /* ---- Elevation: ring + top-edge highlight, plus layered soft shadows ---- */
+  --glass-blur: blur(14px) saturate(180%);
+  --shadow-border: 0 0 0 1px var(--color-border-subtle), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --shadow-border-hover: 0 0 0 1px var(--color-border-strong), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --shadow-elevated: 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.18), 0 16px 32px rgba(0, 0, 0, 0.3), 0 32px 64px rgba(0, 0, 0, 0.35);
 
   /* ---- Type scale (semantic sizes, Inter throughout) ---- */
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -65,7 +61,7 @@
   --text-body-sm: 13.5px;
   --text-body: 15px;
   --text-title: 18px;
-  --text-display: 34px;
+  --text-display: clamp(2.125rem, 1.3rem + 3vw, 2.75rem);
   --text-score: 56px;
 
   /* ---- Spacing scale ---- */
@@ -83,6 +79,14 @@
   --duration-base: 240ms;
 }
 
+/* Browsers without backdrop-filter get an opaque surface so text stays legible. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --color-bg-surface: #141a2d;
+    --color-bg-raised: #1b2238;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -93,11 +97,26 @@ html {
 
 body {
   margin: 0;
+  position: relative;
+  isolation: isolate;
   background: var(--color-bg);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ambient colour glows behind everything; decorative only. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 45% at 15% 0%, rgba(99, 102, 241, 0.3), transparent 70%),
+    radial-gradient(45% 40% at 95% 12%, rgba(6, 182, 212, 0.18), transparent 70%),
+    radial-gradient(55% 45% at 50% 108%, rgba(139, 92, 246, 0.22), transparent 70%);
 }
 
 .sr-only {
@@ -128,7 +147,7 @@ body {
 }
 
 .hero {
-  max-width: 480px;
+  max-width: 520px;
   width: 100%;
   text-align: center;
 }
@@ -136,7 +155,7 @@ body {
 .wordmark {
   font-weight: 700;
   font-size: var(--text-body);
-  letter-spacing: -0.01em;
+  letter-spacing: 0.2em;
   margin-bottom: var(--space-12);
   color: var(--color-text-on-surface-light);
 }
@@ -152,6 +171,10 @@ h1 {
 
 .accent {
   color: var(--color-accent-text);
+  background: var(--gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .subtext {
@@ -179,27 +202,32 @@ h1 {
 }
 
 .btn-primary {
-  background: var(--color-text-primary);
-  color: var(--color-bg);
+  background: var(--gradient-accent);
+  color: #fff;
   border: none;
-  border-radius: 10px;
-  padding: 13px 24px;
+  border-radius: 12px;
+  padding: 13px 28px;
+  box-shadow: 0 4px 14px rgba(91, 79, 233, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--neutral-500);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(109, 63, 234, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .btn-primary:disabled {
   opacity: 0.55;
   cursor: default;
   transform: none;
+  box-shadow: none;
 }
 
 .btn-secondary {
   background: var(--color-bg-surface);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   color: var(--color-text-primary);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 0 18px;
   white-space: nowrap;
   box-shadow: var(--shadow-border);
@@ -266,9 +294,11 @@ a.btn-link {
   flex: 1;
   min-width: 0;
   background: var(--color-bg-surface);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-border);
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 12px 14px;
   color: var(--color-text-primary);
   font-family: inherit;
@@ -278,7 +308,7 @@ a.btn-link {
 
 .paste-form input:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 1px var(--color-accent-solid), 0 0 0 4px var(--color-accent-subtle-bg);
+  box-shadow: 0 0 0 2px var(--color-focus-ring), 0 0 0 6px rgba(103, 232, 249, 0.16);
 }
 
 .paste-form input::placeholder {
@@ -302,6 +332,8 @@ a.btn-link {
   align-items: center;
   gap: var(--space-2);
   background: var(--color-bg-surface);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-border);
   border-radius: 999px;
   padding: var(--space-2) var(--space-4);
@@ -350,8 +382,10 @@ a.btn-link {
   --tier-fg: var(--color-tier-b-text);
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", monospace;
   background: var(--color-bg-surface);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-elevated);
-  border-radius: 20px;
+  border-radius: 24px;
   padding: var(--space-6);
   text-align: left;
   display: flex;
@@ -388,6 +422,8 @@ a.btn-link {
   font-weight: 700;
   background: var(--tier-bg);
   color: var(--tier-fg);
+  box-shadow: 0 0 28px color-mix(in oklab, var(--tier-fg) 32%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 .score-block {
@@ -424,7 +460,8 @@ a.btn-link {
   height: 100%;
   width: 0%;
   border-radius: inherit;
-  background: var(--tier-fg);
+  background: linear-gradient(90deg, var(--tier-fg), color-mix(in oklab, var(--tier-fg) 55%, var(--cyan-300)));
+  box-shadow: 0 0 12px color-mix(in oklab, var(--tier-fg) 60%, transparent);
 }
 
 .wallet-row {
@@ -631,4 +668,25 @@ footer {
   .score-fill {
     transition: width 0.6s var(--ease-out);
   }
+}
+
+/* Subtle 3D depth: the result card rests slightly tilted and lifts flat on hover.
+   Pointer-hover devices only, and never under reduced motion. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  #score-stage {
+    perspective: 1000px;
+  }
+
+  .score-card {
+    transform: rotateX(2deg);
+    transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+  }
+
+  .score-card:hover {
+    transform: rotateX(0deg) translateY(-6px);
+  }
+}
+
+.nowrap {
+  white-space: nowrap;
 }

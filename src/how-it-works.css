@@ -29,8 +29,10 @@
 
 .info-card {
   background: var(--color-bg-surface);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-border);
-  border-radius: 16px;
+  border-radius: 20px;
   padding: var(--space-6);
   text-align: left;
   transition: box-shadow var(--duration-fast) var(--ease-out);
@@ -60,7 +62,7 @@
 
 .info-card .example code {
   display: block;
-  white-space: pre-wrap;
+  white-space: normal;
 }
 
 code {
@@ -143,7 +145,8 @@ tr:last-child td {
 
 .tier-chip {
   flex: 1 1 160px;
-  border-radius: 10px;
+  background: var(--color-bg-surface);
+  border-radius: 12px;
   box-shadow: var(--shadow-border);
   padding: var(--space-3) 14px;
 }
