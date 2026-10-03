@@ -1,4 +1,5 @@
 import { fetchCreditLine, type CreditLine, type CreditModel, type CreditOffer } from "./creditLine";
+import { joinWaitlist } from "./waitlist";
 
 const $ = (id: string) => document.getElementById(id)!;
 const card = $("credit-line");
@@ -160,3 +161,44 @@ export async function loadCreditLine(address: string) {
     errorEl.classList.remove("hidden");
   }
 }
+
+// ---- Waitlist: just an email ----
+const JOINED_KEY = "lcrd-waitlist-joined";
+const wlForm = $("cl-waitlist") as HTMLFormElement;
+const wlEmail = $("cl-email") as HTMLInputElement;
+const wlHoneypot = $("cl-website") as HTMLInputElement;
+const wlBtn = $("cl-join") as HTMLButtonElement;
+const wlMsg = $("cl-waitlist-msg");
+
+function markJoined() {
+  wlForm.dataset.joined = "true";
+  wlMsg.textContent = "You're on the list. We'll email you when credit lines open.";
+  wlEmail.disabled = true;
+  wlBtn.disabled = true;
+  wlBtn.textContent = "Joined";
+}
+
+// A per-browser convenience only: remembering that this visitor already signed up.
+try { if (localStorage.getItem(JOINED_KEY) === "1") markJoined(); } catch { /* storage unavailable */ }
+
+wlForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = wlEmail.value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+    wlMsg.textContent = "Enter a valid email address.";
+    wlEmail.focus();
+    return;
+  }
+  wlBtn.disabled = true;
+  wlBtn.textContent = "Joining…";
+  wlMsg.textContent = "";
+  try {
+    await joinWaitlist(email, wlHoneypot.value);
+    try { localStorage.setItem(JOINED_KEY, "1"); } catch { /* storage unavailable */ }
+    markJoined();
+  } catch (err) {
+    wlMsg.textContent = (err as Error)?.message || "Couldn't join the waitlist right now. Please try again.";
+    wlBtn.disabled = false;
+    wlBtn.textContent = "Join waitlist";
+  }
+});

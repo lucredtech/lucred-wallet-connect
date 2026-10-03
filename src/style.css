@@ -290,7 +290,8 @@ a.btn-link {
   gap: var(--space-2);
 }
 
-.paste-form input {
+.paste-form input,
+.cl-waitlist-row input[type="email"] {
   flex: 1;
   min-width: 0;
   background: var(--color-bg-surface);
@@ -306,12 +307,14 @@ a.btn-link {
   transition: box-shadow var(--duration-fast) var(--ease-out);
 }
 
-.paste-form input:focus-visible {
+.paste-form input:focus-visible,
+.cl-waitlist-row input[type="email"]:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--color-focus-ring), 0 0 0 6px rgba(103, 232, 249, 0.16);
 }
 
-.paste-form input::placeholder {
+.paste-form input::placeholder,
+.cl-waitlist-row input[type="email"]::placeholder {
   color: var(--color-text-secondary);
 }
 
@@ -1008,5 +1011,48 @@ footer {
 @media (max-width: 560px) {
   .cl-tabs {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Credit-line waitlist */
+.cl-waitlist {
+  margin-top: var(--space-5, 24px);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.cl-waitlist h3 {
+  margin: 0 0 var(--space-1, 4px);
+  font-size: var(--text-body, 1rem);
+}
+
+.cl-waitlist-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.cl-waitlist-row input[type="email"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.cl-hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.cl-fineprint {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+}
+
+@media (max-width: 560px) {
+  .cl-waitlist-row {
+    flex-direction: column;
   }
 }

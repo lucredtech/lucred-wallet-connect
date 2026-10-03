@@ -180,6 +180,19 @@
                 <p class="pf-notes" id="cl-disclaimer"></p>
                 <a href="/how-it-works.html#credit-line" class="btn-link">How the credit line is calculated →</a>
               </div>
+
+              <form id="cl-waitlist" class="cl-waitlist" novalidate>
+                <h3>Want this when it launches?</h3>
+                <p class="cl-note">Join the waitlist and we'll email you when LCRD credit lines open. Just your email, nothing else.</p>
+                <div class="cl-waitlist-row">
+                  <label for="cl-email" class="sr-only">Email address</label>
+                  <input id="cl-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" maxlength="254" required />
+                  <input id="cl-website" class="cl-hp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" />
+                  <button type="submit" id="cl-join" class="btn-secondary">Join waitlist</button>
+                </div>
+                <p id="cl-waitlist-msg" class="cl-note" role="status"></p>
+                <p class="cl-fineprint">We'll only use your email to tell you about LCRD credit lines, and you can ask us to delete it any time.</p>
+              </form>
             </section>
           </div>
         </div>
