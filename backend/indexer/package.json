@@ -1,0 +1,19 @@
+{
+  "name": "stellar-credit-bureau-indexer",
+  "version": "1.0.0",
+  "description": "Cross-Protocol RWA and DeFi Credit Indexer for Stellar (Galexie + GCS)",
+  "main": "dist/indexer.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/indexer.js"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^7.22.0",
+    "@stellar/stellar-sdk": "^17.1.0",
+    "fzstd": "^0.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.4"
+  }
+}

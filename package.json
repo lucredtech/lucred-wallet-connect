@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "^2.7.0",
-    "@stellar/stellar-sdk": "^17.2.1"
+    "@stellar/stellar-sdk": "^17.2.1",
+    "@vercel/analytics": "^2.0.1"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

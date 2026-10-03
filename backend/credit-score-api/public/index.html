@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stellar Score</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --border: #E2DFD6;
+    --text: #1A1D24;
+    --text-muted: #5B6472;
+    --accent: #91661E;
+    --tier-a: var(--accent);
+    --tier-a-soft: color-mix(in oklab, var(--accent) 10%, transparent);
+    --tier-b: #3F5E8C;
+    --tier-b-soft: color-mix(in oklab, var(--tier-b) 10%, transparent);
+    --tier-c: #8C3F47;
+    --tier-c-soft: color-mix(in oklab, var(--tier-c) 10%, transparent);
+    --focus-ring: #2F5FDB;
+    --shadow: 0 1px 2px rgba(20,16,8,0.04), 0 8px 24px rgba(20,16,8,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0B0E14;
+      --surface: #141822;
+      --border: #232838;
+      --text: #EDEFF4;
+      --text-muted: #8B92A5;
+      --accent: #D4A24C;
+      --tier-a: var(--accent);
+      --tier-a-soft: color-mix(in oklab, var(--accent) 13%, transparent);
+      --tier-b: #6B8CBE;
+      --tier-b-soft: color-mix(in oklab, var(--tier-b) 13%, transparent);
+      --tier-c: #C4747B;
+      --tier-c-soft: color-mix(in oklab, var(--tier-c) 13%, transparent);
+      --focus-ring: #6E9BFF;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 32px rgba(0,0,0,0.35);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.5;
+    margin: 0;
+    padding: 40px 16px;
+    display: flex;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+  .page { width: 100%; max-width: 620px; display: flex; flex-direction: column; gap: 28px; }
+  .page > main { display: flex; flex-direction: column; gap: 28px; }
+
+  .masthead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .wordmark { font-family: "Fraunces", Georgia, serif; font-optical-sizing: auto; font-size: 26px; font-weight: 600; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+  .wordmark .dim { color: var(--text-muted); font-weight: 400; }
+  .tagline { font-size: 12.5px; color: var(--text-muted); letter-spacing: 0.04em; text-transform: uppercase; margin: 0; }
+
+  a { color: var(--accent); }
+
+  :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 4px; }
+
+  .lookup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; }
+  .field-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .input-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  #wallet-input { flex: 1 1 280px; min-width: 0; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 14px; padding: 12px 14px; outline: none; transition: border-color 0.15s ease; }
+  #wallet-input:focus { border-color: var(--accent); }
+  #wallet-input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+  #wallet-input::placeholder { color: var(--text-muted); opacity: 0.7; }
+  #wallet-input[aria-invalid="true"] { border-color: var(--tier-c); }
+
+  @media (max-width: 460px) {
+    #wallet-input { font-size: 16px; }
+  }
+
+  #check-btn { flex: 0 0 auto; background: var(--accent); color: var(--bg); border: none; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; padding: 12px 22px; cursor: pointer; transition: filter 0.15s ease, transform 0.1s ease; }
+  #check-btn:hover { filter: brightness(1.1); }
+  #check-btn:active { transform: scale(0.96); }
+  #check-btn:disabled { opacity: 0.55; cursor: default; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #check-btn, #wallet-input, .result-card, .score-fill, .copy-btn { transition: none !important; }
+    #check-btn:active { transform: none; }
+  }
+
+  .error-msg { color: var(--tier-c); font-size: 13px; margin: 0; text-wrap: pretty; }
+  .error-msg[hidden] { display: none; }
+
+  .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 26px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 20px; transition: opacity 0.2s ease; }
+  .result-card[hidden] { display: none; }
+  .result-card.is-loading { opacity: 0.5; }
+
+  .result-top { display: flex; align-items: center; gap: 20px; }
+  .tier-badge { flex: 0 0 auto; width: 72px; height: 72px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-family: "Fraunces", Georgia, serif; font-size: 34px; font-weight: 600; }
+  .tier-badge.tier-a { background: var(--tier-a-soft); color: var(--tier-a); }
+  .tier-badge.tier-b { background: var(--tier-b-soft); color: var(--tier-b); }
+  .tier-badge.tier-c { background: var(--tier-c-soft); color: var(--tier-c); }
+
+  .score-block { min-width: 0; flex: 1 1 auto; }
+  .score-number { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 40px; font-weight: 600; line-height: 1; display: flex; align-items: baseline; gap: 6px; }
+  .score-number .out-of { font-size: 16px; color: var(--text-muted); font-weight: 400; }
+
+  .score-track { margin-top: 10px; height: 5px; border-radius: 999px; background: var(--border); overflow: hidden; }
+  .score-fill { height: 100%; width: 0%; border-radius: inherit; background: var(--tier-a); }
+  @media (prefers-reduced-motion: no-preference) { .score-fill { transition: width 0.6s cubic-bezier(0.2, 0, 0, 1); } }
+
+  .wallet-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .score-wallet { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: var(--text-muted); overflow-wrap: anywhere; }
+  .copy-btn { flex: 0 0 auto; background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); font-family: inherit; font-size: 11px; padding: 3px 8px; cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease; }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .path-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 5px 11px; width: fit-content; }
+  .path-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: 0 0 auto; }
+
+  .reasons { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 16px; }
+  .reasons-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+  .breakdown-link { color: var(--accent); text-decoration: none; text-transform: none; letter-spacing: normal; }
+  .breakdown-link:hover { text-decoration: underline; }
+  .reason-line { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; color: var(--text); line-height: 1.6; overflow-wrap: break-word; }
+
+  .stat-row { display: flex; gap: 20px; flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat-value { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; }
+  .stat-key { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  footer { font-size: 11.5px; color: var(--text-muted); text-align: center; padding-block: 8px 0; text-wrap: pretty; }
+
+  @media (max-width: 460px) {
+    .result-top { flex-wrap: wrap; }
+    .score-number { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+<header class="masthead">
+  <h1 class="wordmark">Stellar <span class="dim">Score</span></h1>
+  <p class="tagline">On-chain credit lookup</p>
+</header>
+
+<main>
+  <div class="lookup-card">
+    <label class="field-label" for="wallet-input">Stellar wallet address</label>
+    <div class="input-row">
+      <input id="wallet-input" type="text" spellcheck="false" autocomplete="off"
+        aria-describedby="error-msg"
+        placeholder="GAQ6KSJNJUH4SCQPWWLUAYCCE7D5ZPZT4ZKWNJNDPWVLOEPKCU4QZVF2" />
+      <button id="check-btn" type="button">Check score</button>
+    </div>
+    <p class="error-msg" id="error-msg" role="alert" hidden></p>
+  </div>
+
+  <div class="result-card" id="result-card" hidden>
+    <div>
+      <div class="result-top">
+        <div class="tier-badge" id="tier-badge" aria-hidden="true">A</div>
+        <div class="score-block">
+          <div class="score-number"><span id="score-value">0</span><span class="out-of">/ 100</span></div>
+          <div class="score-track" aria-hidden="true"><div class="score-fill" id="score-fill"></div></div>
+          <div class="wallet-row">
+            <div class="score-wallet" id="result-wallet"></div>
+            <button class="copy-btn" id="copy-btn" type="button">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="path-pill" id="path-pill"><span class="dot"></span><span id="path-label"></span></div>
+
+    <div class="stat-row">
+      <div class="stat">
+        <div class="stat-value" id="stat-events">—</div>
+        <div class="stat-key">On-chain events</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="stat-tier">—</div>
+        <div class="stat-key">Tier</div>
+      </div>
+    </div>
+
+    <div class="reasons">
+      <div class="reasons-label">Scoring breakdown · <a class="breakdown-link" href="/how-it-works.html" target="_blank" rel="noopener">What do these mean?</a></div>
+      <div id="reason-lines"></div>
+    </div>
+
+  </div>
+
+  <p class="sr-only" id="sr-announce" role="status" aria-live="polite"></p>
+</main>
+
+<footer>Scored from indexed Stellar DeFi activity across Blend, Soroswap, Aquarius, Sushi and other protocols. &middot; <a class="breakdown-link" href="/how-it-works.html" target="_blank" rel="noopener">How scoring works</a></footer>
+</div>
+
+<script>
+  const input = document.getElementById("wallet-input");
+  const btn = document.getElementById("check-btn");
+  const errorMsg = document.getElementById("error-msg");
+  const resultCard = document.getElementById("result-card");
+  const tierBadge = document.getElementById("tier-badge");
+  const scoreValue = document.getElementById("score-value");
+  const scoreFill = document.getElementById("score-fill");
+  const resultWallet = document.getElementById("result-wallet");
+  const copyBtn = document.getElementById("copy-btn");
+  const pathPill = document.getElementById("path-pill");
+  const pathLabel = document.getElementById("path-label");
+  const statEvents = document.getElementById("stat-events");
+  const statTier = document.getElementById("stat-tier");
+  const reasonLines = document.getElementById("reason-lines");
+  const srAnnounce = document.getElementById("sr-announce");
+
+  const PATH_TEXT = {
+    lending: "Scored via lending history",
+    activity: "Scored via broad DeFi activity",
+    floor: "Limited on-chain history",
+    "no-history": "No activity found"
+  };
+
+  function setLoading(isLoading) {
+    btn.disabled = isLoading;
+    btn.textContent = isLoading ? "Checking…" : "Check score";
+    resultCard.classList.toggle("is-loading", isLoading);
+  }
+
+  function showError(text) {
+    errorMsg.textContent = text;
+    errorMsg.hidden = false;
+    input.setAttribute("aria-invalid", "true");
+  }
+
+  function clearError() {
+    errorMsg.hidden = true;
+    input.removeAttribute("aria-invalid");
+  }
+
+  function renderResult(data) {
+    clearError();
+    resultCard.hidden = false;
+
+    const tier = (data.tier || "C").toLowerCase();
+    const tierVar = tier === "a" ? "var(--tier-a)" : tier === "b" ? "var(--tier-b)" : "var(--tier-c)";
+    tierBadge.textContent = data.tier || "C";
+    tierBadge.className = "tier-badge tier-" + tier;
+    scoreValue.textContent = data.score;
+    scoreFill.style.width = Math.max(0, Math.min(100, data.score)) + "%";
+    scoreFill.style.background = tierVar;
+    resultWallet.textContent = data.wallet || data.userAddress || "";
+    pathLabel.textContent = PATH_TEXT[data.path] || data.path || "";
+    pathPill.style.color = tierVar;
+    statEvents.textContent = (data.eventCount ?? 0).toLocaleString();
+    statTier.textContent = "Tier " + (data.tier || "C");
+
+    reasonLines.innerHTML = "";
+    (data.reasons || []).forEach(function (r) {
+      const div = document.createElement("div");
+      div.className = "reason-line";
+      div.textContent = r;
+      reasonLines.appendChild(div);
+    });
+
+    srAnnounce.textContent = "Score " + data.score + " out of 100, tier " + (data.tier || "C") + ". " + (PATH_TEXT[data.path] || "");
+  }
+
+  async function lookup(wallet) {
+    setLoading(true);
+    clearError();
+    try {
+      const res = await fetch("/score?wallet=" + encodeURIComponent(wallet));
+      const data = await res.json();
+      if (!res.ok) {
+        showError(data.error || "Couldn't score that wallet. Double-check the address and try again.");
+        resultCard.hidden = true;
+        return;
+      }
+      data.wallet = data.userAddress || wallet;
+      renderResult(data);
+    } catch (e) {
+      showError("Couldn't reach the scoring service. Please try again.");
+      resultCard.hidden = true;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  btn.addEventListener("click", function () {
+    const wallet = input.value.trim();
+    if (!wallet) {
+      showError("Enter a Stellar wallet address first.");
+      return;
+    }
+    lookup(wallet);
+  });
+
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") btn.click();
+  });
+
+  copyBtn.addEventListener("click", async function () {
+    const wallet = resultWallet.textContent;
+    if (!wallet) return;
+    try {
+      await navigator.clipboard.writeText(wallet);
+      copyBtn.textContent = "Copied";
+    } catch (e) {
+      copyBtn.textContent = "Select to copy";
+    }
+    setTimeout(function () { copyBtn.textContent = "Copy"; }, 1500);
+  });
+</script>
+</body>
+</html>

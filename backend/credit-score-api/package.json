@@ -1,0 +1,17 @@
+{
+  "name": "credit-score-api",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@google-cloud/bigquery": "^7.9.0",
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "@stellar/stellar-sdk": "^17.2.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

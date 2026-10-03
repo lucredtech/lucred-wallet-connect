@@ -2,7 +2,12 @@
 
 Connect a Stellar wallet, prove you own it, and see your LCRD on-chain credit score — pulled live from the `credit-score-api` service.
 
-Static client-only app: no backend, no server secrets. Ownership is proven by having the wallet sign a throwaway transaction (never submitted to the network) and verifying the signature in the browser.
+## Repository layout
+
+- **Web app** (this folder's root): a static, client-only app. No server secrets. Shows the score, the wallet's holdings, and an indicative credit line.
+- **[`backend/`](backend/README.md)**: the code behind it. The indexer that turns Stellar ledgers into credit events, and the `credit-score-api` that does the scoring, holdings and credit-line calculations.
+
+The web app itself is static client-only code with no server secrets. Ownership is proven by having the wallet sign a throwaway transaction (never submitted to the network) and verifying the signature in the browser.
 
 ## How it works
 

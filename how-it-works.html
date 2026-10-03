@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>How Scoring and Holdings Work — LCRD</title>
+    <title>How Scoring, Holdings and Credit Lines Work — LCRD</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -29,7 +29,7 @@
         </p>
         <p class="subtext">
           Looking for how the <strong>Holdings</strong> card is calculated?
-          <a class="btn-link" href="#holdings">Jump to how holdings work &darr;</a>
+          <a class="btn-link" href="#holdings">Jump to how holdings work &darr;</a> &middot; <a class="btn-link" href="#credit-line">how the credit line works &darr;</a>
         </p>
       </div>
 
@@ -461,7 +461,118 @@
         </p>
       </section>
 
+      <div class="info-intro" id="credit-line">
+        <h1>How the indicative credit line is calculated</h1>
+        <p class="subtext">
+          After you verify a wallet you can see an <strong>indicative</strong> credit
+          line and APR under three lending models. It is an estimate from your score
+          and holdings, not an offer: nothing is lent and nothing is committed.
+        </p>
+      </div>
+
+      <section class="info-card">
+        <h2>Three lending models</h2>
+        <table>
+          <tr>
+            <th scope="col">Model</th>
+            <th scope="col">How the limit is set</th>
+          </tr>
+          <tr>
+            <td class="term">Secured</td>
+            <td>From the holdings the wallet could pledge. 75% of the lendable collateral value (see below), minus anything already borrowed. The score doesn't change the limit.</td>
+          </tr>
+          <tr>
+            <td class="term">Unsecured</td>
+            <td>From the LCRD score alone, with no collateral. Tier A: $2,500 to $10,000 as the score rises from 67 to 100. Tier B: $250 to $2,500 from 34 to 66. Tier C and wallets with too little history aren't eligible.</td>
+          </tr>
+          <tr>
+            <td class="term">Score + collateral</td>
+            <td>The score sets a ceiling (tier A up to $30,000, tier B up to $5,000, tier C up to $500) and the holdings cap it: a better tier may borrow against more of its lendable collateral (100% for A, 85% for B, 60% for C). The lower of the two applies.</td>
+          </tr>
+        </table>
+        <p>
+          Each model has an overall maximum ($250,000 secured, $10,000 unsecured,
+          $100,000 for score + collateral) and a minimum line of $50 for the models
+          that use collateral.
+        </p>
+      </section>
+
+      <section class="info-card">
+        <h2>What counts as collateral</h2>
+        <p>
+          Only holdings the wallet can actually move (marked <em>Transferable</em> in
+          Holdings) and that have a trusted USD price count. Blend deposits, tokens
+          the issuer hasn't authorized the wallet to move, and unpriced tokens are
+          left out. Each kind of asset is then discounted for how risky it is to
+          hold as security:
+        </p>
+        <table>
+          <tr>
+            <th scope="col">Asset</th>
+            <th scope="col">Counted at</th>
+          </tr>
+          <tr><td class="term">USDC, PYUSD</td><td>95% of value</td></tr>
+          <tr><td class="term">EURC</td><td>90%</td></tr>
+          <tr><td class="term">Etherfuse bonds (CETES, USTRY, TESOURO)</td><td>75%</td></tr>
+          <tr><td class="term">XLM</td><td>65%</td></tr>
+          <tr><td class="term">AQUA, BLND (reward tokens)</td><td>40%</td></tr>
+          <tr><td class="term">Other tokens priced from stellar.expert's list</td><td>30%</td></tr>
+        </table>
+        <p>
+          Pool and vault shares (Aquarius, DeFindex, Untangled) are valued by what
+          they redeem for, discounted again by 10% for exit risk. A token whose issuer
+          can claw it back counts at half. The total after these discounts is the
+          <strong>lendable collateral</strong>.
+        </p>
+      </section>
+
+      <section class="info-card">
+        <h2>How the APR is priced</h2>
+        <p>
+          The APR is built from a base rate, a risk charge from the score, and an
+          adjustment for how well the loan is secured. The card shows each part.
+        </p>
+        <table>
+          <tr>
+            <th scope="col">Part</th>
+            <th scope="col">What it means</th>
+          </tr>
+          <tr>
+            <td class="term">Base rate</td>
+            <td>8%, our assumed cost of funds.</td>
+          </tr>
+          <tr>
+            <td class="term">Score risk</td>
+            <td>Falls steadily as the score rises: 20% at a score of 0 down to 3% at 100.</td>
+          </tr>
+          <tr>
+            <td class="term">Collateral discount</td>
+            <td>Only part of the score risk applies when there is security: 35% of it for secured, 70% for score + collateral, all of it for unsecured.</td>
+          </tr>
+          <tr>
+            <td class="term">Unsecured surcharge</td>
+            <td>+3% for unsecured credit.</td>
+          </tr>
+          <tr>
+            <td class="term">Volatile collateral</td>
+            <td>+2% when the collateral's average discount is above 30%, meaning it is mostly volatile assets.</td>
+          </tr>
+        </table>
+        <p>The final APR is kept between 6% and 36%.</p>
+      </section>
+
+      <section class="info-card">
+        <h2>Who sees it, and what it isn't</h2>
+        <ul>
+          <li>Only a wallet that has <strong>proven ownership</strong> by signing sees its credit line. A pasted address is someone else's public data, and smart-contract wallets can't be verified yet.</li>
+          <li>It uses today's balances and prices and moves when they do.</li>
+          <li>The figures follow a first-draft policy that hasn't been checked against real loan performance, and may change.</li>
+          <li>It is not an offer of credit, a credit decision or financial advice.</li>
+        </ul>
+      </section>
+
       <footer>LCRD — scored from indexed Stellar DeFi activity.</footer>
     </main>
+    <script type="module" src="/src/analytics.ts"></script>
   </body>
 </html>

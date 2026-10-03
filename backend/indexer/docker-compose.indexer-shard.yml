@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  indexer:
+    build: .
+    container_name: ${CONTAINER_NAME}
+    restart: unless-stopped
+    volumes:
+      - ./secrets/gcp-key.json:/secrets/gcp-key.json:ro
+    environment:
+      - NODE_ENV=production
+      - GOOGLE_APPLICATION_CREDENTIALS=/secrets/gcp-key.json
+      - RAW_BUCKET_NAME=stellar-credit-bureau-data-index
+      - RAW_PREFIX=${RAW_PREFIX}
+      - OUTPUT_BUCKET_NAME=stellar-credit-bureau-data-index
+      - OUTPUT_PREFIX=extracted_logs/
+      - CHECKPOINT_PATH=${CHECKPOINT_PATH}
+      - POLL_INTERVAL_MS=15000
+      - DELETE_RAW_AFTER_PROCESSING=true
+      - ENABLE_DYNAMIC_POOL_DISCOVERY=true
+      - LIVE_TIP_DYNAMIC_PREFIX=${LIVE_TIP_DYNAMIC_PREFIX:-false}

@@ -162,6 +162,38 @@
                 <a href="/how-it-works.html#holdings" class="btn-link">How holdings are calculated →</a>
               </div>
             </section>
+
+            <section id="credit-line" class="portfolio-card credit-card hidden" aria-labelledby="credit-line-title">
+              <div class="portfolio-head">
+                <h2 id="credit-line-title">Indicative credit line</h2>
+                <span class="portfolio-asof">estimate</span>
+              </div>
+
+              <p id="cl-loading" class="portfolio-loading" role="status">Working out an indicative line from your score and holdings…</p>
+              <p id="cl-error" class="portfolio-error hidden"></p>
+              <p id="cl-locked" class="portfolio-loading hidden"></p>
+
+              <div id="cl-body" class="hidden">
+                <div id="cl-tabs" class="cl-tabs" role="tablist" aria-label="Lending model"></div>
+                <div id="cl-detail" class="cl-detail" role="tabpanel"></div>
+                <div id="cl-collateral" class="cl-collateral"></div>
+                <p class="pf-notes" id="cl-disclaimer"></p>
+                <a href="/how-it-works.html#credit-line" class="btn-link">How the credit line is calculated →</a>
+              </div>
+
+              <form id="cl-waitlist" class="cl-waitlist" novalidate>
+                <h3>Want this when it launches?</h3>
+                <p class="cl-note">Join the waitlist and we'll email you when LCRD credit lines open. Just your email, nothing else.</p>
+                <div class="cl-waitlist-row">
+                  <label for="cl-email" class="sr-only">Email address</label>
+                  <input id="cl-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" maxlength="254" required />
+                  <input id="cl-website" class="cl-hp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" />
+                  <button type="submit" id="cl-join" class="btn-secondary">Join waitlist</button>
+                </div>
+                <p id="cl-waitlist-msg" class="cl-note" role="status"></p>
+                <p class="cl-fineprint">We'll only use your email to tell you about LCRD credit lines, and you can ask us to delete it any time.</p>
+              </form>
+            </section>
           </div>
         </div>
 
@@ -177,5 +209,6 @@
     </main>
 
     <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/analytics.ts"></script>
   </body>
 </html>
