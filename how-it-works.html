@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>How Scoring Works — LCRD</title>
+    <title>How Scoring and Holdings Work — LCRD</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -26,6 +26,10 @@
           The score is derived entirely from public, on-chain activity indexed from
           the Stellar network — no off-chain data, no self-reported information. It
           measures how a wallet has actually used DeFi protocols over time.
+        </p>
+        <p class="subtext">
+          Looking for how the <strong>Holdings</strong> card is calculated?
+          <a class="btn-link" href="#holdings">Jump to how holdings work &darr;</a>
         </p>
       </div>
 
@@ -325,6 +329,136 @@
           <li>This tool only sees activity the indexer has captured (currently Blend, Soroswap, Aquarius, Sushi, DeFindex, Fundable and a growing set of others) — it is not a complete picture of a wallet's full on-chain history.</li>
           <li>This is not a regulated credit score and isn't financial advice — it's an experimental measure of on-chain DeFi behavior.</li>
         </ul>
+      </section>
+
+      <div class="info-intro" id="holdings">
+        <h1>How holdings are calculated</h1>
+        <p class="subtext">
+          The Holdings card under the score shows what a wallet owns right now —
+          tokens and DeFi positions — priced in US dollars. It is separate from the
+          score: the score looks at history, holdings look at today's balances.
+        </p>
+      </div>
+
+      <section class="info-card">
+        <h2>Where the numbers come from</h2>
+        <ul>
+          <li>Balances are read <strong>live from the Stellar network</strong> every time you look a wallet up (results are reused for about a minute). Nothing is stored per wallet.</li>
+          <li>Only <strong>Stellar mainnet</strong> is read. An address that exists only on the test network shows an empty portfolio.</li>
+          <li>The wallet's indexed history is used only to work out <em>which</em> protocols to ask about, so a position the indexer has never seen can be missed.</li>
+          <li>Works for any address you paste. It is public chain data, so no signature is needed.</li>
+        </ul>
+      </section>
+
+      <section class="info-card">
+        <h2>What is counted</h2>
+        <table>
+          <tr>
+            <th scope="col">Item</th>
+            <th scope="col">How it is valued</th>
+          </tr>
+          <tr>
+            <td class="term">Tokens</td>
+            <td>Balance &times; price, for tokens we can price (see below).</td>
+          </tr>
+          <tr>
+            <td class="term">Blend</td>
+            <td>Supplied and collateral amounts, and borrowed amounts, converted to the underlying asset using the pool's current rates.</td>
+          </tr>
+          <tr>
+            <td class="term">Aquarius pools</td>
+            <td>The wallet's share of the pool's reserves (constant-product and stable pools).</td>
+          </tr>
+          <tr>
+            <td class="term">DeFindex vaults</td>
+            <td>What the vault shares redeem for in the vault's underlying asset, not the share count.</td>
+          </tr>
+          <tr>
+            <td class="term">Untangled USDyc II</td>
+            <td>USDyc shares converted to USDC at the vault's current share price.</td>
+          </tr>
+        </table>
+        <p>
+          <strong>Portfolio value</strong> is tokens plus DeFi positions.
+          <strong>Debt</strong> (what the wallet has borrowed) is shown separately,
+          and <strong>Net value</strong> is portfolio value minus debt.
+        </p>
+        <p>
+          Vault and pool amounts are what the shares are <em>worth</em>. A wallet
+          with 240,000 vault shares can show $260,000 because the vault has earned
+          yield since the shares were issued.
+        </p>
+      </section>
+
+      <section class="info-card">
+        <h2>How tokens are priced</h2>
+        <p>
+          A token only gets a price if we can be sure which token it is. Prices are
+          matched by <strong>contract address</strong>, never by name or ticker, so
+          a scam token calling itself "USDC" is never valued at $1.
+        </p>
+        <ul>
+          <li><strong>Verified list:</strong> XLM, USDC, EURC, PYUSD, AQUA, BLND and Etherfuse's CETES, USTRY and TESOURO. Prices refresh every 6 hours.</li>
+          <li><strong>Curated market list:</strong> other tokens on stellar.expert's curated list, only if they trade at least $100,000 a week and the price is under 48 hours old. A thinly traded token's last price isn't treated as a value.</li>
+          <li><strong>Everything else is unpriced:</strong> it is listed but not counted in any total.</li>
+        </ul>
+      </section>
+
+      <section class="info-card">
+        <h2>The tags on each row</h2>
+        <table>
+          <tr>
+            <th scope="col">Tag</th>
+            <th scope="col">What it means</th>
+          </tr>
+          <tr>
+            <td class="term">LP token</td>
+            <td>The holding is a share of a pool or vault (an Aquarius pool, a DeFindex vault, Untangled USDyc II).</td>
+          </tr>
+          <tr>
+            <td class="term">Unpriced</td>
+            <td>We can't price it, so it isn't counted in the totals.</td>
+          </tr>
+          <tr>
+            <td class="term">Partly priced</td>
+            <td>One side of a pool can be priced and the other can't. Only the priced side is counted, so the figure shown is a <em>minimum</em>; the real value is higher.</td>
+          </tr>
+          <tr>
+            <td class="term">Transferable</td>
+            <td>The wallet can move this holding to another address.</td>
+          </tr>
+          <tr>
+            <td class="term">Not transferable</td>
+            <td>The wallet can't move it directly, for example a Blend deposit (it sits inside the pool until withdrawn) or a token whose issuer hasn't authorized the wallet to move it.</td>
+          </tr>
+          <tr>
+            <td class="term">Transfer unconfirmed</td>
+            <td>We couldn't confirm either way, usually an unlisted token.</td>
+          </tr>
+          <tr>
+            <td class="term">Clawback</td>
+            <td>The token's issuer has the power to reclaim the balance. Worth knowing before relying on it.</td>
+          </tr>
+        </table>
+        <p>
+          The <strong>Transferable</strong> total adds up the priced holdings the
+          wallet can actually move. It is what could be handed over or pledged,
+          which can be smaller than portfolio value.
+        </p>
+      </section>
+
+      <section class="info-card">
+        <h2>What is not covered yet</h2>
+        <ul>
+          <li>Protocols we can't read yet are named under "Not shown yet" instead of being silently left out.</li>
+          <li>Aquarius concentrated-liquidity positions, which are price ranges rather than tokens.</li>
+          <li>Pool or vault shares sent to a wallet from elsewhere, if the wallet never interacted with that pool itself.</li>
+          <li>Tokens we can't price (listed, but not counted).</li>
+        </ul>
+        <p>
+          Holdings are an estimate for information only. They are not a valuation,
+          an offer of credit, or financial advice.
+        </p>
       </section>
 
       <footer>LCRD — scored from indexed Stellar DeFi activity.</footer>
