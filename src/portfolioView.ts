@@ -50,6 +50,19 @@ function chip(text: string, className = "pf-chip") {
   return el("span", className, text);
 }
 
+// Whether the wallet can actually move this holding (matters for pledging it as collateral).
+function transferChip(transferable: boolean | null | undefined, note?: string) {
+  if (transferable === undefined) return null;
+  const c =
+    transferable === true
+      ? chip("Transferable", "pf-chip pf-chip-ok")
+      : transferable === false
+        ? chip("Not transferable", "pf-chip pf-chip-warn")
+        : chip("Transfer unconfirmed", "pf-chip");
+  if (note) c.title = note;
+  return c;
+}
+
 // One holding = name block (name + category chip + status tags) | amounts | value.
 function holdingRow(
   title: string,
@@ -73,6 +86,9 @@ function renderToken(t: PortfolioToken) {
   const priced = t.usdValue !== null;
   const chips = [chip(t.kind === "classic_lp_shares" ? "Pool shares" : "Token")];
   if (!priced) chips.push(chip("Unpriced", "pf-chip pf-chip-warn"));
+  const tc = transferChip(t.transferable, t.transferNote);
+  if (tc) chips.push(tc);
+  if (t.clawback) chips.push(chip("Clawback", "pf-chip pf-chip-warn"));
   return holdingRow(t.code, "pf-token", chips, amount(t.balance), priced ? usd(t.usdValue as number) : "—", priced ? "" : "pf-muted");
 }
 
@@ -83,6 +99,8 @@ function renderPosition(p: PortfolioPosition) {
   if (p.lpToken) chips.push(chip("LP token", "pf-chip pf-chip-lp"));
   if (p.usdValue === null) chips.push(chip("Unpriced", "pf-chip pf-chip-warn"));
   else if (!p.fullyPriced) chips.push(chip("Partly priced", "pf-chip pf-chip-warn"));
+  const ptc = p.type === "debt" ? null : transferChip(p.transferable, p.transferNote);
+  if (ptc) chips.push(ptc);
   const value = p.usdValue === null ? "Unpriced" : `${isDebt ? "−" : ""}${usd(p.usdValue)}`;
   const valueClass = p.usdValue === null ? "pf-muted" : isDebt ? "pf-debt" : "";
   return holdingRow(protocolName(p.protocol), "pf-proto", chips, assets, value, valueClass);
@@ -113,6 +131,7 @@ function render(p: Portfolio) {
     return s;
   };
   subs.append(stat(usd(p.totals.tokensUsd), "Tokens"), stat(usd(p.totals.positionsUsd), "In DeFi"));
+  if (p.totals.transferableUsd !== undefined) subs.append(stat(usd(p.totals.transferableUsd), "Transferable"));
 
   const priced = p.tokens.filter((t) => t.usdValue !== null);
   const unpriced = p.tokens.filter((t) => t.usdValue === null);
