@@ -97,6 +97,10 @@
             <td>Points for recurring payroll/mass-distribution claims (see "Distribution income" below) — up to 4 points here.</td>
           </tr>
           <tr>
+            <td class="term">rewards</td>
+            <td>Points for claiming protocol incentive rewards (see "Incentive rewards" below) — up to 3 points here.</td>
+          </tr>
+          <tr>
             <td class="term">tenure</td>
             <td>Points for how long ago the wallet's cycle activity spans — longer track record scores higher.</td>
           </tr>
@@ -157,6 +161,10 @@
           <tr>
             <td class="term">distribution</td>
             <td>Points for recurring payroll/mass-distribution claims (see "Distribution income" below) — up to 6 points here.</td>
+          </tr>
+          <tr>
+            <td class="term">rewards</td>
+            <td>Points for claiming protocol incentive rewards (see "Incentive rewards" below) — up to 4 points here.</td>
           </tr>
           <tr>
             <td class="term">raw</td>
@@ -264,6 +272,44 @@
           <tr>
             <td class="term">$X claimed (Npts)</td>
             <td>Total USD value claimed across all distributions — a smaller, secondary factor.</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="info-card">
+        <h2>Incentive rewards</h2>
+        <p>
+          Protocols also pay out reward tokens: <strong>AQUA</strong> to Aquarius
+          liquidity providers (plus Aquarius gauge rewards, paid in assets like
+          USDC and XLM) and <strong>BLND</strong> to Blend lenders and backstop
+          depositors. These are scored as their own signal, and deliberately the
+          smallest of the three income signals (at most 3 points on the lending
+          path and 4 on the activity path). Rewards are incentives, not organic
+          income: they scale with how much a wallet has staked, they are
+          volatile, and some wallets simply rotate between incentive programs.
+          So, as with distribution income, consistency (distinct months with a
+          claim, saturating at 8) counts for more than size (total USD claimed,
+          saturating at $50). Reward tokens are converted to USD with live
+          prices, refreshed every 6 hours. A claim that can't be priced still
+          counts as participation but adds no dollars. Liquidity-provider
+          <em>fee</em> claims are a different thing and are not counted here.
+        </p>
+        <table>
+          <tr>
+            <th scope="col">Term</th>
+            <th scope="col">What it means</th>
+          </tr>
+          <tr>
+            <td class="term">participation</td>
+            <td>1 point for having claimed any reward.</td>
+          </tr>
+          <tr>
+            <td class="term">months (Npts)</td>
+            <td>Distinct calendar months with a reward claim — up to 1 point (lending) or 2 (activity).</td>
+          </tr>
+          <tr>
+            <td class="term">$X in rewards (Npts)</td>
+            <td>Total USD value of rewards claimed — up to 1 point.</td>
           </tr>
         </table>
       </section>
