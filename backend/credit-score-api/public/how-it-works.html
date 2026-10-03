@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How scoring works — Stellar Score</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --border: #E2DFD6;
+    --text: #1A1D24;
+    --text-muted: #5B6472;
+    --accent: #91661E;
+    --tier-a: var(--accent);
+    --tier-a-soft: color-mix(in oklab, var(--accent) 10%, transparent);
+    --tier-b: #3F5E8C;
+    --tier-b-soft: color-mix(in oklab, var(--tier-b) 10%, transparent);
+    --tier-c: #8C3F47;
+    --tier-c-soft: color-mix(in oklab, var(--tier-c) 10%, transparent);
+    --focus-ring: #2F5FDB;
+    --code-bg: #EFEBE0;
+    --shadow: 0 1px 2px rgba(20,16,8,0.04), 0 8px 24px rgba(20,16,8,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0B0E14;
+      --surface: #141822;
+      --border: #232838;
+      --text: #EDEFF4;
+      --text-muted: #8B92A5;
+      --accent: #D4A24C;
+      --tier-a: var(--accent);
+      --tier-a-soft: color-mix(in oklab, var(--accent) 13%, transparent);
+      --tier-b: #6B8CBE;
+      --tier-b-soft: color-mix(in oklab, var(--tier-b) 13%, transparent);
+      --tier-c: #C4747B;
+      --tier-c-soft: color-mix(in oklab, var(--tier-c) 13%, transparent);
+      --focus-ring: #6E9BFF;
+      --code-bg: #1B202C;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 32px rgba(0,0,0,0.35);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.5;
+    margin: 0;
+    padding: 40px 16px 60px;
+    display: flex;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .page { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 28px; }
+  .page > main { display: flex; flex-direction: column; gap: 28px; }
+
+  .masthead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .wordmark { font-family: "Fraunces", Georgia, serif; font-optical-sizing: auto; font-size: 24px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+  .wordmark .dim { color: var(--text-muted); font-weight: 400; }
+  .back-link { font-size: 13px; color: var(--accent); text-decoration: none; white-space: nowrap; }
+  .back-link:hover { text-decoration: underline; }
+
+  :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 4px; }
+
+  h1 { font-family: "Fraunces", Georgia, serif; font-size: 30px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 4px; text-wrap: balance; }
+  .lede { color: var(--text-muted); font-size: 15px; line-height: 1.6; margin: 0; text-wrap: pretty; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px 24px; box-shadow: var(--shadow); }
+
+  h2 { font-family: "Fraunces", Georgia, serif; font-size: 19px; font-weight: 600; margin: 0 0 12px; text-wrap: balance; }
+  h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin: 20px 0 8px; }
+  p { line-height: 1.65; font-size: 14.5px; margin: 0 0 12px; text-wrap: pretty; }
+  p:last-child { margin-bottom: 0; }
+
+  .path-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 999px; padding: 4px 11px; margin-bottom: 10px; }
+  .path-badge.lending { background: var(--tier-a-soft); color: var(--tier-a); }
+  .path-badge.activity { background: var(--tier-b-soft); color: var(--tier-b); }
+  .path-badge.floor { background: var(--tier-c-soft); color: var(--tier-c); }
+
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 4px; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--text-muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.term { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+
+  code, .code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; background: var(--code-bg); border-radius: 5px; padding: 1px 6px; overflow-wrap: break-word; }
+
+  .tier-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0 4px; }
+  .tier-chip { flex: 1 1 160px; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .tier-chip .tier-name { font-family: "Fraunces", Georgia, serif; font-size: 18px; font-weight: 600; }
+  .tier-chip.a .tier-name { color: var(--tier-a); }
+  .tier-chip.b .tier-name { color: var(--tier-b); }
+  .tier-chip.c .tier-name { color: var(--tier-c); }
+  .tier-chip .tier-range { font-size: 12px; color: var(--text-muted); font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  ul { margin: 4px 0 12px; padding-left: 20px; }
+  li { font-size: 14.5px; line-height: 1.6; margin-bottom: 4px; }
+
+  footer { font-size: 11.5px; color: var(--text-muted); text-align: center; padding-block: 8px 0; text-wrap: pretty; }
+</style>
+</head>
+<body>
+
+<div class="page">
+<header class="masthead">
+  <p class="wordmark">Stellar <span class="dim">Score</span></p>
+  <a class="back-link" href="/">&larr; Back to lookup</a>
+</header>
+
+<main>
+  <div>
+    <h1>How the score is calculated</h1>
+    <p class="lede">The score is derived entirely from public, on-chain activity indexed from the Stellar network — no off-chain data, no self-reported information. It measures how a wallet has actually used DeFi protocols over time.</p>
+  </div>
+
+  <div class="card">
+    <h2>Two scoring paths</h2>
+    <p>Every wallet is scored one of two ways, depending on what it's done on-chain. Whichever applies, only the highest-signal path is used — a wallet is never scored both ways.</p>
+
+    <span class="path-badge lending">Lending path</span>
+    <p>Used when a wallet has at least one completed <strong>borrow → repay cycle</strong> on a lending protocol (currently Blend). This is the strongest signal available, since repaying debt is the clearest evidence of creditworthiness — so this path can reach tier A.</p>
+
+    <span class="path-badge activity">Activity path</span>
+    <p>Used when a wallet has no lending cycles, but has meaningful breadth or volume of other DeFi activity (swaps, liquidity provision, yield deposits, transfers). This path can reach tier A only above a high score threshold — most activity-only wallets land in tier B.</p>
+
+    <span class="path-badge floor">Floor</span>
+    <p>Used when a wallet has very little indexed activity (fewer than 3 meaningful events and fewer than 2 protocols). Score is simply capped at a low tier-C value based on event count.</p>
+  </div>
+
+  <div class="card">
+    <h2>Lending path breakdown</h2>
+    <p>Example line: <span class="code">LENDING path: 3 cycles, speed 34, cyclecount 12, income 8 [participation 2, months 3 (2pts), net $61.40 realized (4pts)], tenure 11, raw 67</span></p>
+    <table>
+      <tr><th scope="col">Term</th><th scope="col">What it means</th></tr>
+      <tr><td class="term">cycles</td><td>Number of completed borrow→repay cycles found (a debt opened and later fully closed).</td></tr>
+      <tr><td class="term">speed</td><td>Points for how quickly debt was typically repaid, from the <em>median</em> cycle duration — faster repayment scores higher (bucketed: within an hour, a day, 3/7/14/30/90 days, or longer).</td></tr>
+      <tr><td class="term">cyclecount</td><td>Points for having multiple cycles: <span class="code">min(cycles, 5) × 4</span> — more repeat, completed borrowing is rewarded, up to 5 cycles.</td></tr>
+      <tr><td class="term">income</td><td>Points for real yield income (see "How income is scored" below) — up to 10 points here: 2 for participating at all, 4 for how many distinct months had realized income, 4 for how much relative to what was put in.</td></tr>
+      <tr><td class="term">tenure</td><td>Points for how long ago the wallet's cycle activity spans (7/30/90/180+ days → 0/3/7/11/15 pts) — longer track record scores higher.</td></tr>
+      <tr><td class="term">distribution / rewards</td><td>Points from recurring distribution claims and from incentive-reward claims &mdash; see the sections below.</td></tr>
+      <tr><td class="term">raw</td><td>Sum of the above. If a wallet has only 1 cycle, the score is provisionally capped lower until a second cycle confirms the pattern.</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Activity path breakdown</h2>
+    <p>Example line: <span class="code">ACTIVITY path: protocols 5, events 784, days 44, breadth 15, volume 25, consistency 20, tenure 15, income 6 [participation 2, months 4 (3pts), net $128.07 realized (1pts)], raw 81</span></p>
+    <table>
+      <tr><th scope="col">Term</th><th scope="col">What it means</th></tr>
+      <tr><td class="term">protocols</td><td>Number of distinct DeFi protocols the wallet has touched (e.g. Blend, Soroswap, Aquarius, Sushi).</td></tr>
+      <tr><td class="term">events</td><td>Count of "meaningful" on-chain events — everything except generic contract calls with no clear economic action.</td></tr>
+      <tr><td class="term">days</td><td>Number of distinct calendar days the wallet was active on.</td></tr>
+      <tr><td class="term">breadth</td><td>Points for protocol diversity: <span class="code">min(protocols × 5, 15)</span>.</td></tr>
+      <tr><td class="term">volume</td><td>Points for activity volume: <span class="code">min(events, 25)</span> — capped so very high-frequency wallets don't automatically dominate the score.</td></tr>
+      <tr><td class="term">consistency</td><td>Points for how spread out the activity is across distinct days (bucketed: 2/6/13/29/89+ days → 0/4/8/14/20/26 pts).</td></tr>
+      <tr><td class="term">tenure</td><td>Points for the time span between the wallet's first and last meaningful event (7/30/90/180+ days → 0/3/7/11/15 pts).</td></tr>
+      <tr><td class="term">income</td><td>Points for real yield income (see "How income is scored" below) — up to 12 points here: 2 for participating at all, 5 for how many distinct months had realized income, 5 for how much relative to what was put in.</td></tr>
+      <tr><td class="term">raw</td><td>Sum of the above.</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>From raw score to final tier</h2>
+    <p>The raw point total isn't the displayed score — it's run through a scaling curve that concentrates most wallets in the middle of the range and reserves the top end for genuinely strong track records, then mapped to a tier:</p>
+    <div class="tier-row">
+      <div class="tier-chip a"><div class="tier-name">Tier A</div><div class="tier-range">67 – 100</div></div>
+      <div class="tier-chip b"><div class="tier-name">Tier B</div><div class="tier-range">34 – 66</div></div>
+      <div class="tier-chip c"><div class="tier-name">Tier C</div><div class="tier-range">0 – 33</div></div>
+    </div>
+    <p>The lending path and activity path use separate scaling curves calibrated to their own raw-score ranges, which is why the same raw number can map to different final scores depending on path.</p>
+  </div>
+
+  <div class="card">
+    <h2>How income is scored</h2>
+    <p>Beyond lending and activity, the score also looks at real yield/savings income — deposits and withdrawals on yield products like DeFindex vaults, Stellar DeFi Hub, and Upshift/Gami. This only counts <strong>realized</strong> income: USD a wallet actually withdrew above what it had deposited into that position, not paper gains from a balance that's still parked. A wallet that deposits and never withdraws gets a small flat credit for participating, but the bulk of the income score comes from cashing out more than was put in.</p>
+    <p>Amounts across different assets (USDC, EURC, XLM, and tokenized bonds like CETES, TESOURO, USTRY) are converted to USD using live prices, refreshed every 6 hours from Kraken (for XLM/EURC) and Etherfuse's own pricing API (for the tokenized sovereign bonds, which each track their own local-currency bond value plus that currency's FX rate — not a simple $1 peg).</p>
+    <table>
+      <tr><th scope="col">Term</th><th scope="col">What it means</th></tr>
+      <tr><td class="term">participation</td><td>A small flat bonus (2 points) just for having any yield deposit/withdraw history at all, whether or not income has been realized yet.</td></tr>
+      <tr><td class="term">months (Npts)</td><td>Number of distinct calendar months in which the wallet realized net-positive income — rewards income spread over time, not one lucky cash-out.</td></tr>
+      <tr><td class="term">net $X realized (Npts)</td><td>Total USD withdrawn above total USD deposited, across all yield positions. Scored as a <em>rate</em> relative to how much was deposited, so a small active saver and a large passive one are compared fairly.</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Distribution income</h2>
+    <p>Some wallets receive income a different way: a recurring claim from a mass-distribution / payroll-style contract (e.g. Fundable), rather than depositing into and withdrawing from a yield position. A single claim has no deposit side to measure a "return" against, so it can't be scored like yield income. It is weighted toward <strong>consistency</strong> over magnitude instead: a wallet claiming something every month looks like real, recurring income, while a single claim ever looks like a one-time windfall and scores accordingly low. Claims are excluded from the breadth/volume/consistency numbers above, but claims spanning 2 or more distinct months can qualify a wallet for the activity path on their own.</p>
+    <table>
+      <tr><th scope="col">Term</th><th scope="col">What it means</th></tr>
+      <tr><td class="term">participation</td><td>A small flat bonus for having any claim history. Up to 4 points on the lending path and 6 on the activity path across all distribution terms.</td></tr>
+      <tr><td class="term">months (Npts)</td><td>Distinct calendar months with a claim, saturating at 6 &mdash; the main driver of this score.</td></tr>
+      <tr><td class="term">$X claimed (Npts)</td><td>Total USD value claimed, saturating at $500 &mdash; a smaller, secondary factor.</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Incentive rewards</h2>
+    <p>Protocols also pay out reward tokens: <strong>AQUA</strong> to Aquarius liquidity providers (plus Aquarius gauge rewards, paid in assets like USDC and XLM) and <strong>BLND</strong> to Blend lenders and backstop depositors, and reward tokens to Phoenix liquidity providers who stake their LP tokens (Phoenix doesn't record the amount of a reward claim, so those count toward the months-claimed factor only, never the dollar one). These are scored as their own signal, and deliberately the smallest of the three income signals (at most 3 points on the lending path and 4 on the activity path). Rewards are incentives, not organic income: they scale with how much a wallet has staked, they are volatile, and some wallets simply rotate between incentive programs. So, as with distribution income, consistency (distinct months with a claim, saturating at 8) counts for more than size (total USD claimed, saturating at $50). Reward tokens are converted to USD with live prices (DefiLlama), refreshed every 6 hours. A claim that can't be priced still counts as participation but adds no dollars. Liquidity-provider <em>fee</em> claims are a different thing and are not counted here.</p>
+    <table>
+      <tr><th scope="col">Term</th><th scope="col">What it means</th></tr>
+      <tr><td class="term">participation</td><td>1 point for having claimed any reward.</td></tr>
+      <tr><td class="term">months (Npts)</td><td>Distinct calendar months with a reward claim &mdash; up to 1 point (lending) or 2 (activity).</td></tr>
+      <tr><td class="term">$X in rewards (Npts)</td><td>Total USD value of rewards claimed &mdash; up to 1 point.</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>A few notes</h2>
+    <ul>
+      <li>Scores are computed live from indexed on-chain history on every lookup — nothing is cached or pre-stored per wallet.</li>
+      <li>Very high-activity wallets (e.g. automated trading bots, market makers) are capped at 50,000 most-recent events per lookup for performance — this rarely changes the outcome, since the volume, breadth and consistency components already cap out well before that.</li>
+      <li>This tool only sees activity the indexer has captured (currently Blend, Soroswap, Aquarius, Sushi, DeFindex and a growing set of others) — it is not a complete picture of a wallet's full on-chain history.</li>
+      <li>This is not a regulated credit score and isn't financial advice — it's an experimental measure of on-chain DeFi behavior.</li>
+    </ul>
+  </div>
+</main>
+
+<footer>Scored from indexed Stellar DeFi activity across Blend, Soroswap, Aquarius, Sushi and other protocols.</footer>
+</div>
+
+</body>
+</html>
