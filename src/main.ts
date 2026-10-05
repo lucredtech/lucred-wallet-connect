@@ -1,6 +1,7 @@
 import "./style.css";
 import { connectWallet, disconnectWallet, proveOwnership, isGAddress } from "./wallet";
 import { fetchScore, type ScoreResult } from "./score";
+import { renderFactors } from "./factors";
 import { loadPortfolio, resetPortfolio } from "./portfolioView";
 import { loadCreditLine, resetCreditLine, showCreditLineLocked, setWaitlistWallet } from "./creditLineView";
 
@@ -128,6 +129,25 @@ function renderScore(result: ScoreResult) {
   pathLabel.textContent = pathText;
   statEvents.textContent = (result.eventCount ?? 0).toLocaleString();
   statTier.textContent = `Tier ${tier}`;
+
+  // Scoring terms as pills with tooltips. An API response without components (or a wallet with no
+  // history) falls back to the raw breakdown, which is then shown open.
+  const factorGroups = document.getElementById("factor-groups")!;
+  const factorTip = document.getElementById("factor-tip")!;
+  const factorHint = document.getElementById("factor-hint")!;
+  const rawBreakdown = document.getElementById("raw-breakdown") as HTMLDetailsElement;
+  const components = result.components ?? [];
+  factorTip.id = "factor-tip";
+  if (components.length > 0) {
+    renderFactors(components, factorGroups, factorTip);
+    factorGroups.classList.remove("hidden");
+    factorHint.classList.remove("hidden");
+    rawBreakdown.open = false;
+  } else {
+    factorGroups.classList.add("hidden");
+    factorHint.classList.add("hidden");
+    rawBreakdown.open = true;
+  }
 
   reasonLines.innerHTML = "";
   for (const reason of result.reasons ?? []) {

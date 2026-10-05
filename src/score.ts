@@ -1,9 +1,22 @@
+export interface ScoreComponent {
+  key: string;
+  label: string;
+  group: "core" | "income" | "bonus";
+  points: number;
+  max: number;
+  explain: string;
+  detail: string | null;
+  amountUsd?: number | null;
+  amountLabel?: string;
+}
+
 export interface ScoreResult {
   wallet: string;
   linkedGAddress?: string;
   tier: "A" | "B" | "C";
   score: number;
   reasons: string[];
+  components?: ScoreComponent[];
   path: string;
   eventCount: number;
 }
