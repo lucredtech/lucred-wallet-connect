@@ -387,6 +387,34 @@ function activityTenurePoints(meaningfulEvents) {
   return TENURE_BUCKETS.find((b) => spanDays <= b.maxDays).points;
 }
 
+// Plain-English description of every scoring term, shown as tooltips next to the score.
+// `max` is the term's ceiling on each path, so the UI can show "points / max".
+const COMPONENT_INFO = {
+  speed:       { label: "Repayment speed", group: "core", explain: "How quickly you usually repay a loan (the median across your completed loans). Faster repayment scores higher." },
+  cyclecount:  { label: "Completed loans", group: "core", explain: "Borrow-then-repay cycles you have completed. Up to 5 count, 4 points each, so repeat borrowing and repaying is rewarded." },
+  breadth:     { label: "Protocols used", group: "core", explain: "How many different DeFi protocols you have used: 5 points each, up to 3 protocols." },
+  volume:      { label: "Activity", group: "core", explain: "How many meaningful on-chain actions you have taken, capped at 25 so very busy wallets don't dominate." },
+  consistency: { label: "Active days", group: "core", explain: "How many different days you have been active, so steady use counts for more than a one-day burst." },
+  tenure:      { label: "Track record", group: "core", explain: "How long your DeFi activity spans, from your first to your latest action. Longer is better." },
+  income:      { label: "Yield income", group: "income", explain: "Real yield from vaults and savings products: what you withdrew above what you deposited. Paper gains on a balance you haven't withdrawn don't count." },
+  distribution:{ label: "Payroll / distributions", group: "income", explain: "Recurring claims from payroll or mass-distribution contracts. Claiming every month counts for more than one big claim." },
+  rewards:     { label: "Protocol rewards", group: "income", explain: "Incentive rewards you have claimed (AQUA, BLND, Phoenix, gauge rewards). The smallest income signal, since rewards are incentives rather than organic income." },
+  classic:     { label: "Account age", group: "bonus", explain: "A small bonus for how long the account has existed and its classic Stellar history. Only added alongside DeFi activity." },
+  floor:       { label: "Limited activity", group: "core", explain: "Not enough DeFi activity yet to score on breadth, volume and consistency, so the score is capped in tier C." }
+};
+
+function spanText(days) {
+  if (!isFinite(days) || days < 1) return "under a day";
+  if (days < 60) return Math.round(days) + " days";
+  if (days < 730) return Math.round(days / 30.4) + " months";
+  return (days / 365.25).toFixed(1) + " years";
+}
+
+function component(key, points, max, detail, extra) {
+  const info = COMPONENT_INFO[key];
+  return { key, label: info.label, group: info.group, points, max, explain: info.explain, detail: detail || null, ...(extra || {}) };
+}
+
 function scoreWalletBase(events, cycles, assetPriceMap, vaultAssetMap, classic = null) {
   const userAddress = (events[0] && events[0].userAddress) || (cycles[0] && cycles[0].userAddress) || "unknown";
   const reasons = [];
@@ -417,7 +445,17 @@ function scoreWalletBase(events, cycles, assetPriceMap, vaultAssetMap, classic =
         (classic ? ", classic " + classicPts + " [" + classicDetail + "]" : "") +
         ", tenure " + tenurePts + ", raw " + raw.toFixed(1)
     );
-    return { userAddress: userAddress, tier: "A", score: Math.round(scaled), reasons: reasons, path: "lending" };
+    const medDays = med / 86400;
+    const components = [
+      component("speed", speedPts, 42, "median repayment " + (medDays < 1 ? Math.max(1, Math.round(medDays * 24)) + " hours" : medDays.toFixed(1) + " days")),
+      component("cyclecount", cycleCountPts, 20, cycles.length + " completed loan" + (cycles.length === 1 ? "" : "s")),
+      component("tenure", tenurePts, 15, "loan activity spans " + spanText((Math.max.apply(null, cycles.map((c) => new Date(c.closedAt).getTime())) - Math.min.apply(null, cycles.map((c) => new Date(c.openedAt).getTime()))) / 86400000)),
+      component("income", yieldPts, 10, yieldDetail, { amountUsd: income.hasParticipation ? income.totalNetIncomeUsd : null, amountLabel: "realized" }),
+      component("distribution", distPts, 4, distDetail, { amountUsd: distIncome.hasParticipation ? distIncome.totalClaimedUsd : null, amountLabel: "claimed" }),
+      component("rewards", rewardPts, 3, rewardDetail, { amountUsd: rewardIncome.hasParticipation ? Math.min(rewardIncome.totalClaimedUsd, REWARD_MAGNITUDE_SATURATION_USD) : null, amountLabel: rewardIncome.totalClaimedUsd >= REWARD_MAGNITUDE_SATURATION_USD ? "in rewards (and more)" : "in rewards" })
+    ];
+    if (classic) components.push(component("classic", classicPts, 3, classicDetail));
+    return { userAddress: userAddress, tier: "A", score: Math.round(scaled), reasons: reasons, path: "lending", components: components };
   }
 
   // mass_distribution claims (e.g. Fundable's Merkle-drop payroll/distribution
@@ -465,11 +503,23 @@ function scoreWalletBase(events, cycles, assetPriceMap, vaultAssetMap, classic =
         ", rewards " + rewardPts + " [" + rewardDetail + "]" +
         (classic ? ", classic " + classicPts + " [" + classicDetail + "]" : "") + ", raw " + raw
     );
-    return { userAddress: userAddress, tier: tier, score: score, reasons: reasons, path: "activity" };
+    const activeDays = new Set(meaningfulEvents.map((e) => e.blockCloseTime.slice(0, 10))).size;
+    const components = [
+      component("breadth", breadthPts, 15, distinctProtocols.size + " protocol" + (distinctProtocols.size === 1 ? "" : "s")),
+      component("volume", volumePts, 25, meaningfulEventCount + " meaningful actions"),
+      component("consistency", consistencyPts, 26, activeDays + " active day" + (activeDays === 1 ? "" : "s")),
+      component("tenure", tenurePts, 15, "first to latest action: " + spanText((Math.max.apply(null, meaningfulEvents.map((e) => new Date(e.blockCloseTime).getTime())) - Math.min.apply(null, meaningfulEvents.map((e) => new Date(e.blockCloseTime).getTime()))) / 86400000)),
+      component("income", lpYieldPts, 12, lpYieldDetail, { amountUsd: income.hasParticipation ? income.totalNetIncomeUsd : null, amountLabel: "realized" }),
+      component("distribution", distPts, 6, distDetail, { amountUsd: distIncome.hasParticipation ? distIncome.totalClaimedUsd : null, amountLabel: "claimed" }),
+      component("rewards", rewardPts, 4, rewardDetail, { amountUsd: rewardIncome.hasParticipation ? Math.min(rewardIncome.totalClaimedUsd, REWARD_MAGNITUDE_SATURATION_USD) : null, amountLabel: rewardIncome.totalClaimedUsd >= REWARD_MAGNITUDE_SATURATION_USD ? "in rewards (and more)" : "in rewards" })
+    ];
+    if (classic) components.push(component("classic", classicPts, 5, classicDetail));
+    return { userAddress: userAddress, tier: tier, score: score, reasons: reasons, path: "activity", components: components };
   }
 
   reasons.push("floor: " + events.length + " events, mostly fn_call noise");
-  return { userAddress: userAddress, tier: "C", score: Math.min(TIER_C_MAX_SCORE, events.length), reasons: reasons, path: "floor" };
+  const floorScore = Math.min(TIER_C_MAX_SCORE, events.length);
+  return { userAddress: userAddress, tier: "C", score: floorScore, reasons: reasons, path: "floor", components: [component("floor", floorScore, TIER_C_MAX_SCORE, events.length + " events, mostly plain contract calls")] };
 }
 
 // ---- reference data cache (asset_prices, vault_assets) ----
@@ -702,7 +752,8 @@ async function computeWalletScore(wallet) {
         score: 0,
         reasons: ["No Soroban DeFi activity found for this wallet" + (linkedGAddress ? " or its linked G-address (" + linkedGAddress + ")" : "") + " in the indexed history. Classic Stellar payments and trades aren't scored on their own."],
         path: "no-history",
-        eventCount: 0
+        eventCount: 0,
+        components: []
       };
     }
 

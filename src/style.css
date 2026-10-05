@@ -1063,3 +1063,107 @@ footer {
   font-size: var(--text-caption);
   line-height: 1.5;
 }
+
+/* Score factor pills + tooltip */
+.factor-groups {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.factor-group-title {
+  margin-bottom: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.factor-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.factor-pill {
+  --fill: 0%;
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: var(--text-body-sm);
+  color: var(--color-text-on-surface-light);
+  background: linear-gradient(90deg, var(--tier-bg) var(--fill), transparent var(--fill));
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.factor-pill[data-state="zero"] {
+  color: var(--color-text-secondary);
+  border-color: var(--color-border-subtle);
+}
+
+.factor-pill:focus-visible {
+  outline: 2px solid var(--color-accent-text);
+  outline-offset: 2px;
+}
+
+.factor-name {
+  font-weight: 600;
+}
+
+.factor-pts,
+.factor-amt {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-label);
+  color: var(--color-text-secondary);
+}
+
+.factor-tip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  padding: var(--space-3) var(--space-4);
+  background: #161a2b;
+  box-shadow: var(--shadow-elevated), 0 0 0 1px var(--color-border-strong);
+  border-radius: 12px;
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+}
+
+.factor-tip p {
+  margin: var(--space-1, 4px) 0 0;
+  color: var(--color-text-secondary);
+}
+
+.factor-tip .factor-tip-detail {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+}
+
+.factor-hint {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+}
+
+.raw-breakdown {
+  margin-top: var(--space-3);
+}
+
+.raw-breakdown summary {
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+}
+
+.raw-breakdown[open] summary {
+  margin-bottom: var(--space-2);
+}
