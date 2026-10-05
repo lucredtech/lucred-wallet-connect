@@ -9,6 +9,7 @@ const cors = require("cors");
 const { BigQuery } = require("@google-cloud/bigquery");
 const { createPortfolioService, resolveVaultTicker } = require("./portfolio");
 const { computeOffers } = require("./credit-line");
+const { getClassicActivity, classicPoints } = require("./classic-activity");
 
 const bq = new BigQuery();
 const app = express();
@@ -386,7 +387,7 @@ function activityTenurePoints(meaningfulEvents) {
   return TENURE_BUCKETS.find((b) => spanDays <= b.maxDays).points;
 }
 
-function scoreWalletBase(events, cycles, assetPriceMap, vaultAssetMap) {
+function scoreWalletBase(events, cycles, assetPriceMap, vaultAssetMap, classic = null) {
   const userAddress = (events[0] && events[0].userAddress) || (cycles[0] && cycles[0].userAddress) || "unknown";
   const reasons = [];
   const income = computeYieldIncome(events, assetPriceMap, vaultAssetMap);
@@ -402,7 +403,8 @@ function scoreWalletBase(events, cycles, assetPriceMap, vaultAssetMap) {
     const { points: distPts, detail: distDetail } = distributionScorePoints(distIncome, "lending");
     const { points: rewardPts, detail: rewardDetail } = rewardScorePoints(rewardIncome, "lending");
     const tenurePts = tenurePointsFromCycles(cycles);
-    const raw = speedPts + cycleCountPts + yieldPts + distPts + rewardPts + tenurePts;
+    const { points: classicPts, detail: classicDetail } = classic ? classicPoints(classic, "lending") : { points: 0, detail: "" };
+    const raw = speedPts + cycleCountPts + yieldPts + distPts + rewardPts + tenurePts + classicPts;
     let scaled = scaleToTierA(raw);
     if (cycles.length < MIN_CYCLES_FOR_FULL_TRUST) {
       const provisionalCap = TIER_A_MIN_SCORE + 15;
@@ -412,6 +414,7 @@ function scoreWalletBase(events, cycles, assetPriceMap, vaultAssetMap) {
       "LENDING path: " + cycles.length + " cycles, speed " + speedPts + ", cyclecount " + cycleCountPts +
         ", income " + yieldPts + " [" + yieldDetail + "], distribution " + distPts + " [" + distDetail + "]" +
         ", rewards " + rewardPts + " [" + rewardDetail + "]" +
+        (classic ? ", classic " + classicPts + " [" + classicDetail + "]" : "") +
         ", tenure " + tenurePts + ", raw " + raw.toFixed(1)
     );
     return { userAddress: userAddress, tier: "A", score: Math.round(scaled), reasons: reasons, path: "lending" };
@@ -448,7 +451,8 @@ function scoreWalletBase(events, cycles, assetPriceMap, vaultAssetMap) {
     const { points: lpYieldPts, detail: lpYieldDetail } = incomeScorePoints(income, "activity");
     const { points: distPts, detail: distDetail } = distributionScorePoints(distIncome, "activity");
     const { points: rewardPts, detail: rewardDetail } = rewardScorePoints(rewardIncome, "activity");
-    const raw = breadthPts + volumePts + consistencyPts + tenurePts + lpYieldPts + distPts + rewardPts;
+    const { points: classicPts, detail: classicDetail } = classic ? classicPoints(classic, "activity") : { points: 0, detail: "" };
+    const raw = breadthPts + volumePts + consistencyPts + tenurePts + lpYieldPts + distPts + rewardPts + classicPts;
     const scaled = scaleToActivityBand(raw);
     const score = Math.round(scaled);
     const tier = score >= TIER_A_MIN_SCORE ? "A" : "B";
@@ -458,7 +462,8 @@ function scoreWalletBase(events, cycles, assetPriceMap, vaultAssetMap) {
         ", breadth " + breadthPts + ", volume " + volumePts + ", consistency " + consistencyPts +
         ", tenure " + tenurePts + ", income " + lpYieldPts + " [" + lpYieldDetail + "]" +
         ", distribution " + distPts + " [" + distDetail + "]" +
-        ", rewards " + rewardPts + " [" + rewardDetail + "], raw " + raw
+        ", rewards " + rewardPts + " [" + rewardDetail + "]" +
+        (classic ? ", classic " + classicPts + " [" + classicDetail + "]" : "") + ", raw " + raw
     );
     return { userAddress: userAddress, tier: tier, score: score, reasons: reasons, path: "activity" };
   }
@@ -695,7 +700,7 @@ async function computeWalletScore(wallet) {
         ...(linkedGAddress && { linkedGAddress: linkedGAddress }),
         tier: "C",
         score: 0,
-        reasons: ["No on-chain activity found for this wallet" + (linkedGAddress ? " or its linked G-address (" + linkedGAddress + ")" : "") + " in the indexed history."],
+        reasons: ["No Soroban DeFi activity found for this wallet" + (linkedGAddress ? " or its linked G-address (" + linkedGAddress + ")" : "") + " in the indexed history. Classic Stellar payments and trades aren't scored on their own."],
         path: "no-history",
         eventCount: 0
       };
@@ -722,6 +727,12 @@ async function computeWalletScore(wallet) {
     }));
 
     const cycles = computeDebtCycles(events);
+    // Account age / classic Stellar activity (G... accounts, or a smart wallet's linked G...). Runs
+    // alongside the vault lookup below; any failure just means no bonus.
+    const classicAddress = wallet[0] === "G" ? wallet : linkedGAddress;
+    const classicPromise = classicAddress
+      ? Promise.race([getClassicActivity(classicAddress), new Promise((resolve) => setTimeout(() => resolve(null), 6000))]).catch(() => null)
+      : Promise.resolve(null);
     // Ask each DeFindex vault what it actually holds (cached per process) and let that answer win
     // over the vault_assets table: the table is hand-curated, missed newer vaults, and one row
     // (the biggest vault, ~24K wallets) was found mislabelled XLM instead of USDC. Anything the
@@ -736,8 +747,12 @@ async function computeWalletScore(wallet) {
         vaults.forEach((v, i) => { if (tickers[i]) effectiveVaultMap[v] = tickers[i]; });
       }
     } catch (e) { /* fall back to the table-only map */ }
-    const result = scoreWalletBase(events, cycles, assetPriceMap, effectiveVaultMap);
+    const classic = await classicPromise;
+    const result = scoreWalletBase(events, cycles, assetPriceMap, effectiveVaultMap, classic);
     result.wallet = wallet;
+    if (classic && (result.path === "lending" || result.path === "activity")) {
+      result.classic = { ageYears: Math.round(classic.ageYears * 10) / 10, payments: classic.payments, trades: classic.trades, source: classic.source };
+    }
     if (linkedGAddress) {
       result.linkedGAddress = linkedGAddress;
       result.reasons.push("Includes activity merged from linked G-address " + linkedGAddress + " (self-deployed smart wallet).");

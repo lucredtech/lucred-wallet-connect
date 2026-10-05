@@ -105,6 +105,10 @@
             <td>Points for claiming protocol incentive rewards (see "Incentive rewards" below) — up to 3 points here.</td>
           </tr>
           <tr>
+            <td class="term">classic</td>
+            <td>A small bonus for account age and long Stellar history (see "Account age and classic Stellar history" below) — up to 3 points here.</td>
+          </tr>
+          <tr>
             <td class="term">tenure</td>
             <td>Points for how long ago the wallet's cycle activity spans — longer track record scores higher.</td>
           </tr>
@@ -169,6 +173,10 @@
           <tr>
             <td class="term">rewards</td>
             <td>Points for claiming protocol incentive rewards (see "Incentive rewards" below) — up to 4 points here.</td>
+          </tr>
+          <tr>
+            <td class="term">classic</td>
+            <td>A small bonus for account age and long Stellar history (see "Account age and classic Stellar history" below) — up to 5 points here.</td>
           </tr>
           <tr>
             <td class="term">raw</td>
@@ -320,13 +328,44 @@
         </table>
       </section>
 
+      <section class="info-card" id="classic">
+        <h2>Account age and classic Stellar history</h2>
+        <p>
+          The score is built from Soroban DeFi activity, which we index from mid-2024.
+          A wallet can have a much longer history than that, with years of ordinary
+          Stellar payments and trades. That history says something real about a wallet,
+          so it earns a <strong>small bonus</strong>, but only <em>alongside</em> DeFi
+          activity: a wallet with no DeFi history isn't scored on classic history alone.
+        </p>
+        <table>
+          <tr>
+            <th scope="col">Term</th>
+            <th scope="col">What it means</th>
+          </tr>
+          <tr>
+            <td class="term">age</td>
+            <td>How long the account has existed: 90 days +1 point, 1 year +2, 2 years +3, 4 years +4. Age is hard to fake, so it carries the most weight here.</td>
+          </tr>
+          <tr>
+            <td class="term">payments, trades</td>
+            <td>+1 point for a real classic footprint (1,000 or more payments, or 100 or more trades) that is still active this year. Payments and trades cost almost nothing to create, so volume counts for one point at most.</td>
+          </tr>
+        </table>
+        <p>
+          The bonus is capped at 5 points on the activity path and 3 on the lending path,
+          where repayment history already carries the score. The data comes from public
+          sources (stellar.expert and Horizon); if neither answers, the wallet is simply
+          scored without the bonus.
+        </p>
+      </section>
+
       <section class="info-card">
         <h2>A few notes</h2>
         <ul>
           <li>Scores are computed live from indexed on-chain history on every lookup — nothing is cached or pre-stored per wallet.</li>
           <li>Looking up a smart-wallet (<code>C...</code>) address that was self-deployed by its own owner (e.g. a Veil passkey wallet) automatically merges in that owner's direct <code>G...</code> address activity too, so the same person isn't scored as two disconnected partial identities.</li>
           <li>Very high-activity wallets are capped at 50,000 most-recent events per lookup for performance — this rarely changes the outcome, since the volume, breadth and consistency components already cap out well before that.</li>
-          <li>This tool only sees activity the indexer has captured (currently Blend, Soroswap, Aquarius, Sushi, DeFindex, Fundable and a growing set of others) — it is not a complete picture of a wallet's full on-chain history.</li>
+          <li>This tool only sees Soroban DeFi activity the indexer has captured (currently Blend, Soroswap, Aquarius, Phoenix, Sushi, DeFindex, Fundable and a growing set of others). Classic Stellar payments, DEX trades and offers aren't scored, apart from the small age bonus above, so it is not a complete picture of a wallet's full on-chain history.</li>
           <li>This is not a regulated credit score and isn't financial advice — it's an experimental measure of on-chain DeFi behavior.</li>
         </ul>
       </section>
