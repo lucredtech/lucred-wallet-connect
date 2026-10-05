@@ -37,7 +37,7 @@ Node.js (Express) on Cloud Run, reading the BigQuery table the indexer feeds.
 
 | Endpoint | Returns |
 |---|---|
-| `GET /score?wallet=G…` | Tier A/B/C, 0–100 score and the reasons behind it |
+| `GET /score?wallet=G…` | Tier A/B/C, 0–100 score, the reasons behind it, and a structured `components` list (each term's points, maximum, plain-English explanation and, for income terms, the dollar amount) |
 | `GET /portfolio?wallet=G…` | Tokens and DeFi positions, value, debt, net value, transferability |
 | `GET /credit-line?wallet=G…` | Limit and APR under each lending model, with the full breakdown |
 | `POST /waitlist` | `{ "email": "…", "wallet": "G…" }` (wallet optional): join the credit-line waitlist. Stored per email + wallet pair. |
@@ -51,6 +51,7 @@ cd credit-score-api
 node tests/test-credit-line.js
 node tests/test-rewards.js
 node tests/test-classic.js
+node tests/test-components.js
 ```
 
 Running the API itself needs `npm install` and Google application-default credentials with read access to the BigQuery dataset.

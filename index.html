@@ -102,9 +102,16 @@
               <div class="reasons">
                 <div class="reasons-label">
                   Scoring breakdown ·
-                  <a class="reasons-link" href="/how-it-works.html">What do these mean?</a>
+                  <a class="reasons-link" href="/how-it-works.html">How it's calculated</a>
                 </div>
-                <div id="reason-lines"></div>
+                <div id="factor-groups" class="factor-groups hidden">
+                  <div id="factor-tip" class="factor-tip hidden" role="tooltip"></div>
+                </div>
+                <p id="factor-hint" class="factor-hint hidden">Tap or hover a pill to see what it means.</p>
+                <details id="raw-breakdown" class="raw-breakdown">
+                  <summary>Show the raw breakdown</summary>
+                  <div id="reason-lines"></div>
+                </details>
               </div>
 
               <p class="score-scope">
