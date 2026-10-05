@@ -30,6 +30,7 @@ Node.js (Express) on Cloud Run, reading the BigQuery table the indexer feeds.
 |---|---|
 | `index.js` | The HTTP API and the **score**: a lending path (completed borrow → repay cycles) and an activity path (breadth, volume, consistency, tenure), plus income signals (realized yield, distributions, incentive rewards). Methodology: `public/how-it-works.html`. Also `POST /waitlist` (email, plus the connected wallet when the app has one). |
 | `portfolio.js` | **Holdings.** Reads a wallet's balances live from Horizon and Soroban RPC (free, read-only), values Blend, Aquarius, DeFindex and Untangled positions, prices tokens by contract id (never by ticker), and flags which holdings are transferable. |
+| `classic-activity.js` | A small, capped scoring bonus for account age and long classic Stellar history (stellar.expert, Horizon fallback), added only alongside DeFi activity. |
 | `credit-line.js` | **Indicative credit line and APR** for three lending models (secured, unsecured, score + collateral). Pure functions: every business parameter sits in one `POLICY` object, so a partner can supply its own. |
 
 ### Endpoints
@@ -43,12 +44,13 @@ Node.js (Express) on Cloud Run, reading the BigQuery table the indexer feeds.
 
 ### Tests
 
-The credit-line policy and the reward-income scoring have self-contained tests (no network, no credentials):
+The credit-line policy, the reward-income scoring and the classic-history bonus have self-contained tests (no network, no credentials):
 
 ```bash
 cd credit-score-api
 node tests/test-credit-line.js
 node tests/test-rewards.js
+node tests/test-classic.js
 ```
 
 Running the API itself needs `npm install` and Google application-default credentials with read access to the BigQuery dataset.
