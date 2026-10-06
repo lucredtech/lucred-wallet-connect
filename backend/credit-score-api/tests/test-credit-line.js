@@ -47,24 +47,37 @@ assert.strictEqual(n.offers.secured.eligible, false); assert.strictEqual(n.offer
 // 7. Limits respect caps
 const big = computeOffers({ score: sc(100, "A", "lending"), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 10000000)], positions: [] } });
 assert.strictEqual(big.offers.secured.limitUsd, 250000); assert.ok(big.offers.mix.limitUsd <= 30000); assert.ok(big.offers.unsecured.limitUsd <= 10000);
-// 8. Unsecured is capped by what the wallet holds: busy but nearly empty wallet (the reported case)
-const thin = computeOffers({ score: sc(60, "B", "activity"), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 227)], positions: [] } });
-show("B / 60 holding $227", thin);
-assert.strictEqual(thin.offers.unsecured.eligible, true);                // $227 holds enough for a $50-75 starter
-assert.ok(thin.offers.unsecured.limitUsd >= 50 && thin.offers.unsecured.limitUsd <= 75);
-const mid = computeOffers({ score: sc(60, "B", "activity"), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 900)], positions: [] } });
-assert.ok(mid.offers.unsecured.limitUsd <= 75);                          // starter line, never the old $2,078
+// 8. Unsecured is a starter line set by score/tier, always lower than the secured line (at most half of it)
+const thin = computeOffers({ score: sc(60, "B", "activity"), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 34)], positions: [] } });
+show("B / 60 holding $34 USDC", thin);
+assert.strictEqual(thin.offers.secured.limitUsd, 24);
+assert.strictEqual(thin.offers.unsecured.limitUsd, 12);                                     // half of the secured line
+const mid = computeOffers({ score: sc(60, "B", "activity"), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 227)], positions: [] } });
+assert.ok(mid.offers.unsecured.limitUsd >= 50 && mid.offers.unsecured.limitUsd <= 75);      // secured $161: half is $80, so the starter applies
+assert.ok(mid.offers.unsecured.limitUsd < mid.offers.secured.limitUsd);
 const rich = computeOffers({ score: sc(60, "B", "activity"), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 50000)], positions: [] } });
-assert.ok(rich.offers.unsecured.limitUsd >= 50 && rich.offers.unsecured.limitUsd <= 75); // plenty of holdings: the starter line applies
+assert.strictEqual(rich.offers.unsecured.limitUsd, mid.offers.unsecured.limitUsd);          // beyond that, the balance does not size it
 assert.ok(rich.offers.unsecured.growsToUsd > 2000);
-// non-transferable holdings still show capacity, debt reduces it
-const nt = computeOffers({ score: sc(60, "B", "activity"), portfolio: { totals: { debtUsd: 1000 }, tokens: [tok("ICE", 3000, { transferable: false })], positions: [] } });
-assert.ok(nt.offers.unsecured.limitUsd <= 75);
-// 9. Capacity cap still bites below the starter line
-const tiny = computeOffers({ score: sc(60, "B", "activity"), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 40)], positions: [] } });
-assert.strictEqual(tiny.offers.unsecured.eligible, false);               // holds $40 < $50 minimum
-const capped = computeOffers({ score: sc(60, "B", "activity"), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 60)], positions: [] } });
-assert.strictEqual(capped.offers.unsecured.limitUsd, 60);                // capped at the $60 held, below the ~$68 starter
+const lowB = computeOffers({ score: sc(34, "B", "activity"), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 500)], positions: [] } });
+assert.strictEqual(lowB.offers.unsecured.limitUsd, 50);                                     // bottom of tier B
+// the $10 minimum applies to every model
+const dust = computeOffers({ score: sc(60, "B", "activity"), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 8)], positions: [] } });
+for (const m of ["secured", "unsecured", "mix"]) assert.strictEqual(dust.offers[m].eligible, false);   // $8 < $10
+const ten = computeOffers({ score: sc(60, "B", "activity"), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 15)], positions: [] } });
+assert.strictEqual(ten.offers.secured.limitUsd, 10);                                         // $10 minimum secured line...
+assert.strictEqual(ten.offers.unsecured.eligible, false);                                    // ...leaves half = $5 for unsecured, under the minimum
+assert.ok(/minimum line/.test(ten.offers.unsecured.notes[0]));
+const thirty = computeOffers({ score: sc(60, "B", "activity"), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 30)], positions: [] } });
+assert.strictEqual(thirty.offers.secured.limitUsd, 21); assert.strictEqual(thirty.offers.unsecured.limitUsd, 10);   // smallest holding that earns both
+// nothing pledgeable (only non-transferable holdings): no secured line, so no unsecured line either
+const nt = computeOffers({ score: sc(60, "B", "activity"), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("ICE", 3000, { transferable: false })], positions: [] } });
+assert.strictEqual(nt.offers.secured.eligible, false); assert.strictEqual(nt.offers.unsecured.eligible, false);
+// invariants over many inputs: every eligible line is >= $10; unsecured is strictly lower than secured
+for (const score of [34, 50, 66, 67, 80, 100]) for (const usd of [10, 15, 30, 60, 100, 250, 1000, 100000]) for (const debt of [0, 20]) {
+  const x = computeOffers({ score: sc(score, score >= 67 ? "A" : "B", "activity"), portfolio: { totals: { debtUsd: debt }, tokens: [tok("USDC", usd)], positions: [] } });
+  for (const m of ["secured", "unsecured", "mix"]) if (x.offers[m].eligible) assert.ok(x.offers[m].limitUsd >= 10, `${m} below $10 at score ${score}, $${usd}`);
+  if (x.offers.unsecured.eligible) assert.ok(x.offers.secured.eligible && x.offers.unsecured.limitUsd < x.offers.secured.limitUsd, `unsecured >= secured at score ${score}, $${usd}, debt ${debt}`);
+}
 
 // 10. New wallets get secured credit only: tier B but a short track record, or tier C
 const fresh = computeOffers({ score: sc(60, "B", "activity", 7), portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 5000)], positions: [] } });

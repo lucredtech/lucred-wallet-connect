@@ -3,8 +3,8 @@
 // Three lending models are always computed side by side, so a partner can embed whichever
 // one it wants (or all three):
 //   secured   - limit comes from the wallet's transferable, priced collateral only
-//   unsecured - a small starter line for established wallets (score + track record), capped by what the
-//               wallet visibly holds; it is meant to grow toward the score ceiling as repayments are recorded
+//   unsecured - a small starter line for established wallets (score + track record), always lower than the
+//               wallet's own secured line (a share of it); it is meant to grow toward the score ceiling as repayments are recorded
 //   mix       - the score sets the limit, the collateral bounds it (established wallets only)
 //   New wallets (see POLICY.established) can only get secured credit.
 //
@@ -34,24 +34,25 @@ const POLICY = {
   established: { minTiers: ["A", "B"], minTenurePoints: 11, minTenureLabel: "90 days" },
 
   models: {
-    secured: { advanceRate: 0.75, minLimit: 50, maxLimit: 250000 },
+    secured: { advanceRate: 0.75, minLimit: 10, maxLimit: 250000 },
     unsecured: {
       // Starter line by score within the tier (a small, bounded first exposure). `ceiling` bands are what
       // the line is meant to grow toward as repayments are recorded; they are shown, not granted.
       starter: { A: { from: 67, to: 100, min: 100, max: 100 }, B: { from: 34, to: 66, min: 50, max: 75 } },
       ceiling: { A: { from: 67, to: 100, min: 2500, max: 10000 }, B: { from: 34, to: 66, min: 250, max: 2500 } },
       allowedPaths: ["lending", "activity"],
-      // A score proves behaviour, not capacity (a wallet can be busy and nearly empty), so the line
-      // never exceeds this multiple of the wallet's net priced holdings, collateral or not.
-      capacityMultiple: 1.0,
-      minLimit: 50,
+      // The starter line is small and set by tier/score. It is always lower than the wallet's secured
+      // line (what its own transferable collateral could back): at most this share of it. A wallet with
+      // nothing to pledge has no unsecured line.
+      maxShareOfSecured: 0.5,
+      minLimit: 10,
       maxLimit: 10000
     },
     mix: {
       // score-based ceiling (larger than unsecured, because collateral stands behind it)
       bands: { A: { from: 67, to: 100, min: 5000, max: 30000 }, B: { from: 34, to: 66, min: 500, max: 5000 }, C: { from: 0, to: 33, min: 0, max: 500 } },
       advanceByTier: { A: 1.0, B: 0.85, C: 0.6 },   // share of lendable collateral the score-line may reach
-      minLimit: 50,
+      minLimit: 10,
       maxLimit: 100000
     }
   },
@@ -186,12 +187,13 @@ function computeOffers({ score, portfolio }, policy = POLICY) {
   if (!unsecuredIneligible && !haveHoldings) unsecuredIneligible = "Holdings couldn't be read, so the wallet's capacity can't be checked.";
   const starterLimit = sb ? lerp(s, sb.from, sb.to, sb.min, sb.max) : 0;
   const ceilingLimit = cb ? Math.min(lerp(s, cb.from, cb.to, cb.min, cb.max), um.maxLimit) : 0;
-  // Capacity: everything priced the wallet holds (pledgeable or not) less what it already owes.
-  const capacityUsd = Math.max(0, collateral.marketUsd + collateral.excludedUsd - debtUsd);
-  const unsecuredLimit = Math.min(starterLimit, capacityUsd * um.capacityMultiple);
-  if (!unsecuredIneligible && unsecuredLimit < um.minLimit) unsecuredIneligible = `The wallet holds $${Math.floor(capacityUsd).toLocaleString("en-US")}, below the $${um.minLimit} minimum unsecured line.`;
-  const unsecuredNotes = [`A starter line from the LCRD score, never more than the wallet's visible holdings. As repayments are recorded it is meant to grow, up to about $${Math.floor(ceilingLimit).toLocaleString("en-US")} at today's score.`];
-  if (sb && haveHoldings && capacityUsd < starterLimit) unsecuredNotes.push(`Capped at the $${Math.floor(capacityUsd).toLocaleString("en-US")} the wallet holds.`);
+  const securedLimitUsd = secured.eligible ? secured.limitUsd : 0;
+  const securedShareCap = Math.floor(securedLimitUsd * um.maxShareOfSecured);
+  const unsecuredLimit = Math.min(starterLimit, securedShareCap);
+  if (!unsecuredIneligible && !secured.eligible) unsecuredIneligible = "Unsecured credit is always lower than the wallet's secured line, and this wallet has no secured line (nothing transferable and priced to pledge, or too little of it).";
+  else if (!unsecuredIneligible && unsecuredLimit < um.minLimit) unsecuredIneligible = `Unsecured credit is held to ${Math.round(um.maxShareOfSecured * 100)}% of the secured line ($${securedLimitUsd.toLocaleString("en-US")}), which is below the $${um.minLimit} minimum line.`;
+  const unsecuredNotes = [`A starter line set by the LCRD score and track record, always lower than the wallet's secured line. As repayments are recorded it is meant to grow, up to about $${Math.floor(ceilingLimit).toLocaleString("en-US")} at today's score.`];
+  if (sb && securedLimitUsd > 0 && securedShareCap < starterLimit) unsecuredNotes.push(`Held to ${Math.round(um.maxShareOfSecured * 100)}% of the $${securedLimitUsd.toLocaleString("en-US")} secured line.`);
   const unsecured = offer("unsecured", unsecuredLimit, um.minLimit, um.maxLimit, s, collateral, policy, unsecuredNotes, unsecuredIneligible);
   unsecured.growsToUsd = unsecured.eligible ? Math.floor(ceilingLimit) : null;
 
