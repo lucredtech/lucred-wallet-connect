@@ -3,15 +3,17 @@
 // Three lending models are always computed side by side, so a partner can embed whichever
 // one it wants (or all three):
 //   secured   - limit comes from the wallet's transferable, priced collateral only
-//   unsecured - limit comes from the score, capped by what the wallet visibly holds
-//   mix       - the score sets the limit, the collateral bounds it
+//   unsecured - a small starter line for established wallets (score + track record), capped by what the
+//               wallet visibly holds; it is meant to grow toward the score ceiling as repayments are recorded
+//   mix       - the score sets the limit, the collateral bounds it (established wallets only)
+//   New wallets (see POLICY.established) can only get secured credit.
 //
 // EVERYTHING that is a business decision lives in POLICY below (haircuts, advance rates,
 // score bands, pricing). The numbers are first-draft placeholders for the team to sign off,
 // not calibrated against loan performance. `computeOffers(inputs, policy)` is pure, so a
 // partner-specific policy is just another object passed in. Output is always "indicative".
 const POLICY = {
-  version: "2026-10-06-draft2",
+  version: "2026-10-06-draft3",
 
   // Collateral: what share of a holding's market value is NOT lendable, by asset class.
   collateralClasses: {
@@ -26,15 +28,23 @@ const POLICY = {
   lpFactor: 0.90,        // extra factor on pool / vault shares (exit risk, impermanent loss)
   clawbackFactor: 0.50,  // issuer can reclaim the balance
 
+  // Unsecured and score + collateral credit are for established wallets only. A busy wallet can be
+  // created and farmed in a week, so a tier is not enough: the DeFi track record must also be long.
+  // tenure points come from the score (see TENURE_BUCKETS): 11 = more than 90 days, 15 = more than 180.
+  established: { minTiers: ["A", "B"], minTenurePoints: 11, minTenureLabel: "90 days" },
+
   models: {
     secured: { advanceRate: 0.75, minLimit: 50, maxLimit: 250000 },
     unsecured: {
-      // [limit at the bottom of the tier, limit at the top of the tier]; tier C is not eligible
-      bands: { A: { from: 67, to: 100, min: 2500, max: 10000 }, B: { from: 34, to: 66, min: 250, max: 2500 } },
+      // Starter line by score within the tier (a small, bounded first exposure). `ceiling` bands are what
+      // the line is meant to grow toward as repayments are recorded; they are shown, not granted.
+      starter: { A: { from: 67, to: 100, min: 100, max: 100 }, B: { from: 34, to: 66, min: 50, max: 75 } },
+      ceiling: { A: { from: 67, to: 100, min: 2500, max: 10000 }, B: { from: 34, to: 66, min: 250, max: 2500 } },
       allowedPaths: ["lending", "activity"],
       // A score proves behaviour, not capacity (a wallet can be busy and nearly empty), so the line
       // never exceeds this multiple of the wallet's net priced holdings, collateral or not.
       capacityMultiple: 1.0,
+      minLimit: 50,
       maxLimit: 10000
     },
     mix: {
@@ -108,6 +118,15 @@ function buildCollateral(portfolio, policy) {
   };
 }
 
+// -> null when the wallet is established, else the reason it is not (new wallets only get secured credit).
+function notEstablishedReason(score, policy) {
+  const e = policy.established;
+  if (!e.minTiers.includes(score.tier)) return "Unsecured and score + collateral credit need tier B or better. New wallets can use secured credit.";
+  const tenure = (score.components || []).find((c) => c.key === "tenure");
+  if (!tenure || tenure.points < e.minTenurePoints) return `Unsecured and score + collateral credit need more than ${e.minTenureLabel} of on-chain track record. New wallets can use secured credit.`;
+  return null;
+}
+
 function priceApr(model, score, collateral, policy) {
   const a = policy.apr;
   const scorePremium = a.scorePremiumAt0 - (a.scorePremiumAt0 - a.scorePremiumAt100) * (clamp(score, 0, 100) / 100);
@@ -140,7 +159,7 @@ function offer(model, limit, minLimit, maxLimit, score, collateral, policy, note
     limitUsd: eligible ? Math.floor(capped) : 0,
     aprPct: pricing ? pricing.aprPct : null,
     aprBreakdown: pricing ? pricing.breakdown : null,
-    notes: eligible ? notes : [ineligibleReason || `Below the minimum line of $${minLimit}.`, ...notes]
+    notes: eligible ? notes : [ineligibleReason || `Below the minimum line of $${minLimit}.`]
   };
 }
 
@@ -160,20 +179,21 @@ function computeOffers({ score, portfolio }, policy = POLICY) {
 
   // Unsecured
   const um = policy.models.unsecured;
-  const ub = bandFor(um.bands, tier);
-  let unsecuredIneligible = null;
-  if (!ub) unsecuredIneligible = "Unsecured credit needs tier B or better.";
-  else if (!um.allowedPaths.includes(path)) unsecuredIneligible = "Not enough on-chain history to score for unsecured credit.";
-  const scoreLimit = ub ? lerp(s, ub.from, ub.to, ub.min, ub.max) : 0;
+  const sb = bandFor(um.starter, tier);
+  const cb = bandFor(um.ceiling, tier);
+  let unsecuredIneligible = notEstablishedReason(score, policy);
+  if (!unsecuredIneligible && !um.allowedPaths.includes(path)) unsecuredIneligible = "Not enough on-chain history to score for unsecured credit.";
+  if (!unsecuredIneligible && !haveHoldings) unsecuredIneligible = "Holdings couldn't be read, so the wallet's capacity can't be checked.";
+  const starterLimit = sb ? lerp(s, sb.from, sb.to, sb.min, sb.max) : 0;
+  const ceilingLimit = cb ? Math.min(lerp(s, cb.from, cb.to, cb.min, cb.max), um.maxLimit) : 0;
   // Capacity: everything priced the wallet holds (pledgeable or not) less what it already owes.
   const capacityUsd = Math.max(0, collateral.marketUsd + collateral.excludedUsd - debtUsd);
-  const capacityCap = capacityUsd * um.capacityMultiple;
-  if (!unsecuredIneligible && !haveHoldings) unsecuredIneligible = "Holdings couldn't be read, so the wallet's capacity can't be checked.";
-  const unsecuredLimit = Math.min(scoreLimit, capacityCap);
-  const unsecuredNotes = ["Based on the LCRD score, and never more than the value of the wallet's visible holdings."];
-  if (ub && haveHoldings && capacityCap < scoreLimit) unsecuredNotes.push(`The score allows up to $${Math.floor(scoreLimit).toLocaleString("en-US")}, but the wallet holds $${Math.floor(capacityUsd).toLocaleString("en-US")}, so the line is capped there.`);
-  const unsecured = offer("unsecured", unsecuredLimit, ub ? ub.min : 0, um.maxLimit, s, collateral, policy,
-    unsecuredNotes, unsecuredIneligible || (ub && haveHoldings && unsecuredLimit < ub.min ? `The wallet holds $${Math.floor(capacityUsd).toLocaleString("en-US")}, below the $${ub.min} minimum unsecured line.` : null));
+  const unsecuredLimit = Math.min(starterLimit, capacityUsd * um.capacityMultiple);
+  if (!unsecuredIneligible && unsecuredLimit < um.minLimit) unsecuredIneligible = `The wallet holds $${Math.floor(capacityUsd).toLocaleString("en-US")}, below the $${um.minLimit} minimum unsecured line.`;
+  const unsecuredNotes = [`A starter line from the LCRD score, never more than the wallet's visible holdings. As repayments are recorded it is meant to grow, up to about $${Math.floor(ceilingLimit).toLocaleString("en-US")} at today's score.`];
+  if (sb && haveHoldings && capacityUsd < starterLimit) unsecuredNotes.push(`Capped at the $${Math.floor(capacityUsd).toLocaleString("en-US")} the wallet holds.`);
+  const unsecured = offer("unsecured", unsecuredLimit, um.minLimit, um.maxLimit, s, collateral, policy, unsecuredNotes, unsecuredIneligible);
+  unsecured.growsToUsd = unsecured.eligible ? Math.floor(ceilingLimit) : null;
 
   // Mix
   const mm = policy.models.mix;
@@ -184,7 +204,7 @@ function computeOffers({ score, portfolio }, policy = POLICY) {
   const mixLimit = Math.min(scoreLine, collateralCap);
   const mixNotes = [`The score allows up to $${Math.floor(scoreLine).toLocaleString("en-US")}; collateral allows up to $${Math.floor(Math.max(0, collateralCap)).toLocaleString("en-US")}. The lower of the two applies.`];
   const mix = offer("mix", mixLimit, mm.minLimit, mm.maxLimit, s, collateral, policy, mixNotes,
-    !haveHoldings ? "Holdings couldn't be read, so collateral can't be counted." : collateral.lendableUsd <= 0 ? "No transferable, priced collateral found." : scoreLine <= 0 ? "The score doesn't support a line yet." : null);
+    notEstablishedReason(score, policy) || (!haveHoldings ? "Holdings couldn't be read, so collateral can't be counted." : collateral.lendableUsd <= 0 ? "No transferable, priced collateral found." : scoreLine <= 0 ? "The score doesn't support a line yet." : null));
 
   return {
     indicative: true,
