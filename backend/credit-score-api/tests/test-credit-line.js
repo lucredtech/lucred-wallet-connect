@@ -39,9 +39,20 @@ assert.strictEqual(d.offers.secured.limitUsd, Math.floor(9500 * 0.75 - 5000));
 // 6. Holdings unavailable
 const n = computeOffers({ score: { score: 60, tier: "B", path: "activity" }, portfolio: null });
 show("holdings unavailable", n);
-assert.strictEqual(n.offers.secured.eligible, false); assert.strictEqual(n.offers.mix.eligible, false); assert.strictEqual(n.offers.unsecured.eligible, true);
+assert.strictEqual(n.offers.secured.eligible, false); assert.strictEqual(n.offers.mix.eligible, false); assert.strictEqual(n.offers.unsecured.eligible, false); // capacity unknown => no unsecured line
 
 // 7. Limits respect caps
 const big = computeOffers({ score: { score: 100, tier: "A", path: "lending" }, portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 10000000)], positions: [] } });
 assert.strictEqual(big.offers.secured.limitUsd, 250000); assert.ok(big.offers.mix.limitUsd <= 30000); assert.ok(big.offers.unsecured.limitUsd <= 10000);
+// 8. Unsecured is capped by what the wallet holds: busy but nearly empty wallet (the reported case)
+const thin = computeOffers({ score: { score: 60, tier: "B", path: "activity" }, portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 227)], positions: [] } });
+show("B / 60 holding $227", thin);
+assert.strictEqual(thin.offers.unsecured.eligible, false);               // $227 < $250 band minimum
+const mid = computeOffers({ score: { score: 60, tier: "B", path: "activity" }, portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 900)], positions: [] } });
+assert.strictEqual(mid.offers.unsecured.limitUsd, 900);                  // capped at holdings, below the $2,078 score line
+const rich = computeOffers({ score: { score: 60, tier: "B", path: "activity" }, portfolio: { totals: { debtUsd: 0 }, tokens: [tok("USDC", 50000)], positions: [] } });
+assert.ok(rich.offers.unsecured.limitUsd > 2000);                        // plenty of holdings: the score line applies
+// non-transferable holdings still show capacity, debt reduces it
+const nt = computeOffers({ score: { score: 60, tier: "B", path: "activity" }, portfolio: { totals: { debtUsd: 1000 }, tokens: [tok("ICE", 3000, { transferable: false })], positions: [] } });
+assert.strictEqual(nt.offers.unsecured.limitUsd, 2000);
 console.log("\nall assertions passed");

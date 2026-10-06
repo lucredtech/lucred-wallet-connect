@@ -3,7 +3,7 @@
 // Three lending models are always computed side by side, so a partner can embed whichever
 // one it wants (or all three):
 //   secured   - limit comes from the wallet's transferable, priced collateral only
-//   unsecured - limit comes from the score only
+//   unsecured - limit comes from the score, capped by what the wallet visibly holds
 //   mix       - the score sets the limit, the collateral bounds it
 //
 // EVERYTHING that is a business decision lives in POLICY below (haircuts, advance rates,
@@ -11,7 +11,7 @@
 // not calibrated against loan performance. `computeOffers(inputs, policy)` is pure, so a
 // partner-specific policy is just another object passed in. Output is always "indicative".
 const POLICY = {
-  version: "2026-10-03-draft1",
+  version: "2026-10-06-draft2",
 
   // Collateral: what share of a holding's market value is NOT lendable, by asset class.
   collateralClasses: {
@@ -32,6 +32,9 @@ const POLICY = {
       // [limit at the bottom of the tier, limit at the top of the tier]; tier C is not eligible
       bands: { A: { from: 67, to: 100, min: 2500, max: 10000 }, B: { from: 34, to: 66, min: 250, max: 2500 } },
       allowedPaths: ["lending", "activity"],
+      // A score proves behaviour, not capacity (a wallet can be busy and nearly empty), so the line
+      // never exceeds this multiple of the wallet's net priced holdings, collateral or not.
+      capacityMultiple: 1.0,
       maxLimit: 10000
     },
     mix: {
@@ -161,9 +164,16 @@ function computeOffers({ score, portfolio }, policy = POLICY) {
   let unsecuredIneligible = null;
   if (!ub) unsecuredIneligible = "Unsecured credit needs tier B or better.";
   else if (!um.allowedPaths.includes(path)) unsecuredIneligible = "Not enough on-chain history to score for unsecured credit.";
-  const unsecuredLimit = ub ? lerp(s, ub.from, ub.to, ub.min, ub.max) : 0;
+  const scoreLimit = ub ? lerp(s, ub.from, ub.to, ub.min, ub.max) : 0;
+  // Capacity: everything priced the wallet holds (pledgeable or not) less what it already owes.
+  const capacityUsd = Math.max(0, collateral.marketUsd + collateral.excludedUsd - debtUsd);
+  const capacityCap = capacityUsd * um.capacityMultiple;
+  if (!unsecuredIneligible && !haveHoldings) unsecuredIneligible = "Holdings couldn't be read, so the wallet's capacity can't be checked.";
+  const unsecuredLimit = Math.min(scoreLimit, capacityCap);
+  const unsecuredNotes = ["Based on the LCRD score, and never more than the value of the wallet's visible holdings."];
+  if (ub && haveHoldings && capacityCap < scoreLimit) unsecuredNotes.push(`The score allows up to $${Math.floor(scoreLimit).toLocaleString("en-US")}, but the wallet holds $${Math.floor(capacityUsd).toLocaleString("en-US")}, so the line is capped there.`);
   const unsecured = offer("unsecured", unsecuredLimit, ub ? ub.min : 0, um.maxLimit, s, collateral, policy,
-    ["Based on the LCRD score only; no collateral is counted."], unsecuredIneligible);
+    unsecuredNotes, unsecuredIneligible || (ub && haveHoldings && unsecuredLimit < ub.min ? `The wallet holds $${Math.floor(capacityUsd).toLocaleString("en-US")}, below the $${ub.min} minimum unsecured line.` : null));
 
   // Mix
   const mm = policy.models.mix;
