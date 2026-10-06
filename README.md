@@ -15,7 +15,7 @@ The web app itself is static client-only code with no server secrets. Ownership 
 2. **Verify** — builds a zero-fee, never-submitted transaction with a `manageData` op and a random nonce, has the connected wallet sign it, then verifies the signature client-side against the claimed address (`@stellar/stellar-sdk`'s `WebAuth.verifyTxSignedBy`). Proves wallet ownership without touching the network or needing a server.
 3. **Score** — calls the existing `credit-score-api`'s public `GET /score?wallet=` endpoint and renders the result (tier, score, reasons, event count).
 
-**Can't connect a wallet?** There's a "paste a wallet address" fallback right on the home screen — it skips the signature step entirely and goes straight to the score lookup. It's clearly marked **unverified** in the UI (gray dot + tag, no "Verify Ownership" step) since anyone can paste any address; it's the same public lookup `credit-score-api` already allows, just surfaced in this UI for people without a browser wallet.
+**Can't connect a wallet?** There's a "paste a wallet address" fallback right on the home screen — it skips the signature step entirely and goes straight to the score lookup. It's clearly marked **unverified** in the UI (gray dot + tag, no "Verify Ownership" step) since anyone can paste any address. The indicative credit line is shown for it too, as a labelled preview (it is built from the same public data), and the waitlist never attaches a pasted address to an email. It's the same public lookup `credit-score-api` already allows, just surfaced in this UI for people without a browser wallet.
 
 ## Local development
 

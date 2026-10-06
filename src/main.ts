@@ -3,7 +3,7 @@ import { connectWallet, disconnectWallet, proveOwnership, isGAddress } from "./w
 import { fetchScore, type ScoreResult } from "./score";
 import { renderFactors } from "./factors";
 import { loadPortfolio, resetPortfolio } from "./portfolioView";
-import { loadCreditLine, resetCreditLine, showCreditLineLocked, setWaitlistWallet } from "./creditLineView";
+import { loadCreditLine, resetCreditLine, setWaitlistWallet } from "./creditLineView";
 
 const STELLAR_ADDRESS_PATTERN = /^[GC][A-Z2-7]{55}$/;
 
@@ -167,21 +167,13 @@ function renderScore(result: ScoreResult) {
   // Holdings load in the background - the score never waits on them.
   void loadPortfolio(result.wallet);
 
-  // An indicative credit line is only shown for a wallet whose owner has proven it - a
-  // pasted address is somebody else's public data. Flip this if a partner embed wants it open.
-  // A connected wallet is saved with the waitlist email (so nobody retypes it); a pasted address is
-  // someone else's public data and is never attached.
+  // Everything the credit line uses is public chain data, so every address gets one. Only a wallet
+  // that has proven ownership gets it as its own; a pasted or unverifiable address gets the same
+  // numbers as a labelled preview. A connected wallet is saved with the waitlist email (so nobody
+  // retypes it); a pasted address is someone else's public data and is never attached.
   const verified = statusDot.dataset.verified === "true";
   setWaitlistWallet(currentMode === "wallet" ? { address: result.wallet, verified } : null);
-  if (verified) {
-    void loadCreditLine(result.wallet);
-  } else {
-    showCreditLineLocked(
-      currentMode === "pasted"
-        ? "Connect your wallet and verify ownership to see an indicative credit line. A pasted address is read-only."
-        : "Smart-contract wallets can't be verified yet, so an indicative credit line isn't available for this one.",
-    );
-  }
+  void loadCreditLine(result.wallet, verified ? undefined : currentMode === "pasted" ? "pasted" : "contract");
 }
 
 copyBtn.addEventListener("click", async () => {

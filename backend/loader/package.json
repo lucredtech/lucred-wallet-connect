@@ -1,0 +1,11 @@
+{
+  "name": "lcrd-bq-loader",
+  "private": true,
+  "description": "Idempotent loader: extracted_logs/*.jsonl -> BigQuery credit_events",
+  "main": "loader.js",
+  "dependencies": {
+    "@google-cloud/bigquery": "^7.9.0",
+    "@google-cloud/storage": "^7.14.0"
+  },
+  "engines": { "node": ">=20" }
+}

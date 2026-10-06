@@ -6,6 +6,8 @@ const card = $("credit-line");
 const loading = $("cl-loading");
 const errorEl = $("cl-error");
 const locked = $("cl-locked");
+const previewEl = $("cl-preview");
+const asofEl = $("cl-asof");
 const body = $("cl-body");
 const tabs = $("cl-tabs");
 const detail = $("cl-detail");
@@ -131,22 +133,27 @@ let requestId = 0;
 export function resetCreditLine() {
   requestId++;
   card.classList.add("hidden");
+  setPreview(undefined);
 }
 
-/** Wallets that haven't proven ownership only see why the section is locked. */
-export function showCreditLineLocked(reason: string) {
-  requestId++;
-  card.classList.remove("hidden");
-  loading.classList.add("hidden");
-  errorEl.classList.add("hidden");
-  body.classList.add("hidden");
-  locked.textContent = reason;
-  locked.classList.remove("hidden");
+/** Why a credit line is only a preview: the address hasn't been proven to belong to the viewer. */
+export type PreviewKind = "pasted" | "contract";
+const PREVIEW_TEXT: Record<PreviewKind, string> = {
+  pasted: "Preview for the address you pasted, estimated from its public on-chain activity. Connect your wallet and verify ownership to see your own.",
+  contract: "Preview estimated from this wallet's public on-chain activity. Smart-contract wallets can't be verified yet, so this stays a preview.",
+};
+
+function setPreview(kind: PreviewKind | undefined) {
+  previewEl.textContent = kind ? PREVIEW_TEXT[kind] : "";
+  previewEl.classList.toggle("hidden", !kind);
+  asofEl.textContent = kind ? "preview" : "estimate";
 }
 
-export async function loadCreditLine(address: string) {
+/** A verified wallet gets the plain card; anything else gets the same numbers under a preview banner. */
+export async function loadCreditLine(address: string, preview?: PreviewKind) {
   const mine = ++requestId;
   card.classList.remove("hidden");
+  setPreview(preview);
   loading.classList.remove("hidden");
   errorEl.classList.add("hidden");
   locked.classList.add("hidden");

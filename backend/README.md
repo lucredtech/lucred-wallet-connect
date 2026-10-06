@@ -20,7 +20,15 @@ TypeScript. Reads Stellar ledger exports (Galexie, stored in Cloud Storage), fin
 | `src/poolDiscovery.ts` | Finds new pools and vaults (Aquarius, Soroswap, DeFindex) at runtime so coverage grows without a redeploy. |
 | `src/gcs.ts`, `src/indexer.ts` | Reads the raw files, writes the extracted events, and tracks progress. A "live-tip" mode follows the newest ledger folder automatically. |
 
-Run with Docker (`docker-compose.indexer-shard.yml`). Credentials are never in the repo: the container mounts a Google service-account key at runtime.
+Run with Docker (`docker-compose.indexer-shard.yml`).
+
+## `loader/`: event files into BigQuery
+
+The idempotent loader that moves the indexer's event files into BigQuery. It records each file by name and loads each
+chunk in one transaction, so a file can never be loaded twice. Details, commands and the cutover runbook:
+[loader/README.md](loader/README.md).
+
+(The indexer's own run instructions continue below.) Credentials are never in the repo: the container mounts a Google service-account key at runtime.
 
 ## `credit-score-api/` — scoring, holdings and credit line
 
@@ -60,4 +68,4 @@ Running the API itself needs `npm install` and Google application-default creden
 
 - **Everything is read from public chain data.** No off-chain or self-reported input.
 - **The credit line is an estimate**, not an offer. The policy numbers are a first draft, not calibrated against loan performance.
-- Not included here: the scheduled job that loads extracted events into BigQuery, one-off backfill scripts, and deployment credentials.
+- Not included here: one-off backfill scripts and deployment credentials.
