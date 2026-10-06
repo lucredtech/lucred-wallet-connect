@@ -19,7 +19,7 @@ const pct = (n: number) => `${n.toFixed(2).replace(/\.?0+$/, "")}%`;
 
 const MODEL_INFO: Record<CreditModel, { name: string; blurb: string }> = {
   secured: { name: "Secured", blurb: "Backed by the holdings the wallet could pledge" },
-  unsecured: { name: "Unsecured", blurb: "Based on the LCRD score alone" },
+  unsecured: { name: "Unsecured", blurb: "A starter line that grows as you repay" },
   mix: { name: "Score + collateral", blurb: "The score sets the limit, holdings cap it" },
 };
 const ORDER: CreditModel[] = ["mix", "secured", "unsecured"];
