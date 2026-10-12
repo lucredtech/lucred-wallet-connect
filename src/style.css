@@ -1259,3 +1259,24 @@ footer {
   font-size: var(--text-body-sm);
   margin: var(--space-2) 0;
 }
+
+/* Borrow page (standalone) */
+.borrow-shell {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-5, 24px) var(--space-4, 16px) var(--space-6, 32px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+.borrow-connect {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3, 12px);
+}
+.borrow-address {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  color: var(--color-text-secondary);
+  font-size: var(--text-body-sm);
+}

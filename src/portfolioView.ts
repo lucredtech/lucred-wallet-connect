@@ -169,9 +169,25 @@ function render(p: Portfolio) {
 
 let requestId = 0;
 
+// Show the "Borrow USDC against your DeFindex position" links (on the score + holdings cards) only
+// when the wallet actually holds a transferable, priced DeFindex position; point them at the borrow page.
+function setBorrowCta(address: string, portfolio: Portfolio | null) {
+  const has = !!portfolio && portfolio.positions.some(
+    (p) => p.protocol === "defindex" && p.transferable === true && (p.usdValue ?? 0) >= 0.01
+  );
+  const href = `/borrow.html?wallet=${encodeURIComponent(address)}`;
+  for (const id of ["borrow-cta-score", "borrow-cta-holdings"]) {
+    const link = document.getElementById(id) as HTMLAnchorElement | null;
+    if (!link) continue;
+    link.href = href;
+    link.classList.toggle("hidden", !has);
+  }
+}
+
 export function resetPortfolio() {
   requestId++;
   card.classList.add("hidden");
+  setBorrowCta("", null);
 }
 
 export async function loadPortfolio(address: string) {
@@ -181,9 +197,10 @@ export async function loadPortfolio(address: string) {
   errorEl.classList.add("hidden");
   body.classList.add("hidden");
   asOf.textContent = "";
+  setBorrowCta(address, null);
   try {
     const portfolio = await fetchPortfolio(address);
-    if (mine === requestId) render(portfolio);
+    if (mine === requestId) { render(portfolio); setBorrowCta(address, portfolio); }
   } catch (err) {
     if (mine !== requestId) return;
     loading.classList.add("hidden");
