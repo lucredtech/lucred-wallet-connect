@@ -16,7 +16,7 @@ const acceptWrap = $("df-accept-wrap");
 const usdFmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const usd = (n: number) => usdFmt.format(n);
 const usd2 = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(n);
-const pct = (n: number) => `${n.toFixed(2).replace(/\.?0+$/, "")}%`;
+const pct = (n: number) => `${(Math.round(n * 100) / 100).toString()}%`;
 const shortId = (id: string) => `${id.slice(0, 4)}…${id.slice(-4)}`;
 
 const TERM_OPTIONS = [30, 90, 180, 365];
@@ -32,6 +32,12 @@ function row(label: string, value: string, cls = "df-row") {
   const r = el("div", cls);
   r.append(el("span", undefined, label), el("span", "df-val", value));
   return r;
+}
+function tile(label: string, value: string, sub?: string) {
+  const t = el("div", "df-tile");
+  t.append(el("div", "df-tile-label", label), el("div", "df-tile-value", value));
+  if (sub) t.append(el("div", "df-tile-sub", sub));
+  return t;
 }
 
 // ---- view state ----
@@ -69,28 +75,93 @@ function renderControls() {
   controls.append(termWrap);
 }
 
+// Health factor = collateral market value × liquidation LTV ÷ debt. >1 is safe; <1 is liquidatable.
+function healthBand(hf: number): { cls: string; label: string } {
+  if (hf >= 2) return { cls: "is-good", label: "Healthy" };
+  if (hf >= 1.3) return { cls: "is-ok", label: "Comfortable" };
+  if (hf >= 1.1) return { cls: "is-warn", label: "Watch" };
+  return { cls: "is-risk", label: "At risk" };
+}
+
+function renderHealth(data: DfTerms) {
+  const market = data.collateral!.marketUsd;
+  const principal = data.advance!.principalUsd;
+  const liq = data.ltv!.liquidationLtv;
+  const call = data.ltv!.marginCallLtv;
+  const origLtv = data.ltv!.originationLtv; // principal / market
+  const hf = principal > 0 ? (market * liq) / principal : 0;
+  const band = healthBand(hf);
+  const powerUsed = liq > 0 ? origLtv / liq : 0; // "borrow power used" (Aave-style)
+
+  const wrap = el("div", `df-health ${band.cls}`);
+
+  const head = el("div", "df-health-head");
+  const left = el("div");
+  left.append(el("span", "df-health-label", "Health factor"));
+  const hfVal = el("span", "df-health-value");
+  hfVal.append(el("span", "df-health-num", hf.toFixed(2)), el("span", "df-health-tag", band.label));
+  left.append(hfVal);
+  const right = el("div", "df-health-power");
+  right.append(el("span", "df-tile-label", "Borrow power used"), el("span", "df-health-power-val", pct(powerUsed * 100)));
+  head.append(left, right);
+  wrap.append(head);
+
+  // Gauge: LTV from 0 to the liquidation threshold. Fill to current LTV; ticks at margin-call & liquidation.
+  const track = el("div", "df-gauge");
+  const fill = el("div", "df-gauge-fill");
+  fill.style.width = `${Math.min(powerUsed, 1) * 100}%`;
+  track.append(fill);
+  const tick = (ltvAt: number, label: string) => {
+    const t = el("div", "df-gauge-tick");
+    t.style.left = `${Math.min(ltvAt / liq, 1) * 100}%`;
+    t.title = label;
+    track.append(t);
+  };
+  tick(call, "Margin call");
+  track.append(el("div", "df-gauge-end")); // liquidation at 100% of the track
+  wrap.append(track);
+
+  const legend = el("div", "df-gauge-legend");
+  legend.append(
+    el("span", undefined, `Your LTV ${pct(origLtv * 100)}`),
+    el("span", undefined, `Margin call ${pct(call * 100)}`),
+    el("span", undefined, `Liquidation ${pct(liq * 100)}`),
+  );
+  wrap.append(legend);
+  return wrap;
+}
+
 function renderTerms(data: DfTerms) {
   renderControls();
-
-  // Summary: advance + APR + structure.
   summary.replaceChildren();
-  const head = el("div", "df-head");
-  const adv = el("div");
-  adv.append(el("div", "stat-key", "You could draw"), el("div", "df-amount", usd(data.advance!.principalUsd)), el("div", "df-sub", "USDC to your wallet"));
-  const apr = el("div");
-  const termText = data.terms!.structure === "fixed_term"
-    ? `${TERM_LABEL[data.terms!.termDays as number] || data.terms!.termDays + " days"} term`
-    : "Open-ended";
-  apr.append(el("div", "stat-key", "Indicative APR"), el("div", "df-amount", pct(data.terms!.aprPct)), el("div", "df-sub", termText));
-  head.append(adv, apr);
-  summary.append(head);
 
-  summary.append(row(`Advance rate (${pct(data.advance!.rate * 100)} of position)`, `${usd(data.advance!.principalUsd)} of ${usd(data.collateral!.marketUsd)}`));
-  if (data.terms!.maturityDate) {
-    summary.append(row("Repay by", new Date(data.terms!.maturityDate).toLocaleDateString()));
-  } else {
-    summary.append(row("Repayment", "No fixed date — interest accrues until you repay"));
-  }
+  // Hero: the amount + APR.
+  const hero = el("div", "df-hero");
+  const main = el("div", "df-hero-main");
+  main.append(el("div", "df-hero-label", "Available to borrow"));
+  const amt = el("div", "df-hero-amount");
+  amt.append(document.createTextNode(usd(data.advance!.principalUsd)), el("span", "df-hero-unit", "USDC"));
+  main.append(amt);
+  main.append(el("div", "df-hero-sub", `${pct(data.advance!.rate * 100)} of your ${usd(data.collateral!.marketUsd)} position`));
+  const aprBox = el("div", "df-hero-apr");
+  aprBox.append(el("div", "df-hero-label", "Rate (APR)"), el("div", "df-hero-apr-val", pct(data.terms!.aprPct)));
+  aprBox.append(el("div", "df-hero-sub", data.terms!.structure === "fixed_term"
+    ? `${TERM_LABEL[data.terms!.termDays as number] || data.terms!.termDays + "d"} term`
+    : "Open-ended"));
+  hero.append(main, aprBox);
+  summary.append(hero);
+
+  // Health factor — the most prominent risk metric (Morpho/Aave pattern).
+  summary.append(renderHealth(data));
+
+  // Stat tiles.
+  const tiles = el("div", "df-tiles");
+  tiles.append(
+    tile("Position value", usd(data.collateral!.marketUsd)),
+    tile("Lendable", usd(data.collateral!.lendableUsd), `after ${pct(data.collateral!.averageHaircut * 100)} haircut`),
+    tile("Repay by", data.terms!.maturityDate ? new Date(data.terms!.maturityDate).toLocaleDateString() : "No fixed date"),
+  );
+  summary.append(tiles);
 
   // Interest-growth projection (the open-ended risk, made legible).
   const proj = el("div", "df-proj");
@@ -100,30 +171,22 @@ function renderTerms(data: DfTerms) {
   proj.append(row("After 1 year", usd2(data.projectedDebt!.d365)));
   summary.append(proj);
 
-  // Health / liquidation ladder (disclosure only in this stage).
-  const health = el("div", "df-proj");
-  health.append(el("div", "reasons-label", "Collateral health"));
-  health.append(row("Starting loan-to-value", pct(data.ltv!.originationLtv * 100)));
-  health.append(row("Margin call at", pct(data.ltv!.marginCallLtv * 100)));
-  health.append(row("Liquidation at", pct(data.ltv!.liquidationLtv * 100)));
-  summary.append(health);
-
   // Collateral: per-vault.
   collateralEl.replaceChildren();
   collateralEl.append(el("div", "reasons-label", "Collateral locked (your DeFindex position)"));
   for (const v of data.collateral!.vaults) {
-    const under = v.underlying.map((u) => `${u.code || "?"}`).join(", ");
+    const under = v.underlying.map((u) => u.code || "?").join(", ");
     collateralEl.append(row(`Vault ${shortId(v.shareToken)}${under ? ` · ${under}` : ""}`, `${usd(v.marketUsd)} → ${usd(v.lendableUsd)} lendable`));
   }
-  const total = row("Total position", `${usd(data.collateral!.marketUsd)} → ${usd(data.collateral!.lendableUsd)}`, "df-row df-total");
-  collateralEl.append(total);
+  collateralEl.append(row("Total position", `${usd(data.collateral!.marketUsd)} → ${usd(data.collateral!.lendableUsd)}`, "df-row df-total"));
 
   // Accept.
   acceptWrap.replaceChildren();
   if (state.preview) {
     acceptWrap.append(el("p", "df-note", "Connect your wallet and verify ownership to accept these terms."));
   } else {
-    const btn = el("button", "btn-primary df-accept-btn", "Review & accept terms") as HTMLButtonElement;
+    const btn = el("button", "btn-primary df-accept-btn") as HTMLButtonElement;
+    btn.textContent = `Borrow ${usd(data.advance!.principalUsd)} USDC`;
     const msg = el("p", "df-note");
     msg.id = "df-accept-msg";
     btn.addEventListener("click", async () => {
@@ -138,13 +201,13 @@ function renderTerms(data: DfTerms) {
           termDays: data.terms!.termDays,
           quote: data,
         });
-        btn.textContent = "Accepted";
+        btn.textContent = "Accepted ✓";
         msg.textContent = r.demo
           ? "Terms accepted (demo — no funds have moved). On testnet this will lock your dfTokens and disburse USDC."
           : "Terms accepted.";
       } catch (err) {
         btn.disabled = false;
-        btn.textContent = "Review & accept terms";
+        btn.textContent = `Borrow ${usd(data.advance!.principalUsd)} USDC`;
         msg.textContent = (err as Error)?.message || "Couldn't record acceptance right now.";
       }
     });
@@ -176,7 +239,7 @@ async function refresh() {
   errorEl.classList.add("hidden");
   ineligibleEl.classList.add("hidden");
   body.classList.add("hidden");
-  renderControls(); // reflect the toggle immediately
+  renderControls();
   try {
     const data = await fetchDfQuote(state.address, state.structure, state.termDays);
     if (mine !== requestId) return;
