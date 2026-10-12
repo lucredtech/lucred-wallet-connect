@@ -67,7 +67,26 @@ const POLICY = {
     min: 0.06, max: 0.36
   },
 
-  disclaimer: "Indicative estimate only. Not an offer of credit, not a credit decision and not financial advice. Figures use today's balances and prices and can change."
+  disclaimer: "Indicative estimate only. Not an offer of credit, not a credit decision and not financial advice. Figures use today's balances and prices and can change.",
+
+  // dfToken-backed USDC credit (see collateral-engine.js). A user pledges their DeFindex vault share
+  // tokens as collateral and draws USDC against them. Stage A is off-chain/indicative; Stage B locks
+  // the dfTokens in a Soroban escrow and disburses from treasury. All business numbers live here.
+  dfCredit: {
+    version: "df-credit-2026-10-draft1",
+    // Which DeFindex vaults are accepted as collateral. Empty = any priced, transferable DeFindex
+    // position (the v1 choice). To restrict later, list vault (share-token) contract ids here.
+    eligibleVaults: [],
+    // Share of the position's market value advanced as USDC, capped at the risk-adjusted lendable value.
+    advance: { minRate: 0.50, maxRate: 0.75, defaultRate: 0.60 },
+    structures: ["open_ended", "fixed_term"],
+    termDaysOptions: [30, 90, 180, 365],
+    // Optional APR adjustment by structure/term (fraction, added to the secured APR). Empty = no-op;
+    // the team drops its real variable-rate logic here (e.g. { open_ended: 0.02, 90: -0.01 }).
+    termAdjust: {},
+    // Liquidation ladder. Disclosure-only in Stage A (shown to the user); enforced on-chain in Stage B.
+    liquidation: { marginCallLtv: 0.85, liquidationLtv: 0.92, cureWindowSec: 600 }
+  }
 };
 
 const round2 = (n) => Math.round(n * 100) / 100;
