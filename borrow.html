@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Borrow USDC against your DeFindex position — LCRD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="borrow-shell">
+      <header class="info-masthead">
+        <span class="wordmark">LCRD</span>
+        <a class="btn-link" href="/">&larr; Back to score</a>
+      </header>
+
+      <div class="info-intro">
+        <h1>Borrow USDC against your DeFindex position</h1>
+        <p class="subtext">
+          Pledge your DeFindex vault tokens as collateral and draw USDC against them. Review the
+          indicative terms below. This is a demo — no funds move and nothing is locked on-chain yet.
+        </p>
+      </div>
+
+      <div id="borrow-connect" class="borrow-connect">
+        <button id="borrow-connect-btn" type="button" class="btn-primary">Connect wallet</button>
+        <span id="borrow-connect-note" class="df-note"></span>
+      </div>
+      <div id="borrow-verify" class="borrow-connect hidden">
+        <span id="borrow-address" class="borrow-address"></span>
+        <button id="borrow-verify-btn" type="button" class="btn-secondary">Verify ownership to borrow</button>
+      </div>
+      <p id="borrow-error" class="portfolio-error hidden"></p>
+
+      <section id="df-credit" class="portfolio-card credit-card" aria-labelledby="df-credit-title">
+        <div class="portfolio-head">
+          <h2 id="df-credit-title">Your terms</h2>
+          <span class="portfolio-asof" id="df-asof">demo</span>
+        </div>
+        <p id="df-preview" class="cl-preview hidden"></p>
+
+        <p id="df-loading" class="portfolio-loading hidden" role="status">Checking your DeFindex position and working out terms…</p>
+        <p id="df-error" class="portfolio-error hidden"></p>
+        <p id="df-ineligible" class="portfolio-loading hidden"></p>
+
+        <div id="df-body" class="hidden">
+          <div id="df-controls" class="df-controls"></div>
+          <div id="df-summary" class="df-summary"></div>
+          <div id="df-collateral" class="cl-collateral"></div>
+          <div id="df-accept-wrap" class="df-accept-wrap"></div>
+          <p class="pf-notes" id="df-disclaimer"></p>
+        </div>
+      </section>
+
+      <footer>
+        <span>LCRD</span>
+        <a href="/how-it-works.html#credit-line" class="footer-link">How the credit line is calculated</a>
+      </footer>
+    </main>
+
+    <script type="module" src="/src/borrow.ts"></script>
+    <script type="module" src="/src/analytics.ts"></script>
+  </body>
+</html>
