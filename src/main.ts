@@ -4,6 +4,7 @@ import { fetchScore, type ScoreResult } from "./score";
 import { renderFactors } from "./factors";
 import { loadPortfolio, resetPortfolio } from "./portfolioView";
 import { loadCreditLine, resetCreditLine, setWaitlistWallet } from "./creditLineView";
+import { loadDfCredit, resetDfCredit } from "./dfCreditView";
 
 const STELLAR_ADDRESS_PATTERN = /^[GC][A-Z2-7]{55}$/;
 
@@ -79,6 +80,7 @@ function setVerified(verified: boolean) {
 function resetToDisconnected() {
   resetPortfolio();
   resetCreditLine();
+  resetDfCredit();
   currentAddress = null;
   currentMode = null;
   connectStage.classList.remove("hidden");
@@ -174,6 +176,9 @@ function renderScore(result: ScoreResult) {
   const verified = statusDot.dataset.verified === "true";
   setWaitlistWallet(currentMode === "wallet" ? { address: result.wallet, verified } : null);
   void loadCreditLine(result.wallet, verified ? undefined : currentMode === "pasted" ? "pasted" : "contract");
+
+  // dfToken-backed USDC credit (only a verified, owned wallet can accept; everyone else sees a preview).
+  void loadDfCredit(result.wallet, !verified);
 }
 
 copyBtn.addEventListener("click", async () => {
