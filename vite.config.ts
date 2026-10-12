@@ -7,6 +7,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, "index.html"),
         howItWorks: resolve(__dirname, "how-it-works.html"),
+        borrow: resolve(__dirname, "borrow.html"),
       },
     },
   },
