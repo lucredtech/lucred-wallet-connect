@@ -4,11 +4,13 @@
 // here. Only the data source changed: that script read raw GCS files
 // directly; this reads from the BigQuery credit_events_normalized view,
 // which is clustered by userAddress, so a single-wallet lookup is cheap.
+const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const { BigQuery } = require("@google-cloud/bigquery");
 const { createPortfolioService, resolveVaultTicker } = require("./portfolio");
-const { computeOffers } = require("./credit-line");
+const { computeOffers, POLICY } = require("./credit-line");
+const collateralEngine = require("./collateral-engine");
 const { getClassicActivity, classicPoints } = require("./classic-activity");
 
 const bq = new BigQuery();
@@ -850,6 +852,114 @@ app.get("/credit-line", async (req, res) => {
       return res.status(504).json({ error: "This wallet has unusually high transaction volume and timed out while scoring. Please try again." });
     }
     res.status(500).json({ error: "Could not compute an indicative credit line right now." });
+  }
+});
+
+// ---- dfToken-backed USDC credit (see collateral-engine.js) ----
+// Off-chain / indicative in this stage: quote the USDC a wallet could draw against its DeFindex vault
+// position, and record an acceptance. NO funds move and nothing is locked on-chain here.
+const DF_STRUCTURES = new Set(["open_ended", "fixed_term"]);
+
+// GET /df-credit/quote?wallet=&structure=&termDays= -> terms object (public, read-only).
+app.get("/df-credit/quote", async (req, res) => {
+  const wallet = (req.query.wallet || "").trim().toUpperCase();
+  if (!STELLAR_ADDRESS_RE.test(wallet)) {
+    return res.status(400).json({ error: "Invalid Stellar address. Expected a 56-character address starting with G (account) or C (contract/smart wallet)." });
+  }
+  const structure = DF_STRUCTURES.has(req.query.structure) ? req.query.structure : "open_ended";
+  const termDays = req.query.termDays !== undefined ? Number(req.query.termDays) : undefined;
+  try {
+    const [score, portfolio] = await Promise.all([
+      computeWalletScore(wallet),
+      portfolioService.getPortfolio(wallet).catch((e) => { console.error("df-credit: portfolio unavailable:", e.message); return null; })
+    ]);
+    res.json({ wallet, ...collateralEngine.quote({ portfolio, score, structure, termDays }, POLICY), holdingsAsOf: portfolio ? portfolio.asOf : null });
+  } catch (err) {
+    console.error("df-credit quote error:", err);
+    if (err.message === "QUERY_TIMEOUT") {
+      return res.status(504).json({ error: "This wallet has unusually high transaction volume and timed out while scoring. Please try again." });
+    }
+    res.status(500).json({ error: "Could not compute dfToken-backed credit terms right now." });
+  }
+});
+
+// POST /df-credit/accept -> record that the user accepted the indicative terms. Server RE-DERIVES the
+// quote from fresh data and tolerance-checks the client's numbers; it never trusts client-supplied amounts.
+// No funds move (demo). Stored in credit_bureau.df_credit_acceptances (created on first use).
+let dfCreditTableReady = null;
+function ensureDfCreditTable() {
+  if (!dfCreditTableReady) {
+    dfCreditTableReady = bq.query(
+      "CREATE TABLE IF NOT EXISTS `credit_bureau.df_credit_acceptances` (" +
+        "id STRING NOT NULL, wallet STRING NOT NULL, walletVerified BOOL, structure STRING, termDays INT64, " +
+        "principalUsd FLOAT64, aprPct FLOAT64, collateralVaults STRING, termsJson STRING, policyVersion STRING, acceptedAt TIMESTAMP NOT NULL)"
+    ).catch((e) => { dfCreditTableReady = null; throw e; });
+  }
+  return dfCreditTableReady;
+}
+
+const dfAcceptHits = new Map(); // ip -> [timestamps]
+const DF_ACCEPT_PER_HOUR = 10;
+function dfAcceptRateLimited(ip) {
+  const now = Date.now();
+  const recent = (dfAcceptHits.get(ip) || []).filter((t) => now - t < 60 * 60 * 1000);
+  if (recent.length >= DF_ACCEPT_PER_HOUR) { dfAcceptHits.set(ip, recent); return true; }
+  recent.push(now);
+  dfAcceptHits.set(ip, recent);
+  if (dfAcceptHits.size > 5000) dfAcceptHits.delete(dfAcceptHits.keys().next().value);
+  return false;
+}
+
+app.post("/df-credit/accept", express.json({ limit: "4kb" }), async (req, res) => {
+  const body = req.body || {};
+  if (body.website) return res.json({ ok: true, demo: true }); // honeypot
+  const wallet = String(body.wallet || "").trim().toUpperCase();
+  if (!STELLAR_ADDRESS_RE.test(wallet)) return res.status(400).json({ error: "That wallet address isn't valid." });
+  const structure = DF_STRUCTURES.has(body.structure) ? body.structure : "open_ended";
+  const termDays = structure === "fixed_term" && body.termDays !== undefined ? Number(body.termDays) : undefined;
+  const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
+  if (dfAcceptRateLimited(ip)) return res.status(429).json({ error: "Too many requests from this connection. Please try again later." });
+
+  try {
+    // Re-derive from fresh data; never trust client numbers.
+    const [score, portfolio] = await Promise.all([
+      computeWalletScore(wallet),
+      portfolioService.getPortfolio(wallet).catch(() => null)
+    ]);
+    const terms = collateralEngine.quote({ portfolio, score, structure, termDays }, POLICY);
+    if (!terms.eligible) return res.status(409).json({ error: terms.reason || "This wallet no longer has an eligible DeFindex position." });
+
+    // Tolerance check against what the client says it accepted (guards against tampering/stale quotes).
+    const claimed = body.quote || {};
+    const claimedPrincipal = Number(claimed?.advance?.principalUsd);
+    if (Number.isFinite(claimedPrincipal) && terms.advance.principalUsd > 0) {
+      const drift = Math.abs(claimedPrincipal - terms.advance.principalUsd) / terms.advance.principalUsd;
+      if (drift > 0.02) return res.status(409).json({ error: "Terms have changed since the quote. Please review the updated terms.", terms });
+    }
+
+    await ensureDfCreditTable();
+    const id = crypto.randomUUID();
+    await bq.query({
+      query: "INSERT INTO `credit_bureau.df_credit_acceptances` (id, wallet, walletVerified, structure, termDays, principalUsd, aprPct, collateralVaults, termsJson, policyVersion, acceptedAt) " +
+        "VALUES (@id, @wallet, @walletVerified, @structure, @termDays, @principalUsd, @aprPct, @collateralVaults, @termsJson, @policyVersion, CURRENT_TIMESTAMP())",
+      params: {
+        id, wallet,
+        walletVerified: body.walletVerified === true,
+        structure: terms.terms.structure,
+        termDays: terms.terms.termDays,
+        principalUsd: terms.advance.principalUsd,
+        aprPct: terms.terms.aprPct,
+        collateralVaults: JSON.stringify(terms.collateral.vaults.map((v) => v.shareToken)),
+        termsJson: JSON.stringify(terms),
+        policyVersion: terms.policyVersion
+      },
+      types: { id: "STRING", wallet: "STRING", walletVerified: "BOOL", structure: "STRING", termDays: "INT64", principalUsd: "FLOAT64", aprPct: "FLOAT64", collateralVaults: "STRING", termsJson: "STRING", policyVersion: "STRING" }
+    });
+    res.json({ ok: true, id, demo: true, terms });
+  } catch (err) {
+    console.error("df-credit accept error:", err.message);
+    if (err.message === "QUERY_TIMEOUT") return res.status(504).json({ error: "Scoring timed out. Please try again." });
+    res.status(500).json({ error: "Couldn't record your acceptance right now. Please try again." });
   }
 });
 
