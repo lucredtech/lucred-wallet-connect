@@ -1280,3 +1280,109 @@ footer {
   color: var(--color-text-secondary);
   font-size: var(--text-body-sm);
 }
+
+/* Prominent "Borrow" CTA (holdings card) */
+.borrow-cta-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  width: 100%;
+  margin: var(--space-4, 16px) 0 var(--space-2, 8px);
+  padding: var(--space-4, 16px);
+  border-radius: 14px;
+  text-decoration: none;
+  color: #fff;
+  background: var(--gradient-accent, linear-gradient(135deg, #6366f1, #7c3aed));
+  box-shadow: var(--shadow-border), 0 8px 24px rgba(99, 102, 241, 0.28);
+  transition: transform var(--duration-fast, 150ms) var(--ease-out), box-shadow var(--duration-fast, 150ms) var(--ease-out);
+}
+.borrow-cta-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-border-hover), 0 12px 30px rgba(99, 102, 241, 0.38);
+}
+.borrow-cta-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  opacity: 0.95;
+}
+.borrow-cta-text { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.borrow-cta-title { font-weight: 600; font-size: var(--text-body, 15px); }
+.borrow-cta-sub { font-size: var(--text-caption, 12px); opacity: 0.85; }
+.borrow-cta-arrow { font-size: 1.2rem; opacity: 0.9; }
+
+/* Borrow terms — hero */
+.df-hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.14), rgba(34, 211, 238, 0.08));
+  box-shadow: var(--shadow-border);
+  margin-bottom: var(--space-4, 16px);
+}
+.df-hero-label { font-size: var(--text-label, 11px); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); }
+.df-hero-amount {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.df-hero-unit { font-size: 1rem; color: var(--color-text-secondary); font-weight: 600; }
+.df-hero-sub { font-size: var(--text-body-sm, 13.5px); color: var(--color-text-secondary); margin-top: 4px; }
+.df-hero-apr { text-align: right; }
+.df-hero-apr-val {
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: var(--gradient-text, linear-gradient(120deg, #a5b4fc, #67e8f9));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Health factor + gauge */
+.df-health {
+  --hf: var(--color-text-secondary);
+  padding: var(--space-4, 16px);
+  border-radius: 14px;
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-border);
+  margin-bottom: var(--space-4, 16px);
+}
+.df-health.is-good { --hf: #34d399; }
+.df-health.is-ok   { --hf: #67e8f9; }
+.df-health.is-warn { --hf: #fbbf24; }
+.df-health.is-risk { --hf: #f87171; }
+.df-health-head { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-3); margin-bottom: var(--space-3); }
+.df-health-label { display: block; font-size: var(--text-label, 11px); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); }
+.df-health-value { display: flex; align-items: baseline; gap: 10px; }
+.df-health-num { font-family: ui-monospace, "SF Mono", monospace; font-variant-numeric: tabular-nums; font-size: 2rem; font-weight: 700; color: var(--hf); }
+.df-health-tag { font-size: var(--text-caption, 12px); font-weight: 600; color: var(--hf); padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--hf) 16%, transparent); }
+.df-health-power { text-align: right; }
+.df-health-power-val { display: block; font-family: ui-monospace, "SF Mono", monospace; font-variant-numeric: tabular-nums; font-size: 1.1rem; font-weight: 600; }
+.df-gauge {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--color-neutral-subtle-bg, rgba(255,255,255,0.08));
+  overflow: visible;
+}
+.df-gauge-fill { height: 100%; border-radius: 999px; background: var(--hf); transition: width var(--duration-base, 240ms) var(--ease-out); }
+.df-gauge-tick { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--color-text-secondary); opacity: 0.6; transform: translateX(-1px); }
+.df-gauge-end { position: absolute; top: -3px; right: 0; width: 2px; height: 16px; background: #f87171; }
+.df-gauge-legend { display: flex; justify-content: space-between; margin-top: var(--space-2, 8px); font-size: var(--text-caption, 12px); color: var(--color-text-secondary); }
+
+/* Stat tiles */
+.df-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3, 12px); margin-bottom: var(--space-4, 16px); }
+.df-tile { padding: var(--space-3, 12px); border-radius: 12px; background: var(--color-bg-surface); box-shadow: var(--shadow-border); }
+.df-tile-label { font-size: var(--text-label, 11px); text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-secondary); }
+.df-tile-value { font-family: ui-monospace, "SF Mono", monospace; font-variant-numeric: tabular-nums; font-size: 1.1rem; font-weight: 600; margin-top: 4px; }
+.df-tile-sub { font-size: var(--text-caption, 12px); color: var(--color-text-secondary); margin-top: 2px; }
+@media (max-width: 560px) { .df-tiles { grid-template-columns: 1fr; } .df-hero-apr { text-align: left; } }
