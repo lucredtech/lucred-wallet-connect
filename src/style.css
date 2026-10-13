@@ -1504,3 +1504,18 @@ h2 { letter-spacing: -0.01em; }
 .te-pre { white-space:pre-wrap; word-break:break-word; font-family:ui-monospace,"SF Mono",monospace; font-size:var(--text-caption); color:var(--color-text-on-surface-light); margin:0; }
 .te-log { display:flex; flex-direction:column; gap:4px; font-family:ui-monospace,"SF Mono",monospace; font-size:var(--text-caption); color:var(--color-text-secondary); }
 .te-log-line { padding:2px 0; border-bottom:1px solid var(--color-border-subtle); }
+.te-muted { color:var(--color-text-secondary); font-size:var(--text-body-sm); }
+.te-pos-head { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.te-badge { display:inline-flex; align-items:center; padding:3px 12px; border-radius:999px; font-size:var(--text-caption); font-weight:600; letter-spacing:0.02em; text-transform:uppercase; border:1px solid var(--color-border-subtle); color:var(--color-text-secondary); background:var(--color-neutral-subtle-bg); }
+.te-badge-open { color:var(--indigo-300); background:var(--color-accent-subtle-bg); border-color:transparent; }
+.te-badge-active { color:var(--emerald-400); background:var(--color-success-subtle-bg); border-color:transparent; }
+.te-badge-margincall { color:#fbbf24; background:rgba(251,191,36,0.16); border-color:transparent; }
+.te-badge-closed { color:var(--color-text-secondary); }
+.te-pos-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px 20px; }
+.te-pos-cell { display:flex; flex-direction:column; gap:3px; }
+.te-pos-k { font-size:var(--text-caption); color:var(--color-text-secondary); }
+.te-pos-v { font-size:var(--text-body); font-weight:600; color:var(--color-text-primary); }
+.te-raw { margin-top:16px; }
+.te-raw summary { cursor:pointer; font-size:var(--text-caption); color:var(--color-text-secondary); }
+.te-raw summary:hover { color:var(--color-text-primary); }
+.te-raw .te-pre { margin-top:10px; }
