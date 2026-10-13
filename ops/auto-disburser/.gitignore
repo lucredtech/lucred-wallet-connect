@@ -1,0 +1,4 @@
+config.env
+state.json
+watch.log
+node_modules/

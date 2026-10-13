@@ -1,0 +1,13 @@
+{
+  "name": "lcrd-auto-disburser",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Testnet watcher that auto-disburses Stage B escrow loans (treasury-signed)",
+  "main": "watch.js",
+  "scripts": {
+    "start": "node watch.js"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^17.2.1"
+  }
+}
