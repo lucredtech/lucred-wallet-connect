@@ -10,6 +10,7 @@ const STELLAR_ADDRESS_PATTERN = /^[GC][A-Z2-7]{55}$/;
 const connectStage = document.getElementById("connect-stage")!;
 const connectedStage = document.getElementById("connected-stage")!;
 const connectBtn = document.getElementById("connect-btn") as HTMLButtonElement;
+const connectLabel = document.getElementById("connect-btn-label")!;
 const pasteForm = document.getElementById("paste-form") as HTMLFormElement;
 const pasteInput = document.getElementById("paste-input") as HTMLInputElement;
 const pasteBtn = document.getElementById("paste-btn") as HTMLButtonElement;
@@ -200,7 +201,7 @@ copyBtn.addEventListener("click", async () => {
 connectBtn.addEventListener("click", async () => {
   clearError();
   connectBtn.disabled = true;
-  connectBtn.textContent = "Connecting…";
+  connectLabel.textContent = "Connecting…";
   try {
     const address = await connectWallet();
     enterConnectedState(address, "wallet");
@@ -209,7 +210,7 @@ connectBtn.addEventListener("click", async () => {
     // isGAddress) - go straight to the score instead of offering a
     // "Verify Ownership" step that would be guaranteed to fail.
     if (!isGAddress(address)) {
-      connectBtn.textContent = "Scoring…";
+      connectLabel.textContent = "Scoring…";
       const result = await fetchScoreWithNotice(address);
       renderScore(result);
     }
@@ -217,7 +218,7 @@ connectBtn.addEventListener("click", async () => {
     showError(err?.message || "Could not connect wallet.");
   } finally {
     connectBtn.disabled = false;
-    connectBtn.textContent = "Connect Wallet";
+    connectLabel.textContent = "Connect Wallet";
   }
 });
 

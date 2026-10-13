@@ -1,0 +1,30 @@
+[package]
+name = "collateral-escrow"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Stage B: Soroban escrow for dfToken-backed USDC credit.
+# A borrower locks DeFindex vault share tokens (dfTokens) as collateral and the treasury disburses
+# USDC. The contract holds collateral + loan state and verifies short-lived ed25519 engine
+# attestations for partial release / liquidation. It never prices anything on-chain.
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = "22.0.0"
+
+[dev-dependencies]
+soroban-sdk = { version = "22.0.0", features = ["testutils"] }
+ed25519-dalek = "2"
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+codegen-units = 1
+lto = true
+panic = "abort"

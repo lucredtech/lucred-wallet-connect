@@ -26,7 +26,14 @@
         </p>
 
         <div id="connect-stage">
-          <button id="connect-btn" class="btn-primary">Connect Wallet</button>
+          <button id="connect-btn" class="btn-connect">
+            <svg class="btn-connect-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+              <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              <rect x="3" y="7.5" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
+              <circle cx="16.5" cy="13.5" r="1.5" fill="currentColor"/>
+            </svg>
+            <span id="connect-btn-label">Connect Wallet</span>
+          </button>
 
           <div class="divider"><span>or</span></div>
 
@@ -122,8 +129,16 @@
 
               <p class="sr-only" id="sr-announce" role="status" aria-live="polite"></p>
 
+              <a id="borrow-cta-score" class="borrow-cta-btn hidden" href="/borrow.html">
+                <span class="borrow-cta-icon" aria-hidden="true">◈</span>
+                <span class="borrow-cta-text">
+                  <span class="borrow-cta-title">Borrow USDC against your DeFindex position</span>
+                  <span class="borrow-cta-sub">Turn this wallet's vault into cash — see your terms</span>
+                </span>
+                <span class="borrow-cta-arrow" aria-hidden="true">→</span>
+              </a>
+
               <div class="result-links">
-                <a id="borrow-cta-score" class="btn-link hidden" href="/borrow.html">Borrow USDC against your DeFindex position →</a>
                 <a id="explorer-link" class="btn-link" target="_blank" rel="noopener">
                   View wallet on stellar.expert →
                 </a>
@@ -200,6 +215,14 @@
                 <div id="cl-tabs" class="cl-tabs" role="tablist" aria-label="Lending model"></div>
                 <div id="cl-detail" class="cl-detail" role="tabpanel"></div>
                 <div id="cl-collateral" class="cl-collateral"></div>
+                <a id="borrow-cta-creditline" class="borrow-cta-btn hidden" href="/borrow.html">
+                  <span class="borrow-cta-icon" aria-hidden="true">◈</span>
+                  <span class="borrow-cta-text">
+                    <span class="borrow-cta-title">Draw this as USDC against your DeFindex position</span>
+                    <span class="borrow-cta-sub">Get the cash now — review and accept your terms</span>
+                  </span>
+                  <span class="borrow-cta-arrow" aria-hidden="true">→</span>
+                </a>
                 <p class="pf-notes" id="cl-disclaimer"></p>
                 <a href="/how-it-works.html#credit-line" class="btn-link">How the credit line is calculated →</a>
               </div>
