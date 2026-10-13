@@ -58,3 +58,12 @@ stellar contract deploy --wasm target/wasm32v1-none/release/collateral_escrow.wa
 Testnet first. The engine key is the ed25519 public key whose attestations the contract trusts
 (Secret Manager on testnet; Cloud KMS for mainnet). Mainnet is gated on an external audit + legal
 review (real custody/seizure).
+
+## Verified on testnet
+
+`scripts/deploy-testnet.sh` deploys the contract with throwaway test tokens (a mock dfToken + mock
+USDC, so no real DeFindex vault is needed) and runs the full lifecycle end to end:
+deposit → disburse (USDC to borrower) → release (with a node-signed engine attestation) →
+record_repayment → close (collateral returned). A representative run deployed to
+`CBKJH7KTCKUKQBQJVGA27EBMSB3CCLUZKAQSYXWDE3TYTOILLWVQUIPX` on testnet and confirmed a signature
+produced by `backend/credit-score-api/attestation.js` is accepted by the on-chain verifier.
