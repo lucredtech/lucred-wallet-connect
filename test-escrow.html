@@ -46,6 +46,10 @@
         <div class="reasons-label">Your balances</div>
         <div class="df-row"><span>dfToken</span><span class="df-val" id="te-bal-dft">—</span></div>
         <div class="df-row"><span>USDC</span><span class="df-val" id="te-bal-usdc">—</span></div>
+        <div class="te-actions">
+          <button id="te-faucet" type="button" class="btn-secondary" disabled>Get test tokens</button>
+        </div>
+        <p class="te-muted" style="margin:8px 0 0">Faucet drips 100,000 dfMock + 10,000 mockUSDC to your wallet (once per hour).</p>
       </section>
 
       <section class="portfolio-card">
@@ -77,6 +81,8 @@
             <div class="te-pos-cell"><span class="te-pos-k">Principal (credit)</span><span class="te-pos-v" id="te-pos-principal">—</span></div>
             <div class="te-pos-cell"><span class="te-pos-k">Outstanding debt</span><span class="te-pos-v" id="te-pos-debt">—</span></div>
             <div class="te-pos-cell"><span class="te-pos-k">APR</span><span class="te-pos-v" id="te-pos-apr">—</span></div>
+            <div class="te-pos-cell"><span class="te-pos-k">Accrued interest</span><span class="te-pos-v" id="te-pos-accrued">—</span></div>
+            <div class="te-pos-cell"><span class="te-pos-k">Payoff (repay to clear)</span><span class="te-pos-v" id="te-pos-payoff">—</span></div>
             <div class="te-pos-cell"><span class="te-pos-k">Started</span><span class="te-pos-v" id="te-pos-start">—</span></div>
             <div class="te-pos-cell"><span class="te-pos-k">Maturity</span><span class="te-pos-v" id="te-pos-maturity">—</span></div>
           </div>

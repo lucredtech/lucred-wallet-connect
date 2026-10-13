@@ -17,6 +17,7 @@ use soroban_sdk::{
 const RELEASE: u8 = 1;
 const LIQUIDATE: u8 = 2;
 const MARGIN: u8 = 3;
+const SECONDS_PER_YEAR: u64 = 31_536_000;
 
 // Persistent loan entries live ~60 days and are bumped on write; anyone may extend via `bump`.
 const LOAN_TTL: u32 = 60 * 24 * 60 * 60 / 5; // ledgers (~5s each)
@@ -252,15 +253,22 @@ impl CollateralEscrow {
         if !Self::is_live(&loan) {
             panic_with_error!(&env, Error::BadStatus);
         }
-        let pay = if amount > loan.debt { loan.debt } else { amount };
+        let now = env.ledger().timestamp();
+        let interest = Self::accrued(&loan, now);
+        let payoff = loan.debt + interest;
+        let pay = if amount > payoff { payoff } else { amount };
         if pay > 0 {
             token::TokenClient::new(&env, &Self::usdc(&env)).transfer(
                 &loan.borrower,
                 &Self::treasury(&env),
                 &pay,
             );
-            loan.debt -= pay;
+            // Interest first, then principal.
+            let principal_paid = if pay > interest { pay - interest } else { 0 };
+            loan.debt -= principal_paid;
         }
+        // Reset the accrual clock: remaining principal accrues (simple interest) from now.
+        loan.start = now;
         // Repaying enough cures a margin call.
         if loan.debt < loan.principal {
             if let LoanStatus::MarginCall(_) = loan.status {
@@ -269,6 +277,13 @@ impl CollateralEscrow {
         }
         Self::put_loan(&env, &loan_id, &loan);
         env.events().publish((REPAY, loan.borrower.clone()), (loan_id, pay, loan.debt));
+    }
+
+    /// Current full payoff = outstanding principal debt + simple interest accrued since `start`.
+    /// Off-chain callers read this to show / pre-fill the repayment value; `repay` uses the same math.
+    pub fn payoff(env: Env, loan_id: BytesN<32>) -> i128 {
+        let loan = Self::loan(&env, &loan_id);
+        loan.debt + Self::accrued(&loan, env.ledger().timestamp())
     }
 
     /// Full-repayment exit: returns all collateral to the borrower. Needs no engine signature.
@@ -386,6 +401,16 @@ impl CollateralEscrow {
     }
     fn is_live(loan: &Loan) -> bool {
         matches!(loan.status, LoanStatus::Active | LoanStatus::MarginCall(_))
+    }
+
+    /// Simple interest accrued on the outstanding debt since `start`:
+    /// debt * apr_bps * elapsed_seconds / (10_000 * seconds_per_year). Zero before funding.
+    fn accrued(loan: &Loan, now: u64) -> i128 {
+        if loan.debt <= 0 || loan.start == 0 || now <= loan.start {
+            return 0;
+        }
+        let elapsed = (now - loan.start) as i128;
+        loan.debt * (loan.apr_bps as i128) * elapsed / (10_000i128 * SECONDS_PER_YEAR as i128)
     }
 
     /// Verify a fresh engine attestation and advance the loan's replay sequence.

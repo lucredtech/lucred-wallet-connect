@@ -113,6 +113,30 @@ fn borrower_repays_directly_then_closes() {
 }
 
 #[test]
+fn interest_accrues_and_payoff_clears_the_loan() {
+    let s = setup();
+    let id = lid(&s.env, 14);
+    s.client.deposit(&id, &s.borrower, &s.collateral, &1000, &600, &1200, &Structure::OpenEnded, &0);
+    s.client.disburse(&id); // start = 1_000_000, debt = 600, apr = 12%
+
+    // Advance one year: simple interest = 600 * 12% = 72. payoff = 672.
+    s.env.ledger().with_mut(|l| l.timestamp = 1_000_000 + SECONDS_PER_YEAR);
+    assert_eq!(s.client.payoff(&id), 672);
+
+    // Fund the borrower the extra 72 of interest, then repay the full payoff.
+    token::StellarAssetClient::new(&s.env, &s.usdc).mint(&s.borrower, &72); // 600 + 72 = 672
+    s.client.repay(&id, &672);
+    assert_eq!(s.client.get_loan(&id).debt, 0);
+    assert_eq!(s.usdc_tok.balance(&s.borrower), 0);
+    assert_eq!(s.usdc_tok.balance(&s.treasury), 10_072); // principal back + 72 interest
+    assert_eq!(s.client.payoff(&id), 0);
+
+    s.client.close(&id);
+    assert_eq!(s.collateral_tok.balance(&s.borrower), 1000);
+    assert_eq!(s.client.get_loan(&id).status, LoanStatus::Closed);
+}
+
+#[test]
 fn repay_caps_at_outstanding_debt() {
     let s = setup();
     let id = lid(&s.env, 12);

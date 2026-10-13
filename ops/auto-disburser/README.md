@@ -34,8 +34,9 @@ ssh chief-aztec '(crontab -l 2>/dev/null | grep -v auto-disburser/run.sh; echo "
 ## Operate
 ```bash
 ssh chief-aztec 'tail -f ~/disburser/watch.log'          # watch activity
-ssh chief-aztec 'pgrep -af auto-disburser/watch.js'      # is it running?
-ssh chief-aztec 'pkill -f auto-disburser/watch.js'       # stop
+ssh chief-aztec 'kill -0 $(cat ~/disburser/watch.pid) && echo running'  # is it running?
+ssh chief-aztec '~/disburser/stop.sh'                    # stop (via PID file)
+ssh chief-aztec '~/disburser/run.sh'                     # (re)start — singleton, safe to re-run
 ```
 
 ## Config (`config.env`)

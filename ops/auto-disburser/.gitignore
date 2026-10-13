@@ -1,4 +1,5 @@
 config.env
 state.json
 watch.log
+watch.pid
 node_modules/

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Singleton launcher for the auto-disburser. Safe to call from `@reboot` cron and by hand:
-# if an instance is already running it exits; otherwise it loads config.env and starts the watcher,
-# appending to watch.log. No root required.
+# Singleton launcher for the auto-disburser, safe for `@reboot` cron and manual use. Uses a PID file
+# (not pgrep -f, which false-matches command strings). No root required.
 set -euo pipefail
 cd "$(dirname "$0")"
+DIR="$(pwd)"
+PIDFILE="$DIR/watch.pid"
 
-if pgrep -f "node .*auto-disburser/watch.js" >/dev/null 2>&1; then
-  echo "already running"; exit 0
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+  echo "already running (pid $(cat "$PIDFILE"))"; exit 0
 fi
 
 if [ ! -f config.env ]; then
@@ -14,5 +15,7 @@ if [ ! -f config.env ]; then
 fi
 
 set -a; . ./config.env; set +a
-nohup node watch.js >> watch.log 2>&1 &
-echo "started pid $! (logging to $(pwd)/watch.log)"
+# stdbuf -oL/-eL forces line-buffered output so watch.log updates live (Node block-buffers to files).
+nohup stdbuf -oL -eL node "$DIR/watch.js" >> watch.log 2>&1 &
+echo $! > "$PIDFILE"
+echo "started pid $! (logging to $DIR/watch.log)"
