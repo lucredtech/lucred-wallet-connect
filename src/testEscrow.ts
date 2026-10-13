@@ -32,7 +32,7 @@ function log(msg: string, href?: string) {
 }
 
 function setBusy(b: boolean) {
-  for (const id of ["te-deposit", "te-withdraw", "te-close", "te-refresh"]) ($(id) as HTMLButtonElement).disabled = b || !address;
+  for (const id of ["te-deposit", "te-repay", "te-withdraw", "te-close", "te-refresh"]) ($(id) as HTMLButtonElement).disabled = b || !address;
 }
 
 async function refresh() {
@@ -47,8 +47,46 @@ async function refresh() {
   } catch (e) { log("balance read failed: " + (e as Error).message); }
   try {
     const loan = await readCall<Record<string, unknown>>($("te-escrow").value.trim(), "get_loan", [sBytes32($("te-loanid").value.trim())], address);
+    renderLoan(loan);
     $("te-loan").textContent = JSON.stringify(loan, (_k, v) => (typeof v === "bigint" ? v.toString() : v), 2);
-  } catch { $("te-loan").textContent = "(no loan for this id yet — Deposit to create one)"; }
+  } catch {
+    $("te-pos").hidden = true;
+    $("te-pos-empty").hidden = false;
+    $("te-pos-empty").textContent = "No loan for this id yet — Deposit to open one.";
+    $("te-loan").textContent = "—";
+  }
+}
+
+// A unit-variant enum (Open/Active/Closed) comes back as a string; MarginCall(deadline) as an object.
+function statusName(s: unknown): string {
+  if (typeof s === "string") return s;
+  if (s && typeof s === "object") return Object.keys(s as object)[0] || "Unknown";
+  return "Unknown";
+}
+
+function tsDate(t: unknown): string {
+  const n = Number(t);
+  return n > 0 ? new Date(n * 1000).toLocaleString() : "—";
+}
+
+function renderLoan(loan: Record<string, unknown>) {
+  const status = statusName(loan.status);
+  const structure = String(loan.structure) === "FixedTerm" ? "Fixed term" : "Open-ended";
+  $("te-pos-empty").hidden = true;
+  $("te-pos").hidden = false;
+
+  const badge = $("te-pos-status");
+  badge.textContent = status;
+  badge.className = "te-badge te-badge-" + status.toLowerCase();
+  $("te-pos-structure").textContent = structure + (Number(loan.term_days) > 0 ? ` · ${loan.term_days}d` : "");
+
+  $("te-pos-coll").textContent = `${loan.collateral_amount} dfTokens`;
+  $("te-pos-principal").textContent = `${loan.principal} USDC`;
+  $("te-pos-debt").textContent = `${loan.debt} USDC`;
+  $("te-pos-apr").textContent = `${(Number(loan.apr_bps) / 100).toFixed(2)}%`;
+  $("te-pos-start").textContent = tsDate(loan.start);
+  $("te-pos-maturity").textContent =
+    String(loan.structure) === "FixedTerm" ? tsDate(loan.maturity) : "Open-ended";
 }
 
 async function run(label: string, fn: () => Promise<string>) {
@@ -98,6 +136,11 @@ function init() {
     ],
     address,
   )));
+
+  $("te-repay").addEventListener("click", () => run("Repay debt", () => invoke(
+    $("te-escrow").value.trim(), "repay",
+    [sBytes32($("te-loanid").value.trim()), sI128($("te-repay-amt").value.trim() || "0")],
+    address)));
 
   $("te-withdraw").addEventListener("click", () => run("Withdraw collateral (while unfunded)", () => invoke(
     $("te-escrow").value.trim(), "withdraw", [sBytes32($("te-loanid").value.trim())], address)));

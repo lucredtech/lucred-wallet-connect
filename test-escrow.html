@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#0a0e1a" />
     <title>Escrow test (testnet) — LCRD</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,8 +22,8 @@
         <h1>Collateral escrow — testnet test</h1>
         <p class="subtext">
           Connect your wallet and exercise the Stage B escrow on <strong>testnet</strong> with your own
-          signature: lock mock dfTokens as collateral, withdraw while unfunded, or close after repayment.
-          Disburse / release / liquidate are operator (treasury + engine) actions.
+          signature: lock mock dfTokens as collateral, repay your debt, withdraw while unfunded, or close
+          after full repayment. Disburse / release / liquidate are operator (treasury + engine) actions.
         </p>
       </div>
 
@@ -51,9 +53,11 @@
         <div class="te-row">
           <label class="te-field">Collateral <input id="te-coll" class="te-input te-num" value="1000" /></label>
           <label class="te-field">Principal (USDC) <input id="te-principal" class="te-input te-num" value="600" /></label>
+          <label class="te-field">Repay amount (USDC) <input id="te-repay-amt" class="te-input te-num" value="600" /></label>
         </div>
         <div class="te-actions">
           <button id="te-deposit" type="button" class="btn-primary" disabled>Deposit collateral</button>
+          <button id="te-repay" type="button" class="btn-secondary" disabled>Repay</button>
           <button id="te-withdraw" type="button" class="btn-secondary" disabled>Withdraw</button>
           <button id="te-close" type="button" class="btn-secondary" disabled>Close</button>
           <button id="te-refresh" type="button" class="btn-secondary" disabled>Refresh</button>
@@ -61,8 +65,23 @@
       </section>
 
       <section class="portfolio-card">
-        <div class="reasons-label">Loan state</div>
-        <pre id="te-loan" class="te-pre">(connect and refresh)</pre>
+        <div class="reasons-label">Your position</div>
+        <div id="te-pos-empty" class="te-muted">Connect and refresh — or Deposit to open a loan.</div>
+        <div id="te-pos" class="te-pos" hidden>
+          <div class="te-pos-head">
+            <span id="te-pos-status" class="te-badge">—</span>
+            <span id="te-pos-structure" class="te-muted"></span>
+          </div>
+          <div class="te-pos-grid">
+            <div class="te-pos-cell"><span class="te-pos-k">Collateral locked</span><span class="te-pos-v" id="te-pos-coll">—</span></div>
+            <div class="te-pos-cell"><span class="te-pos-k">Principal (credit)</span><span class="te-pos-v" id="te-pos-principal">—</span></div>
+            <div class="te-pos-cell"><span class="te-pos-k">Outstanding debt</span><span class="te-pos-v" id="te-pos-debt">—</span></div>
+            <div class="te-pos-cell"><span class="te-pos-k">APR</span><span class="te-pos-v" id="te-pos-apr">—</span></div>
+            <div class="te-pos-cell"><span class="te-pos-k">Started</span><span class="te-pos-v" id="te-pos-start">—</span></div>
+            <div class="te-pos-cell"><span class="te-pos-k">Maturity</span><span class="te-pos-v" id="te-pos-maturity">—</span></div>
+          </div>
+        </div>
+        <details class="te-raw"><summary>Raw loan state</summary><pre id="te-loan" class="te-pre">—</pre></details>
       </section>
 
       <section class="portfolio-card">
