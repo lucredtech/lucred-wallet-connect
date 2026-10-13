@@ -94,6 +94,73 @@ fn full_lifecycle_deposit_disburse_repay_close() {
 }
 
 #[test]
+fn borrower_repays_directly_then_closes() {
+    let s = setup();
+    let id = lid(&s.env, 11);
+    s.client.deposit(&id, &s.borrower, &s.collateral, &1000, &600, &1200, &Structure::OpenEnded, &0);
+    s.client.disburse(&id);
+    assert_eq!(s.usdc_tok.balance(&s.borrower), 600);
+
+    // Borrower repays the full debt from their own balance, in one borrower-signed call.
+    s.client.repay(&id, &600);
+    assert_eq!(s.client.get_loan(&id).debt, 0);
+    assert_eq!(s.usdc_tok.balance(&s.borrower), 0);
+    assert_eq!(s.usdc_tok.balance(&s.treasury), 10_000); // treasury made whole
+
+    s.client.close(&id);
+    assert_eq!(s.collateral_tok.balance(&s.borrower), 1000); // collateral returned
+    assert_eq!(s.client.get_loan(&id).status, LoanStatus::Closed);
+}
+
+#[test]
+fn interest_accrues_and_payoff_clears_the_loan() {
+    let s = setup();
+    let id = lid(&s.env, 14);
+    s.client.deposit(&id, &s.borrower, &s.collateral, &1000, &600, &1200, &Structure::OpenEnded, &0);
+    s.client.disburse(&id); // start = 1_000_000, debt = 600, apr = 12%
+
+    // Advance one year: simple interest = 600 * 12% = 72. payoff = 672.
+    s.env.ledger().with_mut(|l| l.timestamp = 1_000_000 + SECONDS_PER_YEAR);
+    assert_eq!(s.client.payoff(&id), 672);
+
+    // Fund the borrower the extra 72 of interest, then repay the full payoff.
+    token::StellarAssetClient::new(&s.env, &s.usdc).mint(&s.borrower, &72); // 600 + 72 = 672
+    s.client.repay(&id, &672);
+    assert_eq!(s.client.get_loan(&id).debt, 0);
+    assert_eq!(s.usdc_tok.balance(&s.borrower), 0);
+    assert_eq!(s.usdc_tok.balance(&s.treasury), 10_072); // principal back + 72 interest
+    assert_eq!(s.client.payoff(&id), 0);
+
+    s.client.close(&id);
+    assert_eq!(s.collateral_tok.balance(&s.borrower), 1000);
+    assert_eq!(s.client.get_loan(&id).status, LoanStatus::Closed);
+}
+
+#[test]
+fn repay_caps_at_outstanding_debt() {
+    let s = setup();
+    let id = lid(&s.env, 12);
+    s.client.deposit(&id, &s.borrower, &s.collateral, &1000, &600, &1200, &Structure::OpenEnded, &0);
+    s.client.disburse(&id);
+    // Give the borrower extra USDC so an over-repay is possible, then try to overpay.
+    token::StellarAssetClient::new(&s.env, &s.usdc).mint(&s.borrower, &400); // now 1000
+    s.client.repay(&id, &1000);
+    // Only the 600 of debt is pulled; the surplus stays with the borrower.
+    assert_eq!(s.client.get_loan(&id).debt, 0);
+    assert_eq!(s.usdc_tok.balance(&s.borrower), 400);
+}
+
+#[test]
+fn repay_rejected_before_funding() {
+    let s = setup();
+    let id = lid(&s.env, 13);
+    s.client.deposit(&id, &s.borrower, &s.collateral, &1000, &600, &1200, &Structure::OpenEnded, &0);
+    // Loan is Open (unfunded) -> not live -> repay rejected.
+    let res = s.client.try_repay(&id, &100);
+    assert_eq!(res, Err(Ok(Error::BadStatus.into())));
+}
+
+#[test]
 fn withdraw_before_funding() {
     let s = setup();
     let id = lid(&s.env, 2);

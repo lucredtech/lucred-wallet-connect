@@ -1,0 +1,28 @@
+[package]
+name = "token-faucet"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Permissionless TESTNET faucet: hands out fixed amounts of the mock dfToken and mock USDC to any
+# caller (self-authorized), with a per-address cooldown. Pre-funded by minting the two tokens to the
+# faucet contract address; holds no admin mint rights. Not for production.
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = "22.0.0"
+
+[dev-dependencies]
+soroban-sdk = { version = "22.0.0", features = ["testutils"] }
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+codegen-units = 1
+lto = true
+panic = "abort"
