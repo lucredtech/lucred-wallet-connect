@@ -1,0 +1,1 @@
+/Users/mac/Documents/GitHub/Projects/lucred-wallet-connect/contracts/mock-token/target/wasm32v1-none/release/mock_token.wasm: /Users/mac/Documents/GitHub/Projects/lucred-wallet-connect/contracts/mock-token/src/lib.rs
