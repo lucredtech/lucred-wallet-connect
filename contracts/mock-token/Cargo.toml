@@ -1,0 +1,27 @@
+[package]
+name = "mock-token"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Minimal native Soroban (SEP-41) token for TESTNET TESTING ONLY — a faithful stand-in for a DeFindex
+# dfToken / test USDC: no trustline required, mint to any address. Not for production.
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = "22.0.0"
+
+[dev-dependencies]
+soroban-sdk = { version = "22.0.0", features = ["testutils"] }
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+codegen-units = 1
+lto = true
+panic = "abort"

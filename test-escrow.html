@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Escrow test (testnet) — LCRD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="borrow-shell">
+      <header class="info-masthead">
+        <span class="wordmark">LCRD</span>
+        <a class="btn-link" href="/">&larr; Home</a>
+      </header>
+
+      <div class="info-intro">
+        <h1>Collateral escrow — testnet test</h1>
+        <p class="subtext">
+          Connect your wallet and exercise the Stage B escrow on <strong>testnet</strong> with your own
+          signature: lock mock dfTokens as collateral, withdraw while unfunded, or close after repayment.
+          Disburse / release / liquidate are operator (treasury + engine) actions.
+        </p>
+      </div>
+
+      <div class="borrow-connect">
+        <button id="te-connect" type="button" class="btn-connect"><span>Connect wallet</span></button>
+        <span id="te-address" class="borrow-address"></span>
+      </div>
+
+      <section class="portfolio-card">
+        <div class="reasons-label">Contracts (testnet)</div>
+        <label class="te-field">Escrow <input id="te-escrow" class="te-input" spellcheck="false" /></label>
+        <label class="te-field">dfToken (collateral) <input id="te-dftoken" class="te-input" spellcheck="false" /></label>
+        <label class="te-field">USDC <input id="te-usdc" class="te-input" spellcheck="false" /></label>
+        <label class="te-field">Loan id (32-byte hex)
+          <span class="te-row"><input id="te-loanid" class="te-input" spellcheck="false" /><button id="te-newloan" type="button" class="btn-secondary">New</button></span>
+        </label>
+      </section>
+
+      <section class="portfolio-card">
+        <div class="reasons-label">Your balances</div>
+        <div class="df-row"><span>dfToken</span><span class="df-val" id="te-bal-dft">—</span></div>
+        <div class="df-row"><span>USDC</span><span class="df-val" id="te-bal-usdc">—</span></div>
+      </section>
+
+      <section class="portfolio-card">
+        <div class="reasons-label">Borrower actions (signed by your wallet)</div>
+        <div class="te-row">
+          <label class="te-field">Collateral <input id="te-coll" class="te-input te-num" value="1000" /></label>
+          <label class="te-field">Principal (USDC) <input id="te-principal" class="te-input te-num" value="600" /></label>
+        </div>
+        <div class="te-actions">
+          <button id="te-deposit" type="button" class="btn-primary" disabled>Deposit collateral</button>
+          <button id="te-withdraw" type="button" class="btn-secondary" disabled>Withdraw</button>
+          <button id="te-close" type="button" class="btn-secondary" disabled>Close</button>
+          <button id="te-refresh" type="button" class="btn-secondary" disabled>Refresh</button>
+        </div>
+      </section>
+
+      <section class="portfolio-card">
+        <div class="reasons-label">Loan state</div>
+        <pre id="te-loan" class="te-pre">(connect and refresh)</pre>
+      </section>
+
+      <section class="portfolio-card">
+        <div class="reasons-label">Log</div>
+        <div id="te-log" class="te-log"></div>
+      </section>
+    </main>
+    <script type="module" src="/src/testEscrow.ts"></script>
+  </body>
+</html>

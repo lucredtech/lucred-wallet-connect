@@ -1492,3 +1492,15 @@ h2 { letter-spacing: -0.01em; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+
+/* Escrow test page */
+.te-field { display:flex; flex-direction:column; gap:4px; margin:8px 0; font-size:var(--text-body-sm); color:var(--color-text-secondary); }
+.te-input { width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--color-border-subtle); background:var(--color-bg-surface); color:var(--color-text-primary); font-family:ui-monospace,"SF Mono",monospace; font-size:var(--text-body-sm); }
+.te-input:focus { outline:none; border-color:var(--color-accent-text); box-shadow:0 0 0 3px color-mix(in srgb, var(--color-accent-text) 20%, transparent); }
+.te-num { font-family:var(--font-sans); }
+.te-row { display:flex; gap:10px; align-items:center; }
+.te-row .te-input { flex:1; }
+.te-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+.te-pre { white-space:pre-wrap; word-break:break-word; font-family:ui-monospace,"SF Mono",monospace; font-size:var(--text-caption); color:var(--color-text-on-surface-light); margin:0; }
+.te-log { display:flex; flex-direction:column; gap:4px; font-family:ui-monospace,"SF Mono",monospace; font-size:var(--text-caption); color:var(--color-text-secondary); }
+.te-log-line { padding:2px 0; border-bottom:1px solid var(--color-border-subtle); }
