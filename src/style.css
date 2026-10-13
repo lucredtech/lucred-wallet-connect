@@ -1386,3 +1386,66 @@ footer {
 .df-tile-value { font-family: ui-monospace, "SF Mono", monospace; font-variant-numeric: tabular-nums; font-size: 1.1rem; font-weight: 600; margin-top: 4px; }
 .df-tile-sub { font-size: var(--text-caption, 12px); color: var(--color-text-secondary); margin-top: 2px; }
 @media (max-width: 560px) { .df-tiles { grid-template-columns: 1fr; } .df-hero-apr { text-align: left; } }
+
+/* ===== Modern polish pass ===== */
+/* Connect wallet — refined gradient pill with icon + sheen */
+.btn-connect {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-sans);
+  font-size: var(--text-body, 15px);
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--indigo-600, #5b4fe9), var(--violet-600, #7c3aed));
+  box-shadow: 0 6px 22px rgba(91, 79, 233, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.26);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out), filter 0.18s var(--ease-out);
+}
+.btn-connect:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 30px rgba(91, 79, 233, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  filter: brightness(1.04);
+}
+.btn-connect:active:not(:disabled) { transform: translateY(0); }
+.btn-connect:disabled { opacity: 0.7; cursor: default; }
+.btn-connect-icon { flex: none; opacity: 0.95; }
+.btn-connect::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 32%, rgba(255, 255, 255, 0.18) 50%, transparent 68%);
+  transform: translateX(-130%);
+  transition: transform 0.6s var(--ease-out);
+  pointer-events: none;
+}
+.btn-connect:hover:not(:disabled)::after { transform: translateX(130%); }
+
+/* Pill buttons everywhere for a finer, consistent feel */
+.btn-primary, .btn-secondary { border-radius: 999px; }
+.btn-primary:hover:not(:disabled), .btn-secondary:hover:not(:disabled) { transform: translateY(-1px); }
+
+/* Inputs — softer, clearer focus */
+#paste-input {
+  border-radius: 12px;
+  transition: border-color 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out), background-color 0.18s var(--ease-out);
+}
+#paste-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--color-accent-text, #a5b4fc) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent-text, #a5b4fc) 20%, transparent);
+}
+
+/* Finer card surfaces */
+.portfolio-card, .score-card { border-radius: 20px; }
+
+/* Accessible, modern focus ring */
+a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--color-focus-ring, #67e8f9);
+  outline-offset: 2px;
+}

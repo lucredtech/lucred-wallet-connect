@@ -176,7 +176,7 @@ function setBorrowCta(address: string, portfolio: Portfolio | null) {
     (p) => p.protocol === "defindex" && p.transferable === true && (p.usdValue ?? 0) >= 0.01
   );
   const href = `/borrow.html?wallet=${encodeURIComponent(address)}`;
-  for (const id of ["borrow-cta-score", "borrow-cta-holdings"]) {
+  for (const id of ["borrow-cta-score", "borrow-cta-holdings", "borrow-cta-creditline"]) {
     const link = document.getElementById(id) as HTMLAnchorElement | null;
     if (!link) continue;
     link.href = href;
