@@ -22,8 +22,8 @@
         <h1>Collateral escrow — testnet test</h1>
         <p class="subtext">
           Connect your wallet and exercise the Stage B escrow on <strong>testnet</strong> with your own
-          signature: lock mock dfTokens as collateral, withdraw while unfunded, or close after repayment.
-          Disburse / release / liquidate are operator (treasury + engine) actions.
+          signature: lock mock dfTokens as collateral, repay your debt, withdraw while unfunded, or close
+          after full repayment. Disburse / release / liquidate are operator (treasury + engine) actions.
         </p>
       </div>
 
@@ -53,9 +53,11 @@
         <div class="te-row">
           <label class="te-field">Collateral <input id="te-coll" class="te-input te-num" value="1000" /></label>
           <label class="te-field">Principal (USDC) <input id="te-principal" class="te-input te-num" value="600" /></label>
+          <label class="te-field">Repay amount (USDC) <input id="te-repay-amt" class="te-input te-num" value="600" /></label>
         </div>
         <div class="te-actions">
           <button id="te-deposit" type="button" class="btn-primary" disabled>Deposit collateral</button>
+          <button id="te-repay" type="button" class="btn-secondary" disabled>Repay</button>
           <button id="te-withdraw" type="button" class="btn-secondary" disabled>Withdraw</button>
           <button id="te-close" type="button" class="btn-secondary" disabled>Close</button>
           <button id="te-refresh" type="button" class="btn-secondary" disabled>Refresh</button>

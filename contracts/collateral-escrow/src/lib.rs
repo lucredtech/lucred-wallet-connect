@@ -240,6 +240,37 @@ impl CollateralEscrow {
         env.events().publish((REPAY, loan.borrower.clone()), (loan_id, amount, loan.debt));
     }
 
+    /// Borrower repays directly: pulls `amount` (capped at the outstanding debt) from the borrower to
+    /// the treasury and reduces the debt in one borrower-authorized call. Self-service counterpart to
+    /// `record_repayment`; once this zeroes the debt the borrower can `close` and reclaim collateral.
+    pub fn repay(env: Env, loan_id: BytesN<32>, amount: i128) {
+        let mut loan = Self::loan(&env, &loan_id);
+        loan.borrower.require_auth();
+        if amount <= 0 {
+            panic_with_error!(&env, Error::BadAmount);
+        }
+        if !Self::is_live(&loan) {
+            panic_with_error!(&env, Error::BadStatus);
+        }
+        let pay = if amount > loan.debt { loan.debt } else { amount };
+        if pay > 0 {
+            token::TokenClient::new(&env, &Self::usdc(&env)).transfer(
+                &loan.borrower,
+                &Self::treasury(&env),
+                &pay,
+            );
+            loan.debt -= pay;
+        }
+        // Repaying enough cures a margin call.
+        if loan.debt < loan.principal {
+            if let LoanStatus::MarginCall(_) = loan.status {
+                loan.status = LoanStatus::Active;
+            }
+        }
+        Self::put_loan(&env, &loan_id, &loan);
+        env.events().publish((REPAY, loan.borrower.clone()), (loan_id, pay, loan.debt));
+    }
+
     /// Full-repayment exit: returns all collateral to the borrower. Needs no engine signature.
     pub fn close(env: Env, loan_id: BytesN<32>) {
         let mut loan = Self::loan(&env, &loan_id);

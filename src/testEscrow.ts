@@ -32,7 +32,7 @@ function log(msg: string, href?: string) {
 }
 
 function setBusy(b: boolean) {
-  for (const id of ["te-deposit", "te-withdraw", "te-close", "te-refresh"]) ($(id) as HTMLButtonElement).disabled = b || !address;
+  for (const id of ["te-deposit", "te-repay", "te-withdraw", "te-close", "te-refresh"]) ($(id) as HTMLButtonElement).disabled = b || !address;
 }
 
 async function refresh() {
@@ -136,6 +136,11 @@ function init() {
     ],
     address,
   )));
+
+  $("te-repay").addEventListener("click", () => run("Repay debt", () => invoke(
+    $("te-escrow").value.trim(), "repay",
+    [sBytes32($("te-loanid").value.trim()), sI128($("te-repay-amt").value.trim() || "0")],
+    address)));
 
   $("te-withdraw").addEventListener("click", () => run("Withdraw collateral (while unfunded)", () => invoke(
     $("te-escrow").value.trim(), "withdraw", [sBytes32($("te-loanid").value.trim())], address)));
