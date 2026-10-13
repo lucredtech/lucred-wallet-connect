@@ -920,24 +920,29 @@ footer {
 .cl-tab {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--space-3);
+  gap: 5px;
+  padding: 14px;
   text-align: left;
   font: inherit;
-  color: var(--color-text-on-surface-light);
-  background: transparent;
+  color: var(--color-text-primary);
+  background: var(--color-bg-surface);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
+  transition: border-color 0.18s var(--ease-out), background 0.18s var(--ease-out),
+    transform 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out);
 }
 
 .cl-tab:hover {
   border-color: var(--color-border-strong);
+  transform: translateY(-1px);
 }
 
+/* Selected = accent-ringed glass card with a soft glow (no heavy pill shape). */
 .cl-tab[aria-selected="true"] {
-  border-color: var(--color-accent-text);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: transparent;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(34, 211, 238, 0.07));
+  box-shadow: 0 0 0 1.5px var(--color-accent-text), 0 8px 22px rgba(99, 102, 241, 0.18);
 }
 
 .cl-tab:focus-visible {
@@ -945,15 +950,30 @@ footer {
   outline-offset: 2px;
 }
 
+/* Name is a small caption; the limit is the focal number. */
 .cl-tab-name {
   font-weight: 600;
-  font-size: var(--text-body-sm);
+  font-size: var(--text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
 }
+.cl-tab[aria-selected="true"] .cl-tab-name { color: var(--color-accent-text); }
 
 .cl-tab-limit {
   font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
   font-variant-numeric: tabular-nums;
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-text-primary);
+}
+
+/* Ineligible models read as inactive: small, muted, not a big number. */
+.cl-tab.is-na .cl-tab-limit {
   font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--color-text-disabled);
 }
 
 .cl-tab-blurb {
@@ -1463,7 +1483,7 @@ h2 { letter-spacing: -0.01em; }
 }
 
 /* Chips / pills: fully rounded, finer */
-.pf-chip, .cl-tab, .factor-pill { border-radius: 999px; }
+.pf-chip, .factor-pill { border-radius: 999px; }
 
 /* Links: smoother accent transition */
 .btn-link { transition: color 0.16s var(--ease-out), opacity 0.16s var(--ease-out); }

@@ -97,6 +97,7 @@ function render(data: CreditLine) {
       t.id = `cl-tab-${m}`;
       t.setAttribute("role", "tab");
       t.setAttribute("aria-selected", String(m === selected));
+      t.classList.toggle("is-na", !o.eligible);
       t.append(el("span", "cl-tab-name", MODEL_INFO[m].name));
       t.append(el("span", "cl-tab-limit", o.eligible ? usd(o.limitUsd) : "Not available"));
       t.append(el("span", "cl-tab-blurb", MODEL_INFO[m].blurb));
