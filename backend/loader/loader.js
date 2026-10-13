@@ -82,12 +82,32 @@ async function rawFolders() {
 // An event file is named  <PREFIX>raw_<folder>_<file>.jsonl , so a raw folder maps to a name prefix.
 const extractedPrefixForFolder = (folder) => PREFIX + "raw_" + folder + "_";
 
+// The current live partition folder, discovered from extracted_logs rather than raw/. The partition
+// hash prefix DESCENDS as the ledger advances (…FC22… -> FC21… -> FC20…), so the live folder is the
+// lexicographically-smallest "raw_" object — one cheap single-object listing finds it. This is why
+// the targeted scan no longer misses the live folder at a 64k-ledger rollover: raw/ gets emptied by
+// the indexer's delete-after-processing, but extracted_logs keeps the files (no lifecycle).
+async function liveFolderFromExtracted() {
+  const [files] = await bucket.getFiles({ prefix: PREFIX + "raw_", maxResults: 1, autoPaginate: false });
+  if (!files.length) return null;
+  const m = /^raw_(.+?)_/.exec(files[0].name.slice(PREFIX.length)); // folder has no "_"; file part follows the first "_"
+  return m ? m[1] : null;
+}
+
 async function collectCandidates(state, full) {
   const since = new Date(state.watermark).getTime() - OVERLAP_MS;
   const found = new Map();            // name -> timeCreated ms
   let prefixes;
-  if (full) prefixes = [PREFIX];
-  else prefixes = [...new Set([...(await rawFolders()).map(extractedPrefixForFolder), ...(state.activePrefixes || [])])];
+  if (full) {
+    prefixes = [PREFIX];
+  } else {
+    const live = await liveFolderFromExtracted();
+    prefixes = [...new Set([
+      ...(await rawFolders()).map(extractedPrefixForFolder),
+      ...(live ? [extractedPrefixForFolder(live)] : []), // always scan the live folder, even if raw/ dropped it
+      ...(state.activePrefixes || [])
+    ])];
+  }
   log((full ? "FULL scan of " : "targeted scan of ") + prefixes.length + " prefix(es)");
   for (const p of prefixes) {
     await listPrefix(p, (f) => {
