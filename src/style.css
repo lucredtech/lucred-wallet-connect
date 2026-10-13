@@ -1449,3 +1449,26 @@ a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible
   outline: 2px solid var(--color-focus-ring, #67e8f9);
   outline-offset: 2px;
 }
+
+/* ===== Deeper polish: micro-interactions & refinement ===== */
+h2 { letter-spacing: -0.01em; }
+
+/* Cards gain a subtle interactive depth (border brightens, lifts a touch) */
+.portfolio-card, .score-card {
+  transition: transform 0.24s var(--ease-out), box-shadow 0.24s var(--ease-out);
+}
+.portfolio-card:hover, .score-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-border-hover), 0 10px 30px rgba(0, 0, 0, 0.28);
+}
+
+/* Chips / pills: fully rounded, finer */
+.pf-chip, .cl-tab, .factor-pill { border-radius: 999px; }
+
+/* Links: smoother accent transition */
+.btn-link { transition: color 0.16s var(--ease-out), opacity 0.16s var(--ease-out); }
+
+/* Respect reduced-motion for all the hover/transition polish */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
