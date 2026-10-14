@@ -129,20 +129,44 @@ function renderArea(id: string, points: { label: string; value: number }[]) {
 }
 
 // Credit-score distribution: only shown once the batch scorer has populated the tables.
+const TIER_META: Record<string, { color: string; label: string }> = {
+  A: { color: "var(--emerald-400)", label: "Tier A" },
+  B: { color: "var(--indigo-300)", label: "Tier B" },
+  C: { color: "var(--color-text-disabled)", label: "Tier C" },
+};
+const TIER_ORDER: Record<string, number> = { A: 0, B: 1, C: 2 };
+
+function renderTiers(tiers: Analytics["scoreTiers"]) {
+  const host = document.getElementById("an-tiers");
+  if (!host) return;
+  const list = (tiers || []).slice().sort((a, b) => (TIER_ORDER[a.tier] ?? 9) - (TIER_ORDER[b.tier] ?? 9));
+  const total = list.reduce((s, t) => s + t.count, 0);
+  if (!total) { host.innerHTML = ""; return; }
+  const seg = list.map((t) => {
+    const pct = (t.count / total) * 100;
+    const meta = TIER_META[t.tier] || { color: "var(--color-text-disabled)", label: "Tier " + t.tier };
+    return `<span class="an-tier-seg" style="width:${pct}%;background:${meta.color}" title="${meta.label}: ${full.format(t.count)} (${pct.toFixed(1)}%)"></span>`;
+  }).join("");
+  const legend = list.map((t) => {
+    const pct = Math.round((t.count / total) * 100);
+    const meta = TIER_META[t.tier] || { color: "var(--color-text-disabled)", label: "Tier " + t.tier };
+    return `<span class="an-tier-item"><span class="an-tier-dot" style="background:${meta.color}"></span>
+      <span class="an-tier-name">${meta.label}</span><span class="an-tier-num">${compact.format(t.count)} · ${pct}%</span></span>`;
+  }).join("");
+  host.innerHTML = `<div class="an-tiers-head">Wallets by credit tier <span class="an-card-sub">${compact.format(total)} scored</span></div>
+    <div class="an-tier-bar">${seg}</div><div class="an-tier-legend">${legend}</div>`;
+}
+
 function renderScores(d: Analytics) {
   const card = document.getElementById("an-scores-card");
   if (!card) return;
   const hist = d.scoreHistogram || [];
-  if (!hist.length || hist.every((b) => b.count === 0)) { card.hidden = true; return; }
-  card.hidden = false;
-  renderBars("an-scores-bars", hist.map((b) => ({ label: `${b.lo}–${b.hi}`, value: b.count })));
   const tiers = d.scoreTiers || [];
-  const total = tiers.reduce((s, t) => s + t.count, 0) || 1;
-  const order: Record<string, number> = { A: 0, B: 1, C: 2 };
-  const sub = tiers.slice().sort((a, b) => (order[a.tier] ?? 9) - (order[b.tier] ?? 9))
-    .map((t) => `Tier ${t.tier} ${Math.round((t.count / total) * 100)}%`).join(" · ");
-  const subEl = document.getElementById("an-scores-sub");
-  if (subEl) subEl.textContent = sub || "event-based";
+  const hasData = (hist.length && hist.some((b) => b.count > 0)) || (tiers.length && tiers.some((t) => t.count > 0));
+  if (!hasData) { card.hidden = true; return; }
+  card.hidden = false;
+  renderTiers(tiers);
+  renderBars("an-scores-bars", hist.map((b) => ({ label: `${b.lo}–${b.hi}`, value: b.count })));
 }
 
 // Events-per-day filter: "All" plus the top protocols, swapping the series client-side.
