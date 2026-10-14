@@ -1,0 +1,144 @@
+import "./style.css";
+import "./analytics"; // Vercel Web Analytics (page views)
+
+const API_URL = import.meta.env.VITE_CREDIT_SCORE_API_URL as string | undefined;
+
+type Kpis = {
+  totalEvents: number; totalWallets: number; totalProtocols: number; maxLedger: number;
+  firstEvent: string; lastEvent: string; events24h: number; events7d: number;
+};
+type Analytics = {
+  computedAt: string;
+  kpis: Kpis;
+  byProtocol: { name: string; events: number; wallets: number }[];
+  byCategory: { name: string; events: number }[];
+  topAssets: { code: string; events: number }[];
+  eventsPerDay: { day: string; events: number }[];
+  walletsByMonth: { month: string; newWallets: number; cumulativeWallets: number }[];
+  product: { waitlist: number; acceptances: number; principalUsd: number };
+};
+
+const $ = (id: string) => document.getElementById(id) as HTMLElement;
+const compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 2 });
+const full = new Intl.NumberFormat("en");
+const usd = (n: number) => "$" + compact.format(n);
+
+// Protocol/category slugs come through as snake_case; show them readably.
+const titleCase = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+function tile(label: string, value: string, sub?: string): string {
+  return `<div class="an-tile"><div class="an-tile-val">${value}</div><div class="an-tile-label">${label}</div>${sub ? `<div class="an-tile-sub">${sub}</div>` : ""}</div>`;
+}
+
+function renderKpis(k: Kpis) {
+  $("an-kpis").innerHTML = [
+    tile("Credit events indexed", compact.format(k.totalEvents), full.format(k.totalEvents)),
+    tile("Wallets scored", compact.format(k.totalWallets)),
+    tile("Protocols covered", String(k.totalProtocols)),
+    tile("Events · last 24h", compact.format(k.events24h)),
+    tile("Events · last 7d", compact.format(k.events7d)),
+    tile("Max ledger indexed", compact.format(k.maxLedger)),
+  ].join("");
+}
+
+function renderProduct(p: Analytics["product"]) {
+  $("an-product").innerHTML = [
+    tile("USDC advanced", usd(p.principalUsd)),
+    tile("Credit acceptances", full.format(p.acceptances)),
+    tile("Waitlist signups", full.format(p.waitlist)),
+  ].join("");
+}
+
+// Horizontal bars for a single measure across categories; values direct-labelled (no tooltip needed).
+function renderBars(id: string, items: { label: string; value: number }[]) {
+  const max = items.reduce((m, it) => Math.max(m, it.value), 0) || 1;
+  $(id).innerHTML = items.map((it) => `
+    <div class="an-bar-row" title="${it.label}: ${full.format(it.value)}">
+      <span class="an-bar-label">${it.label}</span>
+      <span class="an-bar-track"><span class="an-bar-fill" style="width:${Math.max(1.5, (it.value / max) * 100)}%"></span></span>
+      <span class="an-bar-val">${compact.format(it.value)}</span>
+    </div>`).join("");
+}
+
+// One-series area chart (SVG) with a hover crosshair + tooltip.
+function renderArea(id: string, points: { label: string; value: number }[]) {
+  const host = $(id);
+  if (points.length < 2) { host.innerHTML = `<p class="an-empty">Not enough data yet.</p>`; return; }
+  const W = 640, H = 200, PAD_L = 8, PAD_R = 8, PAD_T = 12, PAD_B = 22;
+  const iw = W - PAD_L - PAD_R, ih = H - PAD_T - PAD_B;
+  const max = points.reduce((m, p) => Math.max(m, p.value), 0) || 1;
+  const x = (i: number) => PAD_L + (points.length === 1 ? iw / 2 : (i / (points.length - 1)) * iw);
+  const y = (v: number) => PAD_T + ih - (v / max) * ih;
+  const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(" ");
+  const area = `${line} L${x(points.length - 1).toFixed(1)} ${(PAD_T + ih).toFixed(1)} L${x(0).toFixed(1)} ${(PAD_T + ih).toFixed(1)} Z`;
+  const first = points[0].label, last = points[points.length - 1].label;
+  host.innerHTML = `
+    <svg class="an-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="time series">
+      <defs><linearGradient id="${id}-g" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="var(--indigo-600)" stop-opacity="0.5"/>
+        <stop offset="1" stop-color="var(--indigo-600)" stop-opacity="0"/>
+      </linearGradient></defs>
+      <path d="${area}" fill="url(#${id}-g)"/>
+      <path d="${line}" fill="none" stroke="var(--indigo-600)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+      <line class="an-cross" x1="0" y1="${PAD_T}" x2="0" y2="${PAD_T + ih}" stroke="var(--color-border-strong)" stroke-width="1" vector-effect="non-scaling-stroke" style="opacity:0"/>
+      <circle class="an-dot" r="3.5" fill="var(--indigo-300)" style="opacity:0"/>
+      <rect class="an-hit" x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
+    </svg>
+    <div class="an-axis"><span>${first}</span><span>${last}</span></div>
+    <div class="an-tip" style="opacity:0"></div>`;
+
+  const svg = host.querySelector("svg") as SVGSVGElement;
+  const cross = host.querySelector(".an-cross") as SVGLineElement;
+  const dot = host.querySelector(".an-dot") as SVGCircleElement;
+  const tip = host.querySelector(".an-tip") as HTMLElement;
+  const hit = host.querySelector(".an-hit") as SVGRectElement;
+  const move = (ev: PointerEvent | MouseEvent) => {
+    const r = svg.getBoundingClientRect();
+    const px = ((ev.clientX - r.left) / r.width) * W;
+    let i = Math.round(((px - PAD_L) / iw) * (points.length - 1));
+    i = Math.max(0, Math.min(points.length - 1, i));
+    const p = points[i];
+    cross.setAttribute("x1", String(x(i))); cross.setAttribute("x2", String(x(i))); cross.style.opacity = "1";
+    dot.setAttribute("cx", String(x(i))); dot.setAttribute("cy", String(y(p.value))); dot.style.opacity = "1";
+    tip.innerHTML = `<strong>${full.format(p.value)}</strong><span>${p.label}</span>`;
+    tip.style.opacity = "1";
+    const leftPct = (x(i) / W) * 100;
+    tip.style.left = Math.max(4, Math.min(96, leftPct)) + "%";
+  };
+  const leave = () => { cross.style.opacity = "0"; dot.style.opacity = "0"; tip.style.opacity = "0"; };
+  hit.addEventListener("pointermove", move);
+  hit.addEventListener("pointerleave", leave);
+}
+
+async function load() {
+  if (!API_URL) { $("an-status").textContent = "Analytics API is not configured."; return; }
+  try {
+    const res = await fetch(`${API_URL}/analytics`, { headers: { accept: "application/json" } });
+    if (res.status === 503) { // still warming the cache on a cold start
+      $("an-status").textContent = "Analytics are warming up — retrying…";
+      setTimeout(load, 4000);
+      return;
+    }
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const d = (await res.json()) as Analytics;
+
+    renderKpis(d.kpis);
+    renderProduct(d.product);
+    renderBars("an-protocol-bars", d.byProtocol.map((p) => ({ label: titleCase(p.name), value: p.events })));
+    renderBars("an-category-bars", d.byCategory.map((c) => ({ label: titleCase(c.name), value: c.events })));
+    renderBars("an-asset-bars", d.topAssets.map((a) => ({ label: a.code, value: a.events })));
+    renderArea("an-wallets-chart", d.walletsByMonth.map((m) => ({ label: m.month, value: m.cumulativeWallets })));
+    renderArea("an-events-chart", d.eventsPerDay.map((e) => ({ label: e.day, value: e.events })));
+
+    const when = new Date(d.computedAt);
+    $("an-freshness").textContent =
+      `Data through ledger ${full.format(d.kpis.maxLedger)} · updated ${when.toLocaleString()}`;
+
+    $("an-status").hidden = true;
+    $("an-content").hidden = false;
+  } catch (e) {
+    $("an-status").textContent = "Couldn't load analytics right now. " + (e as Error).message;
+  }
+}
+
+load();

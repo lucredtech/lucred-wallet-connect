@@ -9,6 +9,7 @@ export default defineConfig({
         howItWorks: resolve(__dirname, "how-it-works.html"),
         borrow: resolve(__dirname, "borrow.html"),
         testEscrow: resolve(__dirname, "test-escrow.html"),
+        analytics: resolve(__dirname, "analytics.html"),
       },
     },
   },
