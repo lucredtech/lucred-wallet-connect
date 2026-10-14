@@ -17,6 +17,8 @@ type Analytics = {
   eventsPerDayByProtocol: { name: string; series: { day: string; events: number }[] }[];
   walletsByMonth: { month: string; newWallets: number; cumulativeWallets: number }[];
   product: { waitlist: number; acceptances: number; principalUsd: number };
+  scoreHistogram: { lo: number; hi: number; count: number }[];
+  scoreTiers: { tier: string; count: number }[];
 };
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
@@ -126,6 +128,23 @@ function renderArea(id: string, points: { label: string; value: number }[]) {
   hit.addEventListener("pointerleave", leave);
 }
 
+// Credit-score distribution: only shown once the batch scorer has populated the tables.
+function renderScores(d: Analytics) {
+  const card = document.getElementById("an-scores-card");
+  if (!card) return;
+  const hist = d.scoreHistogram || [];
+  if (!hist.length || hist.every((b) => b.count === 0)) { card.hidden = true; return; }
+  card.hidden = false;
+  renderBars("an-scores-bars", hist.map((b) => ({ label: `${b.lo}–${b.hi}`, value: b.count })));
+  const tiers = d.scoreTiers || [];
+  const total = tiers.reduce((s, t) => s + t.count, 0) || 1;
+  const order: Record<string, number> = { A: 0, B: 1, C: 2 };
+  const sub = tiers.slice().sort((a, b) => (order[a.tier] ?? 9) - (order[b.tier] ?? 9))
+    .map((t) => `Tier ${t.tier} ${Math.round((t.count / total) * 100)}%`).join(" · ");
+  const subEl = document.getElementById("an-scores-sub");
+  if (subEl) subEl.textContent = sub || "event-based";
+}
+
 // Events-per-day filter: "All" plus the top protocols, swapping the series client-side.
 function renderEventsFilter(d: Analytics) {
   const host = $("an-events-filter");
@@ -171,6 +190,7 @@ async function load() {
     renderBars("an-asset-bars", d.topAssets.map((a) => ({ label: a.code, value: a.events })));
     renderArea("an-wallets-chart", d.walletsByMonth.map((m) => ({ label: m.month, value: m.cumulativeWallets })));
     renderEventsFilter(d);
+    renderScores(d);
 
     const when = new Date(d.computedAt);
     $("an-freshness").textContent =

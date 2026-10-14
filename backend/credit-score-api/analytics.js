@@ -61,6 +61,10 @@ function createAnalytics(bq) {
         "SELECT COUNT(*) n, IFNULL(SUM(principalUsd), 0) principalUsd FROM `credit_bureau.df_credit_acceptances`",
         [{ n: 0, principalUsd: 0 }]);
 
+      // Score distribution (written by batch-score.js; empty until it has run — page hides it then).
+      const scoreHist = await qSafe("SELECT lo, hi, count FROM `credit_bureau.credit_score_histogram` ORDER BY lo", []);
+      const scoreTiers = await qSafe("SELECT tier, count FROM `credit_bureau.credit_score_tiers` ORDER BY tier", []);
+
       // Per-protocol daily series for the top protocols (powers the time-series filter).
       const topNames = byProtocol.slice(0, 6).map((r) => r.name);
       let eventsPerDayByProtocol = [];
@@ -104,6 +108,8 @@ function createAnalytics(bq) {
           acceptances: num(accept[0] && accept[0].n),
           principalUsd: num(accept[0] && accept[0].principalUsd),
         },
+        scoreHistogram: (scoreHist || []).map((r) => ({ lo: num(r.lo), hi: num(r.hi), count: num(r.count) })),
+        scoreTiers: (scoreTiers || []).map((r) => ({ tier: r.tier, count: num(r.count) })),
       };
       console.log("Analytics refreshed: " + cache.kpis.totalEvents + " events, " + cache.kpis.totalWallets + " wallets");
     } catch (e) {
