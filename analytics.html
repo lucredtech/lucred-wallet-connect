@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#0a0e1a" />
+    <title>Analytics — LCRD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="info-shell">
+      <header class="info-masthead">
+        <span class="wordmark">LCRD</span>
+        <a class="btn-link" href="/">&larr; Back to lookup</a>
+      </header>
+
+      <div class="info-intro">
+        <h1>Ecosystem &amp; product analytics</h1>
+        <p class="subtext">
+          Aggregate, on-chain credit activity indexed by LCRD across the Stellar DeFi ecosystem — and
+          how the LCRD credit product is tracking against it. Figures are aggregates only; no per-wallet
+          data is shown.
+        </p>
+        <p class="an-freshness" id="an-freshness"></p>
+      </div>
+
+      <div id="an-status" class="an-status">Loading analytics…</div>
+
+      <div id="an-content" hidden>
+        <!-- KPIs -->
+        <section class="an-kpis" id="an-kpis"></section>
+
+        <!-- Ecosystem -->
+        <h2 class="an-section-title">Ecosystem</h2>
+        <div class="an-grid-2">
+          <section class="info-card an-card">
+            <div class="an-card-head"><h3>Wallets scored over time</h3><span class="an-card-sub">cumulative</span></div>
+            <div id="an-wallets-chart" class="an-chart"></div>
+          </section>
+          <section class="info-card an-card">
+            <div class="an-card-head"><h3>Events per day</h3><span class="an-card-sub">last 90 days</span></div>
+            <div id="an-events-chart" class="an-chart"></div>
+          </section>
+        </div>
+
+        <div class="an-grid-2">
+          <section class="info-card an-card">
+            <div class="an-card-head"><h3>Activity by protocol</h3><span class="an-card-sub">events</span></div>
+            <div id="an-protocol-bars" class="an-bars"></div>
+          </section>
+          <section class="info-card an-card">
+            <div class="an-card-head"><h3>Activity by category</h3><span class="an-card-sub">events</span></div>
+            <div id="an-category-bars" class="an-bars"></div>
+          </section>
+        </div>
+
+        <section class="info-card an-card">
+          <div class="an-card-head"><h3>Top assets by activity</h3><span class="an-card-sub">events</span></div>
+          <div id="an-asset-bars" class="an-bars"></div>
+        </section>
+
+        <!-- Product -->
+        <h2 class="an-section-title">LCRD credit product</h2>
+        <p class="subtext an-note">USDC credit against DeFindex positions — currently on testnet. These fill in as the product goes live.</p>
+        <section class="an-kpis" id="an-product"></section>
+      </div>
+
+      <footer>LCRD — scored from indexed Stellar DeFi activity.</footer>
+    </main>
+    <script type="module" src="/src/analyticsPage.ts"></script>
+  </body>
+</html>
