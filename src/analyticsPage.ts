@@ -14,8 +14,11 @@ type Analytics = {
   byCategory: { name: string; events: number }[];
   topAssets: { code: string; events: number }[];
   eventsPerDay: { day: string; events: number }[];
+  eventsPerDayByProtocol: { name: string; series: { day: string; events: number }[] }[];
   walletsByMonth: { month: string; newWallets: number; cumulativeWallets: number }[];
   product: { waitlist: number; acceptances: number; principalUsd: number };
+  scoreHistogram: { lo: number; hi: number; count: number }[];
+  scoreTiers: { tier: string; count: number }[];
 };
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
@@ -26,13 +29,13 @@ const usd = (n: number) => "$" + compact.format(n);
 // Protocol/category slugs come through as snake_case; show them readably.
 const titleCase = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-function tile(label: string, value: string, sub?: string): string {
-  return `<div class="an-tile"><div class="an-tile-val">${value}</div><div class="an-tile-label">${label}</div>${sub ? `<div class="an-tile-sub">${sub}</div>` : ""}</div>`;
+function tile(label: string, value: string, sub?: string, hero = false): string {
+  return `<div class="an-tile${hero ? " an-hero" : ""}"><div class="an-tile-val">${value}</div><div class="an-tile-label">${label}</div>${sub ? `<div class="an-tile-sub">${sub}</div>` : ""}</div>`;
 }
 
 function renderKpis(k: Kpis) {
   $("an-kpis").innerHTML = [
-    tile("Credit events indexed", compact.format(k.totalEvents), full.format(k.totalEvents)),
+    tile("Credit events indexed", compact.format(k.totalEvents), full.format(k.totalEvents) + " on-chain events", true),
     tile("Wallets scored", compact.format(k.totalWallets)),
     tile("Protocols covered", String(k.totalProtocols)),
     tile("Events · last 24h", compact.format(k.events24h)),
@@ -72,16 +75,31 @@ function renderArea(id: string, points: { label: string; value: number }[]) {
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(" ");
   const area = `${line} L${x(points.length - 1).toFixed(1)} ${(PAD_T + ih).toFixed(1)} L${x(0).toFixed(1)} ${(PAD_T + ih).toFixed(1)} Z`;
   const first = points[0].label, last = points[points.length - 1].label;
+  // Faint horizontal grid lines at 25/50/75/100% of the plot height.
+  const grid = [0.25, 0.5, 0.75, 1].map((f) => {
+    const gy = (PAD_T + ih - f * ih).toFixed(1);
+    return `<line x1="${PAD_L}" y1="${gy}" x2="${W - PAD_R}" y2="${gy}" stroke="var(--color-border-subtle)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  }).join("");
   host.innerHTML = `
     <svg class="an-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="time series">
-      <defs><linearGradient id="${id}-g" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="var(--indigo-600)" stop-opacity="0.5"/>
-        <stop offset="1" stop-color="var(--indigo-600)" stop-opacity="0"/>
-      </linearGradient></defs>
+      <defs>
+        <linearGradient id="${id}-g" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="var(--indigo-600)" stop-opacity="0.45"/>
+          <stop offset="1" stop-color="var(--indigo-600)" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="${id}-s" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="var(--indigo-600)"/>
+          <stop offset="1" stop-color="var(--cyan-300)"/>
+        </linearGradient>
+        <filter id="${id}-glow" x="-20%" y="-50%" width="140%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      ${grid}
       <path d="${area}" fill="url(#${id}-g)"/>
-      <path d="${line}" fill="none" stroke="var(--indigo-600)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+      <path d="${line}" fill="none" stroke="url(#${id}-s)" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke" filter="url(#${id}-glow)"/>
       <line class="an-cross" x1="0" y1="${PAD_T}" x2="0" y2="${PAD_T + ih}" stroke="var(--color-border-strong)" stroke-width="1" vector-effect="non-scaling-stroke" style="opacity:0"/>
-      <circle class="an-dot" r="3.5" fill="var(--indigo-300)" style="opacity:0"/>
+      <circle class="an-dot" r="4" fill="var(--cyan-300)" stroke="var(--navy-950)" stroke-width="1.5" style="opacity:0"/>
       <rect class="an-hit" x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
     </svg>
     <div class="an-axis"><span>${first}</span><span>${last}</span></div>
@@ -110,6 +128,49 @@ function renderArea(id: string, points: { label: string; value: number }[]) {
   hit.addEventListener("pointerleave", leave);
 }
 
+// Credit-score distribution: only shown once the batch scorer has populated the tables.
+function renderScores(d: Analytics) {
+  const card = document.getElementById("an-scores-card");
+  if (!card) return;
+  const hist = d.scoreHistogram || [];
+  if (!hist.length || hist.every((b) => b.count === 0)) { card.hidden = true; return; }
+  card.hidden = false;
+  renderBars("an-scores-bars", hist.map((b) => ({ label: `${b.lo}–${b.hi}`, value: b.count })));
+  const tiers = d.scoreTiers || [];
+  const total = tiers.reduce((s, t) => s + t.count, 0) || 1;
+  const order: Record<string, number> = { A: 0, B: 1, C: 2 };
+  const sub = tiers.slice().sort((a, b) => (order[a.tier] ?? 9) - (order[b.tier] ?? 9))
+    .map((t) => `Tier ${t.tier} ${Math.round((t.count / total) * 100)}%`).join(" · ");
+  const subEl = document.getElementById("an-scores-sub");
+  if (subEl) subEl.textContent = sub || "event-based";
+}
+
+// Events-per-day filter: "All" plus the top protocols, swapping the series client-side.
+function renderEventsFilter(d: Analytics) {
+  const host = $("an-events-filter");
+  if (!host) return;
+  const days = d.eventsPerDay.map((e) => e.day);
+  // Align each protocol's sparse series to the full day axis (missing days -> 0).
+  const aligned = (d.eventsPerDayByProtocol || []).map((p) => {
+    const m = new Map(p.series.map((s) => [s.day, s.events]));
+    return { name: p.name, series: days.map((day) => ({ day, events: m.get(day) || 0 })) };
+  });
+  const options = [{ name: "All", series: d.eventsPerDay }, ...aligned];
+  host.innerHTML = options
+    .map((o, i) => `<button type="button" class="an-chip${i === 0 ? " is-active" : ""}" data-i="${i}">${titleCase(o.name)}</button>`)
+    .join("");
+  const draw = (pts: { day: string; events: number }[]) =>
+    renderArea("an-events-chart", pts.map((p) => ({ label: p.day, value: p.events })));
+  draw(options[0].series);
+  host.querySelectorAll(".an-chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      host.querySelectorAll(".an-chip").forEach((b) => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      draw(options[Number((btn as HTMLElement).dataset.i)].series);
+    });
+  });
+}
+
 async function load() {
   if (!API_URL) { $("an-status").textContent = "Analytics API is not configured."; return; }
   try {
@@ -128,7 +189,8 @@ async function load() {
     renderBars("an-category-bars", d.byCategory.map((c) => ({ label: titleCase(c.name), value: c.events })));
     renderBars("an-asset-bars", d.topAssets.map((a) => ({ label: a.code, value: a.events })));
     renderArea("an-wallets-chart", d.walletsByMonth.map((m) => ({ label: m.month, value: m.cumulativeWallets })));
-    renderArea("an-events-chart", d.eventsPerDay.map((e) => ({ label: e.day, value: e.events })));
+    renderEventsFilter(d);
+    renderScores(d);
 
     const when = new Date(d.computedAt);
     $("an-freshness").textContent =

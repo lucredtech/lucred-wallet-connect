@@ -61,6 +61,27 @@ function createAnalytics(bq) {
         "SELECT COUNT(*) n, IFNULL(SUM(principalUsd), 0) principalUsd FROM `credit_bureau.df_credit_acceptances`",
         [{ n: 0, principalUsd: 0 }]);
 
+      // Score distribution (written by batch-score.js; empty until it has run — page hides it then).
+      const scoreHist = await qSafe("SELECT lo, hi, count FROM `credit_bureau.credit_score_histogram` ORDER BY lo", []);
+      const scoreTiers = await qSafe("SELECT tier, count FROM `credit_bureau.credit_score_tiers` ORDER BY tier", []);
+
+      // Per-protocol daily series for the top protocols (powers the time-series filter).
+      const topNames = byProtocol.slice(0, 6).map((r) => r.name);
+      let eventsPerDayByProtocol = [];
+      if (topNames.length) {
+        const [rows] = await bq.query({
+          query: `SELECT FORMAT_DATE('%Y-%m-%d', DATE(blockCloseTime)) day, protocolName name, COUNT(*) events
+                  FROM ${VIEW}
+                  WHERE blockCloseTime >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 DAY)
+                    AND protocolName IN UNNEST(@names)
+                  GROUP BY 1, 2 ORDER BY 1`,
+          params: { names: topNames },
+        });
+        const byName = {};
+        for (const r of rows) (byName[r.name] = byName[r.name] || []).push({ day: str(r.day), events: num(r.events) });
+        eventsPerDayByProtocol = topNames.map((n) => ({ name: n, series: byName[n] || [] }));
+      }
+
       const k = kpiRows[0];
       cache = {
         computedAt: new Date().toISOString(),
@@ -78,6 +99,7 @@ function createAnalytics(bq) {
         byCategory: byCategory.map((r) => ({ name: r.name, events: num(r.events) })),
         topAssets: topAssets.map((r) => ({ code: r.code, events: num(r.events) })),
         eventsPerDay: eventsPerDay.map((r) => ({ day: str(r.day), events: num(r.events) })),
+        eventsPerDayByProtocol,
         walletsByMonth: walletsByMonth.map((r) => ({
           month: str(r.month), newWallets: num(r.newWallets), cumulativeWallets: num(r.cumulativeWallets),
         })),
@@ -86,6 +108,8 @@ function createAnalytics(bq) {
           acceptances: num(accept[0] && accept[0].n),
           principalUsd: num(accept[0] && accept[0].principalUsd),
         },
+        scoreHistogram: (scoreHist || []).map((r) => ({ lo: num(r.lo), hi: num(r.hi), count: num(r.count) })),
+        scoreTiers: (scoreTiers || []).map((r) => ({ tier: r.tier, count: num(r.count) })),
       };
       console.log("Analytics refreshed: " + cache.kpis.totalEvents + " events, " + cache.kpis.totalWallets + " wallets");
     } catch (e) {

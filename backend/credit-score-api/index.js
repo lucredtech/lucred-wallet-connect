@@ -1046,11 +1046,22 @@ app.get("/analytics", (req, res) => {
   res.json(data);
 });
 
-const port = process.env.PORT || 8080;
-refreshReferenceData().then(() => {
-  setInterval(refreshReferenceData, REFERENCE_DATA_REFRESH_MS);
-  app.listen(port, () => console.log("credit-score-api listening on " + port));
-});
-// Analytics refresh runs independently of reference data and never blocks startup.
-analytics.refresh().catch((e) => console.error("initial analytics refresh:", e.message));
-setInterval(() => analytics.refresh().catch((e) => console.error("analytics refresh:", e.message)), ANALYTICS_REFRESH_MS);
+// Start the server only when run directly (node index.js). When this module is `require`d — e.g. by
+// the offline batch scorer — nothing listens and no intervals run; it just exposes the scorer below.
+if (require.main === module) {
+  const port = process.env.PORT || 8080;
+  refreshReferenceData().then(() => {
+    setInterval(refreshReferenceData, REFERENCE_DATA_REFRESH_MS);
+    app.listen(port, () => console.log("credit-score-api listening on " + port));
+  });
+  // Analytics refresh runs independently of reference data and never blocks startup.
+  analytics.refresh().catch((e) => console.error("initial analytics refresh:", e.message));
+  setInterval(() => analytics.refresh().catch((e) => console.error("analytics refresh:", e.message)), ANALYTICS_REFRESH_MS);
+}
+
+// Reused by batch-score.js so the ecosystem score distribution uses the exact production scorer
+// (event-based path, classic=null). Call refreshReferenceData() once first to load the price/vault maps.
+module.exports = {
+  refreshReferenceData,
+  scoreEventsForWallet: (events) => scoreWalletBase(events, computeDebtCycles(events), assetPriceMap, vaultAssetMap, null),
+};
