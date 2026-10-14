@@ -14,6 +14,7 @@ type Analytics = {
   byCategory: { name: string; events: number }[];
   topAssets: { code: string; events: number }[];
   eventsPerDay: { day: string; events: number }[];
+  eventsPerDayByProtocol: { name: string; series: { day: string; events: number }[] }[];
   walletsByMonth: { month: string; newWallets: number; cumulativeWallets: number }[];
   product: { waitlist: number; acceptances: number; principalUsd: number };
 };
@@ -125,6 +126,32 @@ function renderArea(id: string, points: { label: string; value: number }[]) {
   hit.addEventListener("pointerleave", leave);
 }
 
+// Events-per-day filter: "All" plus the top protocols, swapping the series client-side.
+function renderEventsFilter(d: Analytics) {
+  const host = $("an-events-filter");
+  if (!host) return;
+  const days = d.eventsPerDay.map((e) => e.day);
+  // Align each protocol's sparse series to the full day axis (missing days -> 0).
+  const aligned = (d.eventsPerDayByProtocol || []).map((p) => {
+    const m = new Map(p.series.map((s) => [s.day, s.events]));
+    return { name: p.name, series: days.map((day) => ({ day, events: m.get(day) || 0 })) };
+  });
+  const options = [{ name: "All", series: d.eventsPerDay }, ...aligned];
+  host.innerHTML = options
+    .map((o, i) => `<button type="button" class="an-chip${i === 0 ? " is-active" : ""}" data-i="${i}">${titleCase(o.name)}</button>`)
+    .join("");
+  const draw = (pts: { day: string; events: number }[]) =>
+    renderArea("an-events-chart", pts.map((p) => ({ label: p.day, value: p.events })));
+  draw(options[0].series);
+  host.querySelectorAll(".an-chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      host.querySelectorAll(".an-chip").forEach((b) => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      draw(options[Number((btn as HTMLElement).dataset.i)].series);
+    });
+  });
+}
+
 async function load() {
   if (!API_URL) { $("an-status").textContent = "Analytics API is not configured."; return; }
   try {
@@ -143,7 +170,7 @@ async function load() {
     renderBars("an-category-bars", d.byCategory.map((c) => ({ label: titleCase(c.name), value: c.events })));
     renderBars("an-asset-bars", d.topAssets.map((a) => ({ label: a.code, value: a.events })));
     renderArea("an-wallets-chart", d.walletsByMonth.map((m) => ({ label: m.month, value: m.cumulativeWallets })));
-    renderArea("an-events-chart", d.eventsPerDay.map((e) => ({ label: e.day, value: e.events })));
+    renderEventsFilter(d);
 
     const when = new Date(d.computedAt);
     $("an-freshness").textContent =

@@ -1527,6 +1527,8 @@ h2 { letter-spacing: -0.01em; }
 
 /* Ambient depth glow behind the page */
 .an-page { position:relative; }
+/* Dashboards need more width than the 680px reading shell; override + keep it centered. */
+.info-shell.an-page { max-width:1100px; }
 .an-page::before {
   content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
   background:
@@ -1586,6 +1588,13 @@ h2 { letter-spacing: -0.01em; }
 .an-tip strong { font-size:var(--text-body-sm); }
 .an-tip span { color:var(--color-text-secondary); }
 .an-empty { color:var(--color-text-secondary); font-size:var(--text-body-sm); padding:70px 0; text-align:center; }
+.an-filter { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.an-chip { padding:5px 12px; border-radius:999px; font-size:var(--text-caption); font-weight:500; cursor:pointer;
+  color:var(--color-text-secondary); background:rgba(255,255,255,0.04); border:1px solid var(--color-border-subtle);
+  transition:all .18s ease; }
+.an-chip:hover { color:var(--color-text-primary); border-color:var(--color-border-strong); }
+.an-chip.is-active { color:#fff; background:var(--gradient-accent); border-color:transparent;
+  box-shadow:0 0 14px color-mix(in srgb, var(--indigo-600) 50%, transparent); }
 
 .an-bars { display:flex; flex-direction:column; gap:13px; }
 .an-bar-row { display:grid; grid-template-columns:150px 1fr auto; align-items:center; gap:14px; }
