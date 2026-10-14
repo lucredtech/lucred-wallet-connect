@@ -12,6 +12,7 @@ const { createPortfolioService, resolveVaultTicker } = require("./portfolio");
 const { computeOffers, POLICY } = require("./credit-line");
 const collateralEngine = require("./collateral-engine");
 const { getClassicActivity, classicPoints } = require("./classic-activity");
+const { createAnalytics } = require("./analytics");
 
 const bq = new BigQuery();
 const app = express();
@@ -1034,8 +1035,22 @@ app.post("/waitlist", express.json({ limit: "2kb" }), async (req, res) => {
   }
 });
 
+// ---- Analytics: cached ecosystem + product rollups for the /analytics page ----
+// Aggregates refresh on a long interval (the data moves slowly) so the whole refresh stays inside
+// BigQuery's free query tier; requests just read the in-memory cache. Public, read-only, aggregates only.
+const ANALYTICS_REFRESH_MS = 6 * 60 * 60 * 1000;
+const analytics = createAnalytics(bq);
+app.get("/analytics", (req, res) => {
+  const data = analytics.get();
+  if (!data) return res.status(503).json({ ready: false });
+  res.json(data);
+});
+
 const port = process.env.PORT || 8080;
 refreshReferenceData().then(() => {
   setInterval(refreshReferenceData, REFERENCE_DATA_REFRESH_MS);
   app.listen(port, () => console.log("credit-score-api listening on " + port));
 });
+// Analytics refresh runs independently of reference data and never blocks startup.
+analytics.refresh().catch((e) => console.error("initial analytics refresh:", e.message));
+setInterval(() => analytics.refresh().catch((e) => console.error("analytics refresh:", e.message)), ANALYTICS_REFRESH_MS);
