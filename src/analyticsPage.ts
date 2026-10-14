@@ -26,13 +26,13 @@ const usd = (n: number) => "$" + compact.format(n);
 // Protocol/category slugs come through as snake_case; show them readably.
 const titleCase = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-function tile(label: string, value: string, sub?: string): string {
-  return `<div class="an-tile"><div class="an-tile-val">${value}</div><div class="an-tile-label">${label}</div>${sub ? `<div class="an-tile-sub">${sub}</div>` : ""}</div>`;
+function tile(label: string, value: string, sub?: string, hero = false): string {
+  return `<div class="an-tile${hero ? " an-hero" : ""}"><div class="an-tile-val">${value}</div><div class="an-tile-label">${label}</div>${sub ? `<div class="an-tile-sub">${sub}</div>` : ""}</div>`;
 }
 
 function renderKpis(k: Kpis) {
   $("an-kpis").innerHTML = [
-    tile("Credit events indexed", compact.format(k.totalEvents), full.format(k.totalEvents)),
+    tile("Credit events indexed", compact.format(k.totalEvents), full.format(k.totalEvents) + " on-chain events", true),
     tile("Wallets scored", compact.format(k.totalWallets)),
     tile("Protocols covered", String(k.totalProtocols)),
     tile("Events · last 24h", compact.format(k.events24h)),
@@ -72,16 +72,31 @@ function renderArea(id: string, points: { label: string; value: number }[]) {
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(" ");
   const area = `${line} L${x(points.length - 1).toFixed(1)} ${(PAD_T + ih).toFixed(1)} L${x(0).toFixed(1)} ${(PAD_T + ih).toFixed(1)} Z`;
   const first = points[0].label, last = points[points.length - 1].label;
+  // Faint horizontal grid lines at 25/50/75/100% of the plot height.
+  const grid = [0.25, 0.5, 0.75, 1].map((f) => {
+    const gy = (PAD_T + ih - f * ih).toFixed(1);
+    return `<line x1="${PAD_L}" y1="${gy}" x2="${W - PAD_R}" y2="${gy}" stroke="var(--color-border-subtle)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  }).join("");
   host.innerHTML = `
     <svg class="an-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="time series">
-      <defs><linearGradient id="${id}-g" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="var(--indigo-600)" stop-opacity="0.5"/>
-        <stop offset="1" stop-color="var(--indigo-600)" stop-opacity="0"/>
-      </linearGradient></defs>
+      <defs>
+        <linearGradient id="${id}-g" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="var(--indigo-600)" stop-opacity="0.45"/>
+          <stop offset="1" stop-color="var(--indigo-600)" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="${id}-s" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="var(--indigo-600)"/>
+          <stop offset="1" stop-color="var(--cyan-300)"/>
+        </linearGradient>
+        <filter id="${id}-glow" x="-20%" y="-50%" width="140%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      ${grid}
       <path d="${area}" fill="url(#${id}-g)"/>
-      <path d="${line}" fill="none" stroke="var(--indigo-600)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+      <path d="${line}" fill="none" stroke="url(#${id}-s)" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke" filter="url(#${id}-glow)"/>
       <line class="an-cross" x1="0" y1="${PAD_T}" x2="0" y2="${PAD_T + ih}" stroke="var(--color-border-strong)" stroke-width="1" vector-effect="non-scaling-stroke" style="opacity:0"/>
-      <circle class="an-dot" r="3.5" fill="var(--indigo-300)" style="opacity:0"/>
+      <circle class="an-dot" r="4" fill="var(--cyan-300)" stroke="var(--navy-950)" stroke-width="1.5" style="opacity:0"/>
       <rect class="an-hit" x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
     </svg>
     <div class="an-axis"><span>${first}</span><span>${last}</span></div>
