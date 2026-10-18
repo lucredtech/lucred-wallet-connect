@@ -160,6 +160,14 @@ body::before {
   color: var(--color-text-on-surface-light);
 }
 
+.wordmark-logo {
+  height: 1.5em;
+  width: auto;
+  vertical-align: -0.35em;
+  margin-right: 0.45em;
+  border-radius: 6px;
+}
+
 h1 {
   font-size: var(--text-display);
   line-height: 1.1;
