@@ -1624,3 +1624,40 @@ h2 { letter-spacing: -0.01em; }
 .an-bar-val { font-size:var(--text-body-sm); font-weight:600; color:var(--color-text-primary); font-variant-numeric:tabular-nums; }
 @media (max-width:560px) { .an-bar-row { grid-template-columns:92px 1fr auto; gap:10px; } .an-tile-val{font-size:1.6rem;} }
 @media (prefers-reduced-motion: reduce) { .an-tile, .an-card, .an-bar-fill, .an-freshness::before { animation:none; } }
+
+/* ---- Credit pool page (pool.html) ---- */
+.pool-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3, 12px);
+  margin-bottom: 18px;
+}
+.pool-card-sub {
+  color: var(--color-text-secondary);
+  font-size: var(--text-body-sm, 13.5px);
+  margin: 0 0 14px;
+}
+.pool-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--color-accent-subtle-bg);
+  box-shadow: var(--shadow-border);
+  margin-bottom: 16px;
+}
+.pool-line .df-tile-label { color: var(--color-accent-text); }
+.pool-line-val { font-weight: 600; color: var(--color-text-primary); }
+details.pool-advanced { margin-top: 32px; }
+details.pool-advanced > summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--color-text-secondary);
+  font-size: var(--text-body-sm, 13.5px);
+  padding: 8px 0;
+}
+details.pool-advanced > summary::-webkit-details-marker { display: none; }
+details.pool-advanced > summary::before { content: "⚙ "; }
+details.pool-advanced[open] > summary { margin-bottom: 10px; }
