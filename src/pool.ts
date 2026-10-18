@@ -5,8 +5,9 @@ import { Networks } from "@stellar/stellar-sdk";
 
 // Testnet deployment (editable in the page). See contracts/credit-line/.credit-line-testnet.json.
 const DEFAULTS = {
-  pool: "CC62VXXDIRDAIP4QN6TLNLN77N5KBSHHQJ3TOQUNC7Z7M26VXKW4XJKZ",
-  usdc: "CBNM3LYX67DKXPZJSQYTINDAM2E5GEWLFNEUQNYIFXZZL2QJSAXHVOZC",
+  pool: "CDGNXAAA2MM5V7Z6CJ6SHQNMKFQR5VRBHDF6Z3DAUXXJJBQ3CG73IXE4",
+  usdc: "CD53BY6I76MPTYAX7OUQSGGNJK4IZ5OQI7PTPLI62WFYHU6KB6YDNQJQ",
+  faucet: "CAHIFIKDOPVJOIQ5OXNYUHLPC4F3PKU7Z5HCTUGSWB3UC6AJXP25SO4P", // test-USDC faucet (drip)
   underwriter: "", // e.g. http://localhost:8080 — the credit-line-underwriter service
 };
 
@@ -40,7 +41,7 @@ const pool = () => $("pl-pool").value.trim();
 const usdc = () => $("pl-usdc").value.trim();
 
 function setBusy(b: boolean) {
-  for (const id of ["pl-deposit", "pl-withdraw", "pl-borrow", "pl-repay", "pl-open-secured", "pl-request", "pl-refresh"]) {
+  for (const id of ["pl-deposit", "pl-withdraw", "pl-borrow", "pl-repay", "pl-open-secured", "pl-request", "pl-refresh", "pl-faucet"]) {
     const el = $(id) as HTMLButtonElement; if (el) el.disabled = b || !address;
   }
 }
@@ -197,6 +198,8 @@ function wire() {
   });
 
   $("pl-refresh").addEventListener("click", () => { refresh(); loadTable(); });
+  $("pl-faucet").addEventListener("click", () =>
+    run("Claim test USDC (faucet)", () => invoke(DEFAULTS.faucet, "drip", [sAddr(address)], address)));
   $("pl-deposit").addEventListener("click", () =>
     run("Deposit " + $("pl-deposit-amt").value + " USDC", () =>
       invoke(pool(), "deposit", [sAddr(address), sI128(toBase($("pl-deposit-amt").value))], address)));
