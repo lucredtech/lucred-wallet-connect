@@ -1661,3 +1661,15 @@ details.pool-advanced > summary {
 details.pool-advanced > summary::-webkit-details-marker { display: none; }
 details.pool-advanced > summary::before { content: "⚙ "; }
 details.pool-advanced[open] > summary { margin-bottom: 10px; }
+
+/* in-card stat grids: responsive, and never overflow the card */
+.pool-cardtiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.pool-tiles .df-tile,
+.pool-cardtiles .df-tile { min-width: 0; }
+.pool-tiles .df-tile-value,
+.pool-cardtiles .df-tile-value { overflow-wrap: anywhere; }

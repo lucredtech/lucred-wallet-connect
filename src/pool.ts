@@ -65,9 +65,8 @@ async function refresh() {
     $("pl-interest").textContent = fromBase(interest);
     $("pl-written").textContent = fromBase(written);
 
-    const [bal, shares, worth, line, hist, owed, avail] = await Promise.all([
+    const [bal, worth, line, hist, owed, avail] = await Promise.all([
       readCall<bigint>(usdc(), "balance", [sAddr(address)], address),
-      readCall<bigint>(P, "shares_of", [sAddr(address)], address),
       readCall<bigint>(P, "collateral_value", [sAddr(address)], address),
       readCall<Record<string, unknown>>(P, "get_line", [sAddr(address)], address),
       readCall<Record<string, unknown>>(P, "get_history", [sAddr(address)], address),
@@ -75,7 +74,6 @@ async function refresh() {
       readCall<bigint>(P, "available", [sAddr(address)], address),
     ]);
     $("pl-bal").textContent = fromBase(bal);
-    $("pl-shares").textContent = shares.toString();
     $("pl-worth").textContent = fromBase(worth);
 
     const active = line.active as boolean;
@@ -84,10 +82,10 @@ async function refresh() {
     $("pl-line").textContent = active
       ? `${secured ? "Secured" : "Unsecured"} · tier ${["—", "A", "B", "C"][tier] ?? "—"} · ${pct(Number(line.apr_bps))} APR · limit ${fromBase(line.limit as bigint)} USDC`
       : "No line yet";
-    $("pl-owed").textContent = `${fromBase(owed[0])} principal + ${fromBase(owed[1])} interest`;
+    $("pl-owed").textContent = fromBase(owed[0] + owed[1]);
     $("pl-avail").textContent = fromBase(avail);
     const cycles = Number(hist.cycles_completed);
-    $("pl-record").textContent = `${Number(hist.repayments)} repayments · ${cycles} cycle${cycles === 1 ? "" : "s"} · ${Number(hist.write_offs)} write-offs`;
+    $("pl-record").textContent = `${Number(hist.repayments)} · ${cycles} · ${Number(hist.write_offs)}`;
   } catch (e) {
     log("read failed: " + (e as Error).message);
   } finally {
