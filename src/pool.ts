@@ -37,6 +37,38 @@ function log(msg: string, href?: string) {
   el.prepend(line);
 }
 
+// Turn a raw Soroban/wallet error into one plain sentence. Contract error numbers come back inside the
+// message as "Error(Contract, #N)"; N maps to the credit-line contract's error enum.
+const CONTRACT_ERRORS: Record<string, string> = {
+  "3": "Only the pool owner can do that.",
+  "4": "Only the underwriter can open an unsecured line — use “Request unsecured line”.",
+  "6": "Enter an amount greater than zero.",
+  "8": "That credit score isn’t valid.",
+  "9": "This wallet isn’t eligible for an unsecured line yet (needs tier A, or tier B with a score of 55+). You can borrow with a secured line instead.",
+  "10": "This credit line is frozen, so you can’t draw on it right now.",
+  "11": "That’s more than your limit. Lower the amount, or complete a repayment cycle to grow your line.",
+  "12": "The pool doesn’t have enough available USDC right now — try a smaller amount.",
+  "13": "You don’t have that many pool shares to withdraw.",
+  "14": "There’s nothing owed on this line.",
+  "15": "You already have an open loan — repay it before changing the line.",
+  "16": "Deposit USDC first, then you can open a secured line against it.",
+  "17": "This isn’t a secured line.",
+  "18": "You can’t withdraw the deposit backing an open loan — repay the loan first.",
+};
+function friendlyError(e: unknown): string {
+  const raw = (e instanceof Error ? e.message : String(e)) || "Something went wrong.";
+  const m = raw.toLowerCase();
+  if (m.includes("declined") || m.includes("reject") || m.includes("cancel") || m.includes("denied")) return "Request cancelled in your wallet.";
+  const cm = /error\(contract,\s*#(\d+)\)/i.exec(raw);
+  if (cm && CONTRACT_ERRORS[cm[1]]) return CONTRACT_ERRORS[cm[1]];
+  if (m.includes("insufficient balance") || m.includes("unreachablecodereached")) return "Not enough USDC in your wallet. Click “Get test USDC” to top up.";
+  if (m.includes("insufficientliquidity")) return "The pool doesn’t have enough available USDC right now — try a smaller amount.";
+  if (m.includes("unauthorized") || (m.includes("invalidaction") && m.includes("auth"))) return "Couldn’t authorize that — reconnect your wallet and try again.";
+  if (m.includes("simulation") || m.includes("timeout") || m.includes("network") || m.includes("fetch") || m.includes("http")) return "Couldn’t reach Stellar just now — please try again.";
+  if (m.includes("trap") || m.includes("hosterror") || m.includes("wasmvm") || m.includes("invalidaction")) return "That transaction couldn’t go through. Check your amount and balance, then try again.";
+  return raw.split("\n")[0].slice(0, 160);
+}
+
 const pool = () => $("pl-pool").value.trim();
 const usdc = () => $("pl-usdc").value.trim();
 
@@ -87,7 +119,7 @@ async function refresh() {
     const cycles = Number(hist.cycles_completed);
     $("pl-record").textContent = `${Number(hist.repayments)} · ${cycles} · ${Number(hist.write_offs)}`;
   } catch (e) {
-    log("read failed: " + (e as Error).message);
+    log("Couldn’t refresh pool data — " + friendlyError(e));
   } finally {
     setBusy(false);
   }
@@ -127,7 +159,7 @@ async function loadTable() {
     }
     if (list.length === 0) tbody.innerHTML = '<tr><td colspan="8" class="te-muted">No lines yet.</td></tr>';
   } catch (e) {
-    log("table load failed: " + (e as Error).message);
+    log("Couldn’t load credit lines — " + friendlyError(e));
   }
 }
 
@@ -141,7 +173,7 @@ async function run(label: string, fn: () => Promise<string>) {
     await refresh();
     await loadTable();
   } catch (e) {
-    log(label + " failed: " + (e as Error).message);
+    log(label + " failed — " + friendlyError(e));
   } finally {
     setBusy(false);
   }
@@ -150,7 +182,7 @@ async function run(label: string, fn: () => Promise<string>) {
 async function requestUnsecuredLine() {
   if (!address) return;
   const url = $("pl-underwriter").value.trim();
-  if (!url) { log("Set the underwriter URL first (the credit-line-underwriter service)."); return; }
+  if (!url) { log("Unsecured lines aren’t available here right now. You can still borrow with a secured line (deposit USDC, then “Open secured line”)."); return; }
   setBusy(true);
   try {
     const message = `LCRD credit on Stellar\nStellar wallet: ${address}\nIssued: ${new Date().toISOString()}`;
@@ -166,12 +198,12 @@ async function requestUnsecuredLine() {
     if (out.eligible) {
       log(`Line opened: ${out.limit} USDC, tier ${out.tier}, ${pct(out.aprBps)} APR`, out.txHash ? explorerTx(out.txHash) : undefined);
     } else {
-      log("Not eligible: " + out.reason);
+      log("No line opened — " + out.reason);
     }
     await refresh();
     await loadTable();
   } catch (e) {
-    log("request failed: " + (e as Error).message);
+    log("Couldn’t open a line — " + friendlyError(e));
   } finally {
     setBusy(false);
   }
@@ -202,7 +234,7 @@ function wire() {
       await refresh();
       await loadTable();
     } catch (e) {
-      log("connect failed: " + (e as Error).message);
+      log("Couldn’t connect your wallet — " + friendlyError(e));
     }
   });
 
