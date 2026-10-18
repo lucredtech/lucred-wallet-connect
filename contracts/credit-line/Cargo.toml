@@ -1,0 +1,30 @@
+[package]
+name = "credit-line"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Stellar/Soroban port of lcrd-arc-credit's CreditLine.sol: a USDC lending pool with credit lines
+# priced on-chain from an LCRD credit score. Lenders deposit USDC for pool shares; borrowers draw
+# unsecured lines (underwriter submits the score + report hash; the contract derives tier/APR/limit)
+# or secured lines against their own deposit. Interest accrues by the second; completed repayment
+# cycles lower the APR and raise the limit. Only the score-report hash is stored, never personal data.
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = "22.0.0"
+
+[dev-dependencies]
+soroban-sdk = { version = "22.0.0", features = ["testutils"] }
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+codegen-units = 1
+lto = true
+panic = "abort"
