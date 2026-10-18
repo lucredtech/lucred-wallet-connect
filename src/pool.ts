@@ -177,6 +177,17 @@ async function requestUnsecuredLine() {
   }
 }
 
+// Friendly guard: the pool pulls USDC from the wallet, so a deposit/repay with too little USDC would
+// trap deep in the token contract. Check first and point at the faucet instead.
+async function hasUsdc(amount: bigint): Promise<boolean> {
+  const bal = await readCall<bigint>(usdc(), "balance", [sAddr(address)], address);
+  if (bal < amount) {
+    log(`Not enough test USDC — you have ${fromBase(bal)}. Click "Get test USDC" to top up (drips 2,000).`);
+    return false;
+  }
+  return true;
+}
+
 function wire() {
   $("pl-pool").value = DEFAULTS.pool;
   $("pl-usdc").value = DEFAULTS.usdc;
@@ -198,9 +209,12 @@ function wire() {
   $("pl-refresh").addEventListener("click", () => { refresh(); loadTable(); });
   $("pl-faucet").addEventListener("click", () =>
     run("Claim test USDC (faucet)", () => invoke(DEFAULTS.faucet, "drip", [sAddr(address)], address)));
-  $("pl-deposit").addEventListener("click", () =>
-    run("Deposit " + $("pl-deposit-amt").value + " USDC", () =>
-      invoke(pool(), "deposit", [sAddr(address), sI128(toBase($("pl-deposit-amt").value))], address)));
+  $("pl-deposit").addEventListener("click", async () => {
+    const amt = toBase($("pl-deposit-amt").value);
+    if (!address || !(await hasUsdc(amt))) return;
+    await run("Deposit " + $("pl-deposit-amt").value + " USDC", () =>
+      invoke(pool(), "deposit", [sAddr(address), sI128(amt)], address));
+  });
   $("pl-withdraw").addEventListener("click", async () => {
     // Convert the requested USDC back to shares, then withdraw those shares.
     const shares = await readCall<bigint>(pool(), "convert_to_shares", [sI128(toBase($("pl-withdraw-amt").value))], address);
@@ -210,9 +224,12 @@ function wire() {
   $("pl-borrow").addEventListener("click", () =>
     run("Borrow " + $("pl-borrow-amt").value + " USDC", () =>
       invoke(pool(), "borrow", [sAddr(address), sI128(toBase($("pl-borrow-amt").value))], address)));
-  $("pl-repay").addEventListener("click", () =>
-    run("Repay " + $("pl-repay-amt").value + " USDC", () =>
-      invoke(pool(), "repay", [sAddr(address), sAddr(address), sI128(toBase($("pl-repay-amt").value))], address)));
+  $("pl-repay").addEventListener("click", async () => {
+    const amt = toBase($("pl-repay-amt").value);
+    if (!address || !(await hasUsdc(amt))) return;
+    await run("Repay " + $("pl-repay-amt").value + " USDC", () =>
+      invoke(pool(), "repay", [sAddr(address), sAddr(address), sI128(amt)], address));
+  });
   $("pl-open-secured").addEventListener("click", () =>
     run("Open secured line", () => invoke(pool(), "open_secured_line", [sAddr(address)], address)));
   $("pl-request").addEventListener("click", requestUnsecuredLine);
