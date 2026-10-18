@@ -8,7 +8,7 @@ const DEFAULTS = {
   pool: "CDGNXAAA2MM5V7Z6CJ6SHQNMKFQR5VRBHDF6Z3DAUXXJJBQ3CG73IXE4",
   usdc: "CD53BY6I76MPTYAX7OUQSGGNJK4IZ5OQI7PTPLI62WFYHU6KB6YDNQJQ",
   faucet: "CAHIFIKDOPVJOIQ5OXNYUHLPC4F3PKU7Z5HCTUGSWB3UC6AJXP25SO4P", // test-USDC faucet (drip)
-  underwriter: "", // e.g. http://localhost:8080 — the credit-line-underwriter service
+  underwriter: "https://34-57-119-191.sslip.io", // the credit-line-underwriter service (GCP VM, auto-HTTPS)
 };
 
 const $ = (id: string) => document.getElementById(id) as HTMLInputElement & HTMLElement;
