@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#0a0e1a" />
+    <title>Credit pool (testnet) — LCRD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="borrow-shell">
+      <header class="info-masthead">
+        <span class="wordmark">LCRD</span>
+        <a class="btn-link" href="/">&larr; Home</a>
+      </header>
+
+      <div class="info-intro">
+        <h1>USDC credit pool — testnet</h1>
+        <p class="subtext">
+          A USDC lending pool with credit lines priced <strong>on-chain</strong> from your LCRD score, on
+          <strong>Stellar testnet</strong>. Lenders deposit USDC for shares; borrowers draw an unsecured line
+          (from their score) or a secured line (against their own deposit). Interest accrues by the second and
+          repayments build an on-chain record. The Soroban port of the Arc credit product.
+        </p>
+      </div>
+
+      <div class="borrow-connect">
+        <button id="pl-connect" type="button" class="btn-connect"><span>Connect wallet</span></button>
+        <span id="pl-address" class="borrow-address">—</span>
+        <button id="pl-refresh" type="button" class="btn-secondary" disabled>Refresh</button>
+      </div>
+
+      <section class="te-card">
+        <h2>Deployment</h2>
+        <label class="te-field">Pool <input id="pl-pool" class="te-input" spellcheck="false" /></label>
+        <label class="te-field">USDC <input id="pl-usdc" class="te-input" spellcheck="false" /></label>
+        <label class="te-field">Underwriter URL <input id="pl-underwriter" class="te-input" spellcheck="false" placeholder="https://… (for unsecured lines)" /></label>
+      </section>
+
+      <section class="te-card">
+        <h2>Pool</h2>
+        <div class="df-row"><span>Pool value (USDC)</span><span class="df-val" id="pl-assets">—</span></div>
+        <div class="df-row"><span>Available to lend</span><span class="df-val" id="pl-cash">—</span></div>
+        <div class="df-row"><span>Lent out</span><span class="df-val" id="pl-lent">—</span></div>
+        <div class="df-row"><span>Interest repaid</span><span class="df-val" id="pl-interest">—</span></div>
+        <div class="df-row"><span>Written off</span><span class="df-val" id="pl-written">—</span></div>
+      </section>
+
+      <section class="te-card">
+        <h2>Lend</h2>
+        <div class="df-row"><span>Your USDC</span><span class="df-val" id="pl-bal">—</span></div>
+        <div class="df-row"><span>Your shares</span><span class="df-val" id="pl-shares">—</span></div>
+        <div class="df-row"><span>Worth (USDC)</span><span class="df-val" id="pl-worth">—</span></div>
+        <label class="te-field">Deposit (USDC) <input id="pl-deposit-amt" class="te-input te-num" value="100" /></label>
+        <label class="te-field">Withdraw (USDC) <input id="pl-withdraw-amt" class="te-input te-num" value="100" /></label>
+        <div class="te-actions">
+          <button id="pl-deposit" type="button" class="btn-primary" disabled>Deposit</button>
+          <button id="pl-withdraw" type="button" class="btn-secondary" disabled>Withdraw</button>
+        </div>
+      </section>
+
+      <section class="te-card">
+        <h2>Borrow</h2>
+        <div class="df-row"><span>Your line</span><span class="df-val" id="pl-line">—</span></div>
+        <div class="df-row"><span>You owe</span><span class="df-val" id="pl-owed">—</span></div>
+        <div class="df-row"><span>Available to draw</span><span class="df-val" id="pl-avail">—</span></div>
+        <div class="df-row"><span>Record</span><span class="df-val" id="pl-record">—</span></div>
+        <div class="te-actions">
+          <button id="pl-request" type="button" class="btn-primary" disabled>Request unsecured line (from score)</button>
+          <button id="pl-open-secured" type="button" class="btn-secondary" disabled>Open secured line (against deposit)</button>
+        </div>
+        <label class="te-field">Borrow (USDC) <input id="pl-borrow-amt" class="te-input te-num" value="25" /></label>
+        <label class="te-field">Repay (USDC) <input id="pl-repay-amt" class="te-input te-num" value="25" /></label>
+        <div class="te-actions">
+          <button id="pl-borrow" type="button" class="btn-primary" disabled>Borrow</button>
+          <button id="pl-repay" type="button" class="btn-secondary" disabled>Repay</button>
+        </div>
+      </section>
+
+      <section class="te-card">
+        <h2>Credit lines</h2>
+        <div class="te-table-wrap">
+          <table class="te-table">
+            <thead>
+              <tr><th>Borrower</th><th>Type</th><th>Tier</th><th>Limit</th><th>APR</th><th>Principal</th><th>Interest</th><th>Repays · Cycles</th></tr>
+            </thead>
+            <tbody id="pl-tbody"><tr><td colspan="8" class="te-muted">Connect to load.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="te-card">
+        <h2>Activity</h2>
+        <div id="pl-log" class="te-log"></div>
+      </section>
+    </main>
+    <script type="module" src="/src/pool.ts"></script>
+  </body>
+</html>

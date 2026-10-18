@@ -1,0 +1,8 @@
+{
+  "name": "lcrd-credit-line-underwriter",
+  "private": true,
+  "type": "module",
+  "description": "Automated underwriter for the Stellar credit-line pool: verify a Stellar signature, LCRD-score the wallet, open the on-chain line.",
+  "scripts": { "start": "node server.mjs", "test": "node test.mjs" },
+  "dependencies": { "@stellar/stellar-sdk": "^17.2.1" }
+}
