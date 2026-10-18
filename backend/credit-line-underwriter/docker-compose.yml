@@ -1,0 +1,37 @@
+# Underwriter + Caddy (auto-HTTPS). The underwriter's signing key is read from a file the host
+# generates (./secrets/uw.secret), so the secret never appears in env or compose.
+services:
+  underwriter:
+    build: .
+    container_name: lcrd-underwriter
+    restart: unless-stopped
+    environment:
+      - POOL=${POOL}
+      - SOROBAN_RPC=${SOROBAN_RPC:-https://soroban-testnet.stellar.org}
+      - NETWORK_PASSPHRASE=${NETWORK_PASSPHRASE:-Test SDF Network ; September 2015}
+      - SCORE_API=${SCORE_API:-https://credit-score-api-d4jskyskga-uc.a.run.app}
+      - AUTO_MAX_LIMIT_USDC=${AUTO_MAX_LIMIT_USDC:-100}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - UNDERWRITER_SECRET_FILE=/secrets/uw.secret
+      - PORT=8080
+    volumes:
+      - ./secrets/uw.secret:/secrets/uw.secret:ro
+      - ./data:/app/data
+    expose:
+      - "8080"
+  caddy:
+    image: caddy:2-alpine
+    container_name: lcrd-caddy
+    restart: unless-stopped
+    environment:
+      - UW_DOMAIN=${UW_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+volumes:
+  caddy_data:
+  caddy_config:

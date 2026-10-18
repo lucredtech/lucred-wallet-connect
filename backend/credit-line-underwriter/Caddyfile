@@ -1,0 +1,5 @@
+# Auto-HTTPS reverse proxy in front of the underwriter. The domain comes from $UW_DOMAIN
+# (an <ip-with-dashes>.sslip.io name), so Caddy gets a real Let's Encrypt cert with no DNS setup.
+{$UW_DOMAIN} {
+	reverse_proxy underwriter:8080
+}

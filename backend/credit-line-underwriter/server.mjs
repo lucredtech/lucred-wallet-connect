@@ -30,7 +30,16 @@ const DATA_DIR = env("DATA_DIR", "./data");
 const MESSAGE_MAX_AGE_MS = 10 * 60 * 1000;
 
 if (!POOL || !/^C[A-Z2-7]{55}$/.test(POOL)) throw new Error("POOL is not set to a C… contract id");
-const underwriter = Keypair.fromSecret(env("UNDERWRITER_SECRET"));
+// The underwriter seed comes from UNDERWRITER_SECRET, or a file named by UNDERWRITER_SECRET_FILE (so a
+// deployment can generate the key on the host and mount it, with the secret never passing through env/args).
+function loadUnderwriterSecret() {
+  const direct = env("UNDERWRITER_SECRET");
+  if (direct) return direct.trim();
+  const file = env("UNDERWRITER_SECRET_FILE");
+  if (file) return fs.readFileSync(file, "utf8").trim();
+  throw new Error("Set UNDERWRITER_SECRET or UNDERWRITER_SECRET_FILE");
+}
+const underwriter = Keypair.fromSecret(loadUnderwriterSecret());
 const server = new rpc.Server(SOROBAN_RPC, { allowHttp: SOROBAN_RPC.startsWith("http://") });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

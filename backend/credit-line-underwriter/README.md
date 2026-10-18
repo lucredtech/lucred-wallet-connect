@@ -33,13 +33,29 @@ Issued: <ISO-8601, within 10 minutes>
 The auto limit caps what opens automatically; a human/ops can open larger lines directly on the contract
 up to the tier maximum.
 
-## Run / test
+## Run / test locally
 ```bash
 npm install
 node test.mjs          # offline: signature verification + message parsing (no network)
 POOL=C... UNDERWRITER_SECRET=S... node server.mjs
 ```
 
-## Status
-Service + offline tests. Wired to the testnet pool; the web dApp calls `/request-line`. For production the
-underwriter key belongs in Secret Manager/KMS, not an env var.
+## Deploy (Docker host, e.g. the GCP VM)
+`deploy-vm.sh` runs the underwriter + Caddy (auto-HTTPS via sslip.io) as `docker run` containers and
+**generates the signing key on the host** (`secrets/uw.secret`, mounted read-only) — the secret never
+passes through env/args or this machine. It prints the public key; the pool owner re-points the pool with
+`set_underwriter`. The seed is read via `UNDERWRITER_SECRET_FILE` (falls back to `UNDERWRITER_SECRET`).
+```bash
+POOL=C... UW_DOMAIN=<ip-with-dashes>.sslip.io ./deploy-vm.sh
+# then, where the owner key lives:
+stellar contract invoke --id $POOL --source <owner> --network testnet -- set_underwriter --underwriter <printed pubkey>
+```
+Host needs ports 80+443 reachable (GCP default network: tag the VM `http-server,https-server`). The
+committed `docker-compose.yml` is equivalent for hosts that have the Compose plugin.
+
+## Status (testnet)
+LIVE on the GCP VM `lcrd-indexer` at **https://34-57-119-191.sslip.io** (`/health` → `active:true`), key
+generated on the VM, registered as the pool's underwriter. The web dApp (`pool.html`) points at it, so the
+unsecured flow is fully automated. Note: it scores the borrower's wallet against **mainnet** history, so a
+fresh testnet-only wallet returns "no history" — demo with a wallet that has real mainnet DeFi activity (the
+address is the same on both networks). For production the key belongs in Secret Manager/KMS.
