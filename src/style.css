@@ -1661,3 +1661,38 @@ details.pool-advanced > summary {
 details.pool-advanced > summary::-webkit-details-marker { display: none; }
 details.pool-advanced > summary::before { content: "⚙ "; }
 details.pool-advanced[open] > summary { margin-bottom: 10px; }
+
+/* in-card stat grids: responsive, and never overflow the card */
+.pool-cardtiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.pool-tiles .df-tile,
+.pool-cardtiles .df-tile { min-width: 0; }
+.pool-tiles .df-tile-value,
+.pool-cardtiles .df-tile-value { overflow-wrap: anywhere; }
+
+/* credit-lines table (pool.html) */
+.te-table-wrap { width: 100%; overflow-x: auto; }
+.te-muted { color: var(--color-text-secondary); text-align: center; padding: 16px 8px; }
+.pool-table { width: 100%; border-collapse: collapse; font-size: var(--text-body-sm, 13.5px); }
+.pool-table th,
+.pool-table td { padding: 9px 8px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--color-border-subtle); }
+.pool-table th:first-child,
+.pool-table td:first-child { padding-left: 2px; }
+.pool-table th:last-child,
+.pool-table td:last-child { padding-right: 2px; }
+.pool-table th {
+  font-size: var(--text-label, 11px);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+.pool-table td { color: var(--color-text-on-surface-light); font-variant-numeric: tabular-nums; }
+.pool-table tbody tr:last-child td { border-bottom: none; }
+/* numeric columns (Limit, APR, Principal, Interest, Repays·Cycles) line up on the right */
+.pool-table th:nth-child(n + 4),
+.pool-table td:nth-child(n + 4) { text-align: right; }

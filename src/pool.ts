@@ -37,6 +37,38 @@ function log(msg: string, href?: string) {
   el.prepend(line);
 }
 
+// Turn a raw Soroban/wallet error into one plain sentence. Contract error numbers come back inside the
+// message as "Error(Contract, #N)"; N maps to the credit-line contract's error enum.
+const CONTRACT_ERRORS: Record<string, string> = {
+  "3": "Only the pool owner can do that.",
+  "4": "Only the underwriter can open an unsecured line — use “Request unsecured line”.",
+  "6": "Enter an amount greater than zero.",
+  "8": "That credit score isn’t valid.",
+  "9": "This wallet isn’t eligible for an unsecured line yet (needs tier A, or tier B with a score of 55+). You can borrow with a secured line instead.",
+  "10": "This credit line is frozen, so you can’t draw on it right now.",
+  "11": "That’s more than your limit. Lower the amount, or complete a repayment cycle to grow your line.",
+  "12": "The pool doesn’t have enough available USDC right now — try a smaller amount.",
+  "13": "You don’t have that many pool shares to withdraw.",
+  "14": "There’s nothing owed on this line.",
+  "15": "You already have an open loan — repay it before changing the line.",
+  "16": "Deposit USDC first, then you can open a secured line against it.",
+  "17": "This isn’t a secured line.",
+  "18": "You can’t withdraw the deposit backing an open loan — repay the loan first.",
+};
+function friendlyError(e: unknown): string {
+  const raw = (e instanceof Error ? e.message : String(e)) || "Something went wrong.";
+  const m = raw.toLowerCase();
+  if (m.includes("declined") || m.includes("reject") || m.includes("cancel") || m.includes("denied")) return "Request cancelled in your wallet.";
+  const cm = /error\(contract,\s*#(\d+)\)/i.exec(raw);
+  if (cm && CONTRACT_ERRORS[cm[1]]) return CONTRACT_ERRORS[cm[1]];
+  if (m.includes("insufficient balance") || m.includes("unreachablecodereached")) return "Not enough USDC in your wallet. Click “Get test USDC” to top up.";
+  if (m.includes("insufficientliquidity")) return "The pool doesn’t have enough available USDC right now — try a smaller amount.";
+  if (m.includes("unauthorized") || (m.includes("invalidaction") && m.includes("auth"))) return "Couldn’t authorize that — reconnect your wallet and try again.";
+  if (m.includes("simulation") || m.includes("timeout") || m.includes("network") || m.includes("fetch") || m.includes("http")) return "Couldn’t reach Stellar just now — please try again.";
+  if (m.includes("trap") || m.includes("hosterror") || m.includes("wasmvm") || m.includes("invalidaction")) return "That transaction couldn’t go through. Check your amount and balance, then try again.";
+  return raw.split("\n")[0].slice(0, 160);
+}
+
 const pool = () => $("pl-pool").value.trim();
 const usdc = () => $("pl-usdc").value.trim();
 
@@ -65,9 +97,8 @@ async function refresh() {
     $("pl-interest").textContent = fromBase(interest);
     $("pl-written").textContent = fromBase(written);
 
-    const [bal, shares, worth, line, hist, owed, avail] = await Promise.all([
+    const [bal, worth, line, hist, owed, avail] = await Promise.all([
       readCall<bigint>(usdc(), "balance", [sAddr(address)], address),
-      readCall<bigint>(P, "shares_of", [sAddr(address)], address),
       readCall<bigint>(P, "collateral_value", [sAddr(address)], address),
       readCall<Record<string, unknown>>(P, "get_line", [sAddr(address)], address),
       readCall<Record<string, unknown>>(P, "get_history", [sAddr(address)], address),
@@ -75,7 +106,6 @@ async function refresh() {
       readCall<bigint>(P, "available", [sAddr(address)], address),
     ]);
     $("pl-bal").textContent = fromBase(bal);
-    $("pl-shares").textContent = shares.toString();
     $("pl-worth").textContent = fromBase(worth);
 
     const active = line.active as boolean;
@@ -84,12 +114,12 @@ async function refresh() {
     $("pl-line").textContent = active
       ? `${secured ? "Secured" : "Unsecured"} · tier ${["—", "A", "B", "C"][tier] ?? "—"} · ${pct(Number(line.apr_bps))} APR · limit ${fromBase(line.limit as bigint)} USDC`
       : "No line yet";
-    $("pl-owed").textContent = `${fromBase(owed[0])} principal + ${fromBase(owed[1])} interest`;
+    $("pl-owed").textContent = fromBase(owed[0] + owed[1]);
     $("pl-avail").textContent = fromBase(avail);
     const cycles = Number(hist.cycles_completed);
-    $("pl-record").textContent = `${Number(hist.repayments)} repayments · ${cycles} cycle${cycles === 1 ? "" : "s"} · ${Number(hist.write_offs)} write-offs`;
+    $("pl-record").textContent = `${Number(hist.repayments)} · ${cycles} · ${Number(hist.write_offs)}`;
   } catch (e) {
-    log("read failed: " + (e as Error).message);
+    log("Couldn’t refresh pool data — " + friendlyError(e));
   } finally {
     setBusy(false);
   }
@@ -129,7 +159,7 @@ async function loadTable() {
     }
     if (list.length === 0) tbody.innerHTML = '<tr><td colspan="8" class="te-muted">No lines yet.</td></tr>';
   } catch (e) {
-    log("table load failed: " + (e as Error).message);
+    log("Couldn’t load credit lines — " + friendlyError(e));
   }
 }
 
@@ -143,7 +173,7 @@ async function run(label: string, fn: () => Promise<string>) {
     await refresh();
     await loadTable();
   } catch (e) {
-    log(label + " failed: " + (e as Error).message);
+    log(label + " failed — " + friendlyError(e));
   } finally {
     setBusy(false);
   }
@@ -152,7 +182,7 @@ async function run(label: string, fn: () => Promise<string>) {
 async function requestUnsecuredLine() {
   if (!address) return;
   const url = $("pl-underwriter").value.trim();
-  if (!url) { log("Set the underwriter URL first (the credit-line-underwriter service)."); return; }
+  if (!url) { log("Unsecured lines aren’t available here right now. You can still borrow with a secured line (deposit USDC, then “Open secured line”)."); return; }
   setBusy(true);
   try {
     const message = `LCRD credit on Stellar\nStellar wallet: ${address}\nIssued: ${new Date().toISOString()}`;
@@ -168,15 +198,26 @@ async function requestUnsecuredLine() {
     if (out.eligible) {
       log(`Line opened: ${out.limit} USDC, tier ${out.tier}, ${pct(out.aprBps)} APR`, out.txHash ? explorerTx(out.txHash) : undefined);
     } else {
-      log("Not eligible: " + out.reason);
+      log("No line opened — " + out.reason);
     }
     await refresh();
     await loadTable();
   } catch (e) {
-    log("request failed: " + (e as Error).message);
+    log("Couldn’t open a line — " + friendlyError(e));
   } finally {
     setBusy(false);
   }
+}
+
+// Friendly guard: the pool pulls USDC from the wallet, so a deposit/repay with too little USDC would
+// trap deep in the token contract. Check first and point at the faucet instead.
+async function hasUsdc(amount: bigint): Promise<boolean> {
+  const bal = await readCall<bigint>(usdc(), "balance", [sAddr(address)], address);
+  if (bal < amount) {
+    log(`Not enough test USDC — you have ${fromBase(bal)}. Click "Get test USDC" to top up (drips 2,000).`);
+    return false;
+  }
+  return true;
 }
 
 function wire() {
@@ -193,16 +234,19 @@ function wire() {
       await refresh();
       await loadTable();
     } catch (e) {
-      log("connect failed: " + (e as Error).message);
+      log("Couldn’t connect your wallet — " + friendlyError(e));
     }
   });
 
   $("pl-refresh").addEventListener("click", () => { refresh(); loadTable(); });
   $("pl-faucet").addEventListener("click", () =>
     run("Claim test USDC (faucet)", () => invoke(DEFAULTS.faucet, "drip", [sAddr(address)], address)));
-  $("pl-deposit").addEventListener("click", () =>
-    run("Deposit " + $("pl-deposit-amt").value + " USDC", () =>
-      invoke(pool(), "deposit", [sAddr(address), sI128(toBase($("pl-deposit-amt").value))], address)));
+  $("pl-deposit").addEventListener("click", async () => {
+    const amt = toBase($("pl-deposit-amt").value);
+    if (!address || !(await hasUsdc(amt))) return;
+    await run("Deposit " + $("pl-deposit-amt").value + " USDC", () =>
+      invoke(pool(), "deposit", [sAddr(address), sI128(amt)], address));
+  });
   $("pl-withdraw").addEventListener("click", async () => {
     // Convert the requested USDC back to shares, then withdraw those shares.
     const shares = await readCall<bigint>(pool(), "convert_to_shares", [sI128(toBase($("pl-withdraw-amt").value))], address);
@@ -212,9 +256,12 @@ function wire() {
   $("pl-borrow").addEventListener("click", () =>
     run("Borrow " + $("pl-borrow-amt").value + " USDC", () =>
       invoke(pool(), "borrow", [sAddr(address), sI128(toBase($("pl-borrow-amt").value))], address)));
-  $("pl-repay").addEventListener("click", () =>
-    run("Repay " + $("pl-repay-amt").value + " USDC", () =>
-      invoke(pool(), "repay", [sAddr(address), sAddr(address), sI128(toBase($("pl-repay-amt").value))], address)));
+  $("pl-repay").addEventListener("click", async () => {
+    const amt = toBase($("pl-repay-amt").value);
+    if (!address || !(await hasUsdc(amt))) return;
+    await run("Repay " + $("pl-repay-amt").value + " USDC", () =>
+      invoke(pool(), "repay", [sAddr(address), sAddr(address), sI128(amt)], address));
+  });
   $("pl-open-secured").addEventListener("click", () =>
     run("Open secured line", () => invoke(pool(), "open_secured_line", [sAddr(address)], address)));
   $("pl-request").addEventListener("click", requestUnsecuredLine);

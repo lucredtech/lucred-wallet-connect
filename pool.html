@@ -50,10 +50,9 @@
         <section class="an-card">
           <div class="an-card-head"><h3>Earn</h3><span class="an-card-sub">deposit · earn yield</span></div>
           <p class="pool-card-sub">Your deposit earns the interest borrowers repay, shared across all savers. Withdraw whenever the pool has cash.</p>
-          <div class="df-tiles">
-            <div class="df-tile"><div class="df-tile-label">Your USDC</div><div class="df-tile-value" id="pl-bal">—</div></div>
-            <div class="df-tile"><div class="df-tile-label">Your shares</div><div class="df-tile-value" id="pl-shares">—</div></div>
-            <div class="df-tile"><div class="df-tile-label">Worth</div><div class="df-tile-value" id="pl-worth">—</div><div class="df-tile-sub">USDC</div></div>
+          <div class="pool-cardtiles">
+            <div class="df-tile"><div class="df-tile-label">Your USDC</div><div class="df-tile-value" id="pl-bal">—</div><div class="df-tile-sub">in wallet</div></div>
+            <div class="df-tile"><div class="df-tile-label">Deposit worth</div><div class="df-tile-value" id="pl-worth">—</div><div class="df-tile-sub">USDC</div></div>
           </div>
           <label class="te-field">Deposit (USDC) <input id="pl-deposit-amt" class="te-input te-num" value="100" /></label>
           <label class="te-field">Withdraw (USDC) <input id="pl-withdraw-amt" class="te-input te-num" value="100" /></label>
@@ -68,10 +67,10 @@
         <section class="an-card">
           <div class="an-card-head"><h3>Borrow</h3><span class="an-card-sub">unsecured · secured</span></div>
           <div class="pool-line"><span class="df-tile-label">Your line</span><span class="pool-line-val" id="pl-line">—</span></div>
-          <div class="df-tiles">
-            <div class="df-tile"><div class="df-tile-label">You owe</div><div class="df-tile-value" id="pl-owed">—</div></div>
-            <div class="df-tile"><div class="df-tile-label">Available to draw</div><div class="df-tile-value" id="pl-avail">—</div><div class="df-tile-sub">USDC</div></div>
-            <div class="df-tile"><div class="df-tile-label">Record</div><div class="df-tile-value" id="pl-record">—</div></div>
+          <div class="pool-cardtiles">
+            <div class="df-tile"><div class="df-tile-label">You owe</div><div class="df-tile-value" id="pl-owed">—</div><div class="df-tile-sub">USDC</div></div>
+            <div class="df-tile"><div class="df-tile-label">Available</div><div class="df-tile-value" id="pl-avail">—</div><div class="df-tile-sub">to draw, USDC</div></div>
+            <div class="df-tile"><div class="df-tile-label">Record</div><div class="df-tile-value" id="pl-record">—</div><div class="df-tile-sub">repays · cycles · write-offs</div></div>
           </div>
           <div class="te-actions">
             <button id="pl-request" type="button" class="btn-primary" disabled>Request unsecured line</button>
@@ -90,7 +89,7 @@
       <section class="an-card">
         <div class="an-card-head"><h3>Credit lines</h3><span class="an-card-sub">live, on-chain</span></div>
         <div class="te-table-wrap">
-          <table class="te-table">
+          <table class="te-table pool-table">
             <thead>
               <tr><th>Borrower</th><th>Type</th><th>Tier</th><th>Limit</th><th>APR</th><th>Principal</th><th>Interest</th><th>Repays · Cycles</th></tr>
             </thead>
