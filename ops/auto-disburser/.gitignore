@@ -3,3 +3,5 @@ state.json
 watch.log
 watch.pid
 node_modules/
+secrets
+node_modules

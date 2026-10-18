@@ -15,7 +15,10 @@ const path = require("path");
 
 const RPC = process.env.RPC_URL || "https://soroban-testnet.stellar.org";
 const ESCROW = process.env.ESCROW_ID;
-const SECRET = process.env.TREASURY_SECRET;
+// Treasury seed from TREASURY_SECRET, or a file named by TREASURY_SECRET_FILE (so a deployment can
+// generate the key on the host and mount it — the secret never passes through env or args).
+const SECRET = process.env.TREASURY_SECRET
+  || (process.env.TREASURY_SECRET_FILE && fs.readFileSync(process.env.TREASURY_SECRET_FILE, "utf8").trim());
 const POLL_MS = Number(process.env.POLL_MS || 10000);
 const LOOKBACK = Number(process.env.LOOKBACK_LEDGERS || 500);
 const STATE = process.env.STATE_FILE || path.join(__dirname, "state.json");
