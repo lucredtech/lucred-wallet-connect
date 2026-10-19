@@ -13,6 +13,7 @@ export default defineConfig({
         analytics: resolve(__dirname, "analytics.html"),
         faucet: resolve(__dirname, "faucet.html"),
         earn: resolve(__dirname, "earn.html"),
+        collateral: resolve(__dirname, "collateral.html"),
       },
     },
   },
