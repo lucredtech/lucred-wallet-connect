@@ -113,7 +113,10 @@ export async function latestLedgerSeq(): Promise<number> {
 export type ActivityEvent = { ledger: number; txHash: string; topics: unknown[]; value: unknown };
 
 /** Recent events emitted by a contract, newest first (up to `limit`). Reads from Soroban RPC's event
- * retention window (~24h on testnet); backs off the start ledger if it's beyond retention. */
+ * retention window. IMPORTANT: a `startLedger` past the RPC's retention horizon does NOT error on
+ * testnet — it returns an EMPTY result. So we grow the lookback window and keep the largest result,
+ * stopping once a bigger window returns fewer events (the retention-horizon anomaly). Starting at the
+ * widest window (the old behaviour) returned that empty set and hid all activity. */
 export async function getContractEvents(contractId: string, limit = 20): Promise<ActivityEvent[]> {
   const latest = await server.getLatestLedger();
   const toNative = (v: unknown) => {
@@ -124,22 +127,23 @@ export async function getContractEvents(contractId: string, limit = 20): Promise
       return null;
     }
   };
-  for (const back of [17000, 9000, 4000, 1000]) {
+  type RawEvent = { ledger: number; txHash: string; topic: unknown[]; value: unknown };
+  let best: RawEvent[] = [];
+  for (const back of [1500, 4000, 8000, 12000, 16000]) {
     try {
       const resp = await server.getEvents({
         startLedger: Math.max(latest.sequence - back, 1),
         filters: [{ type: "contract", contractIds: [contractId] }],
       });
-      const evs = resp.events.map((e: { ledger: number; txHash: string; topic: unknown[]; value: unknown }) => ({
-        ledger: e.ledger,
-        txHash: e.txHash,
-        topics: (e.topic ?? []).map(toNative),
-        value: toNative(e.value),
-      }));
-      return evs.slice(-limit).reverse();
-    } catch (err) {
-      if (back === 1000) throw err;
+      const evs = resp.events as RawEvent[];
+      if (evs.length < best.length) break; // wider window returned fewer → past retention; stop
+      best = evs;
+    } catch {
+      break; // a window inside retention threw (or we hit the floor) → keep the best so far
     }
   }
-  return [];
+  return best
+    .map((e) => ({ ledger: e.ledger, txHash: e.txHash, topics: (e.topic ?? []).map(toNative), value: toNative(e.value) }))
+    .slice(-limit)
+    .reverse();
 }
