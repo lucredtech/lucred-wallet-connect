@@ -14,7 +14,7 @@ const ONE = 10_000_000;
 // Which collateral the Stage-B escrow currently accepts on-chain (its set_asset allowlist).
 const ESCROW_ACCEPTS = new Set([DFTEST]);
 // Indicative borrow APR by underlying risk class (the real rate comes from the engine at quote time).
-const APR_BY_CLASS: Record<string, number> = { stable: 0.112, stableFx: 0.115, rwa: 0.13, major: 0.135, incentive: 0.14, curated: 0.15 };
+const APR_BY_CLASS: Record<string, number> = { stable: 0.14, stableFx: 0.145, rwa: 0.16, major: 0.165, incentive: 0.175, curated: 0.185 };
 
 interface Collat { shareToken: string; symbol: string; label: string; kind: string; underlyingClass: string; advanceRate: number; liquidationLtv: number; priceSource: string; parUsd: number | null; }
 
