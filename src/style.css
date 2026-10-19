@@ -1577,7 +1577,7 @@ h2 { letter-spacing: -0.01em; }
 @media (max-width:560px){ .an-tile.an-hero { grid-column:span 2; } .an-tile.an-hero .an-tile-val{ font-size:2.3rem; } }
 
 .an-grid-2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px; margin-bottom:18px; }
-.an-card { margin:0; padding:22px 24px; border-radius:22px; border:1px solid var(--color-border-subtle);
+.an-card { margin:0; padding:26px 32px; border-radius:22px; border:1px solid var(--color-border-subtle);
   background:var(--color-bg-surface); backdrop-filter:blur(14px) saturate(160%); -webkit-backdrop-filter:blur(14px) saturate(160%);
   box-shadow:0 2px 6px rgba(0,0,0,0.18), 0 14px 32px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.07);
   animation:an-rise .6s both; transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease; }

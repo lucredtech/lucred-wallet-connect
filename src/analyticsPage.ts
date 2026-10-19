@@ -16,7 +16,10 @@ type Analytics = {
   eventsPerDay: { day: string; events: number }[];
   eventsPerDayByProtocol: { name: string; series: { day: string; events: number }[] }[];
   walletsByMonth: { month: string; newWallets: number; cumulativeWallets: number }[];
-  product: { waitlist: number; acceptances: number; principalUsd: number };
+  product: {
+    waitlist: number; acceptances: number; principalUsd: number;
+    onchain?: boolean; suppliedUsd?: number; vaultUsd?: number; advancedUsd?: number; activeBorrowers?: number;
+  };
   scoreHistogram: { lo: number; hi: number; count: number }[];
   scoreTiers: { tier: string; count: number }[];
 };
@@ -45,11 +48,22 @@ function renderKpis(k: Kpis) {
 }
 
 function renderProduct(p: Analytics["product"]) {
-  $("an-product").innerHTML = [
-    tile("USDC advanced", usd(p.principalUsd)),
-    tile("Credit acceptances", full.format(p.acceptances)),
-    tile("Waitlist signups", full.format(p.waitlist)),
-  ].join("");
+  // When the live testnet pool is readable, lead with real on-chain figures (supply/advanced/borrowers);
+  // otherwise fall back to the off-chain demo accept flow.
+  const tiles = p.onchain
+    ? [
+        tile("USDC supplied", usd(p.suppliedUsd || 0), "testnet pool TVL", true),
+        tile("Credit advanced", usd(p.advancedUsd || 0), "outstanding on-chain"),
+        tile("Active borrowers", full.format(p.activeBorrowers || 0)),
+        tile("In DeFindex vault", usd(p.vaultUsd || 0), "earning yield"),
+        tile("Waitlist signups", full.format(p.waitlist)),
+      ]
+    : [
+        tile("USDC advanced", usd(p.principalUsd)),
+        tile("Credit acceptances", full.format(p.acceptances)),
+        tile("Waitlist signups", full.format(p.waitlist)),
+      ];
+  $("an-product").innerHTML = tiles.join("");
 }
 
 // Horizontal bars for a single measure across categories; values direct-labelled (no tooltip needed).

@@ -6,6 +6,43 @@
 // refresh stays inside BigQuery's free query tier. Aggregates only — no per-address data leaves here.
 const VIEW = "`credit_bureau.credit_events_normalized`";
 
+// On-chain LCRD credit product (testnet) — read the live pool's aggregates over Soroban RPC so the
+// product tiles reflect real deposits/borrows, not just the off-chain demo accept flow.
+const { rpc, Contract, TransactionBuilder, Networks, Account, Keypair, scValToNative } = require("@stellar/stellar-sdk");
+const TESTNET_POOL = process.env.TESTNET_POOL || "CDQ3B7LFFEQ56GAPYRJDXTJQA3CSQUAVVO4IUPM4QXHC5DRMMFYRZLI2";
+const TESTNET_RPC = "https://soroban-testnet.stellar.org";
+const USDC_ONE = 10_000_000;
+const tRpc = new rpc.Server(TESTNET_RPC);
+const tSource = new Account(Keypair.random().publicKey(), "0"); // dummy source; read-only simulation
+
+async function poolRead(fn) {
+  const tx = new TransactionBuilder(tSource, { fee: "100", networkPassphrase: Networks.TESTNET })
+    .addOperation(new Contract(TESTNET_POOL).call(fn)).setTimeout(30).build();
+  const sim = await tRpc.simulateTransaction(tx);
+  if (sim.error) throw new Error(String(sim.error).split("\n")[0].slice(0, 160));
+  return scValToNative(sim.result.retval);
+}
+
+// Live testnet pool aggregates for the product section. Never throws — a bad RPC read just omits the
+// on-chain figures so the rest of the analytics page still renders.
+async function onchainProduct() {
+  try {
+    const [assets, vault, principal, borrowers] = await Promise.all([
+      poolRead("total_assets"), poolRead("vault_value"), poolRead("total_principal_view"), poolRead("borrower_count"),
+    ]);
+    return {
+      onchain: true,
+      suppliedUsd: Number(assets) / USDC_ONE,
+      vaultUsd: Number(vault) / USDC_ONE,
+      advancedUsd: Number(principal) / USDC_ONE,
+      activeBorrowers: Number(borrowers),
+    };
+  } catch (e) {
+    console.error("on-chain product read failed:", e.message);
+    return { onchain: false };
+  }
+}
+
 // BigQuery returns INT64 as a number or a {value} wrapper, and TIMESTAMP/DATE as {value}; normalise.
 function num(v) {
   if (v == null) return 0;
@@ -61,6 +98,9 @@ function createAnalytics(bq) {
         "SELECT COUNT(*) n, IFNULL(SUM(principalUsd), 0) principalUsd FROM `credit_bureau.df_credit_acceptances`",
         [{ n: 0, principalUsd: 0 }]);
 
+      // Live on-chain testnet pool aggregates for the product section.
+      const onchain = await onchainProduct();
+
       // Score distribution (written by batch-score.js; empty until it has run — page hides it then).
       const scoreHist = await qSafe("SELECT lo, hi, count FROM `credit_bureau.credit_score_histogram` ORDER BY lo", []);
       const scoreTiers = await qSafe("SELECT tier, count FROM `credit_bureau.credit_score_tiers` ORDER BY tier", []);
@@ -107,6 +147,7 @@ function createAnalytics(bq) {
           waitlist: num(waitlist[0] && waitlist[0].n),
           acceptances: num(accept[0] && accept[0].n),
           principalUsd: num(accept[0] && accept[0].principalUsd),
+          ...onchain, // onchain, suppliedUsd, vaultUsd, advancedUsd, activeBorrowers (testnet pool)
         },
         scoreHistogram: (scoreHist || []).map((r) => ({ lo: num(r.lo), hi: num(r.hi), count: num(r.count) })),
         scoreTiers: (scoreTiers || []).map((r) => ({ tier: r.tier, count: num(r.count) })),
