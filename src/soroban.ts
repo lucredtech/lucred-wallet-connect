@@ -104,6 +104,11 @@ export async function invoke(contractId: string, method: string, args: xdr.ScVal
 
 export const explorerTx = (hash: string) => `https://stellar.expert/explorer/testnet/tx/${hash}`;
 
+/** Current testnet ledger sequence (for estimating event age: ~5s per ledger). */
+export async function latestLedgerSeq(): Promise<number> {
+  return (await server.getLatestLedger()).sequence;
+}
+
 /** A parsed on-chain contract event (topics + value decoded to native). */
 export type ActivityEvent = { ledger: number; txHash: string; topics: unknown[]; value: unknown };
 

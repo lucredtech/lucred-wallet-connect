@@ -12,7 +12,7 @@
 <body>
   <header>
     <div class="wrap bar">
-      <a class="logo" href="/" style="color:inherit"><svg class="brandmark" viewBox="0 0 24 24" aria-hidden="true"><rect class="mk" width="24" height="24" rx="7"/><path d="M6.5 15.5 A6 6 0 0 1 17.5 9.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="17.5" cy="9.5" r="2" fill="#fff"/></svg>LCRD</a>
+      <a class="logo" href="home.html" style="color:inherit"><svg class="brandmark" viewBox="0 0 24 24" aria-hidden="true"><rect class="mk" width="24" height="24" rx="7"/><path d="M6.5 15.5 A6 6 0 0 1 17.5 9.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="17.5" cy="9.5" r="2" fill="#fff"/></svg>LCRD</a>
       <div class="grow"></div>
       <span class="netchip"><span class="d"></span>Testnet</span>
       <button class="pill-addr" id="walletBtn"><span class="avatar"></span><span id="walletLbl">Connect</span></button>
@@ -53,6 +53,11 @@
         <div class="row" style="margin-top:12px;gap:28px;">
           <div><div class="sm muted" style="font-weight:600;">Balance</div><div class="num" style="font-family:var(--font-d);font-weight:800;font-size:26px;" id="pos-bal">—</div></div>
           <div><div class="sm muted" style="font-weight:600;">Pool shares</div><div class="num mono" style="font-size:15px;margin-top:8px;" id="pos-shares">—</div></div>
+        </div>
+        <div id="earned-wrap" hidden style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line);">
+          <div class="sm muted" style="font-weight:600;">Yield earned <span class="tiny faint" id="earned-since"></span></div>
+          <div class="num mono" style="font-family:var(--font-d);font-weight:800;font-size:22px;color:var(--good);line-height:1.1;margin-top:4px;" id="pos-earned">+$0.000000</div>
+          <div class="tiny faint" id="earned-rate" style="margin-top:3px;"></div>
         </div>
         <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
           <input id="wd-amt" inputmode="decimal" placeholder="Amount to withdraw" aria-label="Withdraw amount" style="flex:1;min-width:140px;border:1.5px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;background:var(--surface-2);color:var(--ink);font-family:var(--font-m);outline:none;" />

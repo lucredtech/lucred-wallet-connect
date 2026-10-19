@@ -12,9 +12,31 @@ const ONE = 10_000_000;
 // connected (lets us show live pool stats pre-connect). Reads don't require its auth.
 const READ_SOURCE = "GC6PEHH3UNMWN2V7LS6DRBCF7UNPX6EDZUBZ2MVFZIPHIWWWTQIJ6QBT";
 
+const YEAR_SEC = 365 * 24 * 60 * 60;
+
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 let address: string | null = null;
 let shares = 0n; // the connected wallet's pool shares (raw)
+
+// --- live yield counter state ---
+// baseWorth/baseAt are the last on-chain reading; between reads we interpolate worth upward at the
+// pool's estimated rate (deterministic for the fixed-APR vault), re-syncing on every refresh.
+let baseWorth = 0;      // USD worth of the position at the last chain read
+let baseAt = 0;         // performance.now() at that read
+let tickRate = 0;       // fractional APY used to grow worth (the estimated pool yield)
+let costBasis = 0;      // USD principal still invested (net deposits − withdrawals), from localStorage
+let basisInferred = false; // true when we had no stored basis and seeded it from current worth
+let rafId = 0;
+
+// Cost basis is tracked per wallet+pool in localStorage (the pool contract doesn't store per-user
+// principal). It only powers the "earned" figure; the live worth counter works without it.
+const basisKey = () => `lcrd.basis.${POOL}.${address}`;
+function getBasis(): number | null {
+  try { const v = localStorage.getItem(basisKey()); return v == null ? null : Number(v); } catch { return null; }
+}
+function setBasis(n: number) {
+  try { localStorage.setItem(basisKey(), String(Math.max(0, n))); } catch { /* private mode: skip */ }
+}
 
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const usd = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -62,14 +84,44 @@ async function refresh() {
       $("usdc-bal").textContent = usd(fromBase(bal));
       shares = BigInt(sh);
       const worth = shares > 0n ? await readCall<bigint>(POOL, "convert_to_assets", [sI128(shares)], address) : 0n;
-      $("pos-bal").textContent = "$" + usd(fromBase(worth));
       $("pos-shares").textContent = shares.toString();
       ($("pos-chip") as HTMLElement).hidden = shares === 0n;
+      syncCounter(fromBase(worth));
     }
   } catch (e) {
     toast("Couldn't read the pool right now.", { err: true });
   }
 }
+
+// Re-anchor the live counter to a fresh on-chain worth, (re)establish the cost basis, and (re)start
+// the animation. Called after every refresh/deposit/withdraw.
+function syncCounter(worthUsd: number) {
+  baseWorth = worthUsd;
+  baseAt = performance.now();
+  tickRate = estApy; // the estimated pool yield shown in the headline
+  const wrap = $("earned-wrap") as HTMLElement;
+  if (shares <= 0n || worthUsd <= 0) { wrap.hidden = true; stopTicker(); return; }
+  let b = getBasis();
+  if (b == null) { b = worthUsd; setBasis(b); basisInferred = true; } // seed from current worth
+  else { basisInferred = b > worthUsd + 1e-9 ? true : basisInferred; }
+  costBasis = b;
+  $("earned-since").textContent = basisInferred ? "since this session" : "since you deposited";
+  const perDay = (baseWorth * tickRate) / 365;
+  $("earned-rate").textContent = tickRate > 0 ? `≈ +$${perDay.toFixed(4)} / day at the current rate` : "";
+  wrap.hidden = false;
+  startTicker();
+}
+
+function frame() {
+  const elapsed = (performance.now() - baseAt) / 1000;
+  const worth = baseWorth * (1 + tickRate * (elapsed / YEAR_SEC));
+  $("pos-bal").textContent = "$" + usd(worth);
+  const earned = Math.max(0, worth - costBasis);
+  $("pos-earned").textContent = "+$" + earned.toFixed(6);
+  rafId = requestAnimationFrame(frame);
+}
+function startTicker() { if (!rafId) rafId = requestAnimationFrame(frame); }
+function stopTicker() { if (rafId) { cancelAnimationFrame(rafId); rafId = 0; } }
 
 let estApy = 0;
 function renderProjection(apy: number) {
@@ -92,6 +144,8 @@ async function deposit() {
   try {
     const tx = await invoke(POOL, "deposit", [sAddr(address), sI128(base)], address);
     toast(`Deposited ${usd(fromBase(base))} USDC`, { tx });
+    setBasis((getBasis() || 0) + fromBase(base)); // a tracked deposit → cost basis is now known
+    basisInferred = false;
     await refresh();
   } catch (e) {
     toast(friendly((e as Error)?.message), { err: true });
@@ -118,6 +172,9 @@ async function withdraw(all: boolean) {
     const tx = await invoke(POOL, "withdraw", [sAddr(address), sI128(sh)], address);
     toast("Withdrawn to your wallet", { tx });
     $<HTMLInputElement>("wd-amt").value = "";
+    // reduce the basis pro-rata to the shares pulled out (full exit clears it)
+    if (all || sh >= shares) setBasis(0);
+    else setBasis((getBasis() || 0) * Number(shares - sh) / Number(shares));
     await refresh();
   } catch (e) {
     toast(friendly((e as Error)?.message), { err: true });
