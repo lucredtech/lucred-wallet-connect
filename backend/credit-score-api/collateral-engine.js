@@ -24,25 +24,41 @@ const DISCLAIMER =
 // Filter a portfolio to its DeFindex vault positions and value just those as collateral, reusing
 // buildCollateral so the haircut/lpFactor logic is identical to the main credit line. Returns an
 // overall total plus a per-vault breakdown (each vault's share token is the collateral token).
-function defindexCollateral(portfolio, policy = POLICY) {
+// `registry` is the supported-collateral registry (see collateral-registry.js), keyed by share-token
+// contract id, injected by the caller so this stays pure/testable. Default {} keeps the pre-registry
+// behaviour (eligibility by priced-underlying). Production injects getCollateralRegistry() for the
+// active network.
+function defindexCollateral(portfolio, policy = POLICY, registry = {}) {
   const positions = (((portfolio && portfolio.positions) || []).filter(
     (p) => p.protocol === "defindex" && p.type !== "debt" && p.transferable === true
   ));
-  const allow = (policy.dfCredit && policy.dfCredit.eligibleVaults) || [];
+
+  // Eligibility: prefer the curated supported-collateral registry (enabled share-tokens); else the
+  // policy's eligibleVaults; else — pre-registry fallback — any priced, transferable position. So an
+  // empty mainnet registry still works until the list is filled in.
+  const regIds = Object.keys(registry || {}).filter((id) => registry[id].enabled);
+  const policyAllow = (policy.dfCredit && policy.dfCredit.eligibleVaults) || [];
+  const allow = regIds.length ? regIds : policyAllow;
   const eligible = allow.length ? positions.filter((p) => allow.includes(p.pool)) : positions;
 
   const overall = buildCollateral({ tokens: [], positions: eligible }, policy);
   const vaults = eligible
     .map((p) => {
       const one = buildCollateral({ tokens: [], positions: [p] }, policy);
+      const reg = (registry && registry[p.pool]) || null;
       return {
         shareToken: p.pool,
+        label: reg && reg.label ? reg.label : null,
+        symbol: reg && reg.symbol ? reg.symbol : null,
+        kind: reg && reg.kind ? reg.kind : "vault",
         underlying: (p.assets || [])
           .filter((a) => a.usdValue !== null && a.usdValue !== undefined)
           .map((a) => ({ contractId: a.contractId || null, code: a.code || null, amount: a.amount, usdValue: round2(a.usdValue), priceSource: a.priceSource || null })),
         marketUsd: one.marketUsd,
         lendableUsd: one.lendableUsd,
-        haircutPct: round2(one.averageHaircut * 100)
+        haircutPct: round2(one.averageHaircut * 100),
+        advanceRate: reg && reg.advanceBps ? reg.advanceBps / 10000 : null,
+        liquidationLtv: reg && reg.liquidationLtvBps ? reg.liquidationLtvBps / 10000 : null
       };
     })
     .filter((v) => v.marketUsd > 0);
@@ -52,11 +68,11 @@ function defindexCollateral(portfolio, policy = POLICY) {
 
 // Compute the full quote/terms for a dfToken-backed USDC advance. Pure given the inputs + policy.
 // structure: "open_ended" (default) | "fixed_term"; termDays only used for fixed_term.
-function quote({ portfolio, score, structure, termDays }, policy = POLICY) {
+function quote({ portfolio, score, structure, termDays }, policy = POLICY, registry = {}) {
   const cfg = policy.dfCredit;
   const wallet = (score && score.wallet) || (portfolio && portfolio.wallet) || null;
   const s = score && typeof score.score === "number" ? score.score : 0;
-  const collateral = defindexCollateral(portfolio, policy);
+  const collateral = defindexCollateral(portfolio, policy, registry);
 
   if (!collateral.vaults.length || collateral.lendableUsd <= 0) {
     return {
@@ -79,10 +95,21 @@ function quote({ portfolio, score, structure, termDays }, policy = POLICY) {
   let td = null;
   if (struct === "fixed_term") td = cfg.termDaysOptions.includes(Number(termDays)) ? Number(termDays) : cfg.termDaysOptions[0];
 
-  // Advance: a share of the position's MARKET value (so the UI reads "X% of your position"),
-  // hard-capped at the risk-adjusted lendable value (the haircut/lpFactor is a safety ceiling).
-  const rate = clamp(cfg.advance.defaultRate, cfg.advance.minRate, cfg.advance.maxRate);
-  const principalUsd = round2(Math.min(collateral.marketUsd * rate, collateral.lendableUsd));
+  // Advance: per-vault when the registry sets an advance rate for that share-token (so each supported
+  // vault/LP is sized on its own risk), else the flat policy default across the bundle. Each vault is
+  // hard-capped at its own risk-adjusted lendable value (the haircut/lpFactor is a safety ceiling).
+  const defaultRate = clamp(cfg.advance.defaultRate, cfg.advance.minRate, cfg.advance.maxRate);
+  const hasPerVault = collateral.vaults.some((v) => v.advanceRate != null);
+  const principalUsd = hasPerVault
+    ? round2(collateral.vaults.reduce((sum, v) => {
+        const r = clamp(v.advanceRate != null ? v.advanceRate : defaultRate, cfg.advance.minRate, cfg.advance.maxRate);
+        return sum + Math.min(v.marketUsd * r, v.lendableUsd);
+      }, 0))
+    : round2(Math.min(collateral.marketUsd * defaultRate, collateral.lendableUsd));
+  // Reported advance rate: the blended effective rate when per-vault, else the flat default (unchanged).
+  const rate = hasPerVault
+    ? (collateral.marketUsd > 0 ? round4(principalUsd / collateral.marketUsd) : defaultRate)
+    : defaultRate;
 
   // APR = the existing indicative SECURED credit-line rate, plus an optional per-structure/term
   // adjustment (policy.dfCredit.termAdjust, empty = no-op until the team supplies real rate logic).
