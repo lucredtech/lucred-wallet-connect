@@ -1,0 +1,9 @@
+{
+  "name": "lcrd-fraud-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Testnet monitor that flags ladder-gaming / sybil borrowers on the credit-line pool and (optionally) freezes them",
+  "main": "monitor.js",
+  "scripts": { "start": "node monitor.js" },
+  "dependencies": { "@stellar/stellar-sdk": "^17.2.1" }
+}

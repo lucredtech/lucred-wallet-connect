@@ -3,3 +3,7 @@ dist
 .env
 .env.local
 .DS_Store
+
+# ops worker secrets + state
+ops/**/config.env
+ops/**/state.json
