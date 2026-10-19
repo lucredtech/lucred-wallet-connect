@@ -9,7 +9,7 @@ const VIEW = "`credit_bureau.credit_events_normalized`";
 // On-chain LCRD credit product (testnet) — read the live pool's aggregates over Soroban RPC so the
 // product tiles reflect real deposits/borrows, not just the off-chain demo accept flow.
 const { rpc, Contract, TransactionBuilder, Networks, Account, Keypair, scValToNative } = require("@stellar/stellar-sdk");
-const TESTNET_POOL = process.env.TESTNET_POOL || "CDQ3B7LFFEQ56GAPYRJDXTJQA3CSQUAVVO4IUPM4QXHC5DRMMFYRZLI2";
+const TESTNET_POOL = process.env.TESTNET_POOL || "CD4XBOWYMD53Y2HT5K3ICOTQ5IVATV6PZFZ77VWIUVP3IL5DZVBPXUX6";
 const TESTNET_RPC = "https://soroban-testnet.stellar.org";
 const USDC_ONE = 10_000_000;
 const tRpc = new rpc.Server(TESTNET_RPC);

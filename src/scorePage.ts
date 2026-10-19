@@ -3,7 +3,7 @@
 import "./ui.css";
 import { connect, invoke, readCall, sAddr, sI128, sU32 } from "./soroban";
 
-const POOL = "CDQ3B7LFFEQ56GAPYRJDXTJQA3CSQUAVVO4IUPM4QXHC5DRMMFYRZLI2";
+const POOL = "CD4XBOWYMD53Y2HT5K3ICOTQ5IVATV6PZFZ77VWIUVP3IL5DZVBPXUX6";
 const API = import.meta.env.VITE_CREDIT_SCORE_API_URL as string | undefined;
 const EXPLORER = "https://stellar.expert/explorer/testnet";
 const ONE = 10_000_000;
@@ -107,7 +107,12 @@ async function renderLine() {
       const tier = ["—", "A", "B", "C"][Number(line.tier)] ?? "—";
       $("line-chip").hidden = false;
       $("line-chip").textContent = `${line.secured ? "Secured" : "Unsecured"} · tier ${tier}`;
-      $("line-body").innerHTML = `${pctApr(Number(line.apr_bps))} APR · limit <b>$${usd(limit)}</b>`;
+      const dueAt = Number(line.due_at || 0);
+      const now = Math.floor(Date.now() / 1000);
+      const dueStr = dueAt > 0
+        ? ` · ${dueAt < now ? "⚠️ past due" : "due"} ${new Date(dueAt * 1000).toLocaleDateString()}`
+        : " · open-ended";
+      $("line-body").innerHTML = `${pctApr(Number(line.apr_bps))} APR · limit <b>$${usd(limit)}</b>${dueStr}`;
       $("draw-wrap").hidden = false;
       $("avail").textContent = "$" + usd(fromBase(avail));
       $("owed").textContent = "$" + usd(fromBase(owed[0] + owed[1]));

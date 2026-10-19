@@ -4,7 +4,7 @@ import "./ui.css";
 import { connect, getContractEvents, latestLedgerSeq, explorerTx } from "./soroban";
 import type { ActivityEvent } from "./soroban";
 
-const POOL = "CDQ3B7LFFEQ56GAPYRJDXTJQA3CSQUAVVO4IUPM4QXHC5DRMMFYRZLI2";
+const POOL = "CD4XBOWYMD53Y2HT5K3ICOTQ5IVATV6PZFZ77VWIUVP3IL5DZVBPXUX6";
 const ONE = 10_000_000;
 const LEDGER_SEC = 5; // ~5s per ledger on testnet, for age estimates
 

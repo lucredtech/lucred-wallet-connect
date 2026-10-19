@@ -23,6 +23,12 @@ const SECONDS_PER_YEAR: u64 = 31_536_000;
 const LOAN_TTL: u32 = 60 * 24 * 60 * 60 / 5; // ledgers (~5s each)
 const LOAN_BUMP_THRESHOLD: u32 = 30 * 24 * 60 * 60 / 5;
 
+// Liquidation economics: on top of seizing enough collateral to cover the debt, the treasury keeps a
+// substantial liquidation penalty (and an extra late-payment penalty if the loan is past maturity).
+// Only the collateral left after debt + penalties is returned to the borrower.
+const LIQUIDATION_FEE_BPS: i128 = 1_000; // 10% of the amount liquidated
+const LATE_FEE_BPS: i128 = 500; // +5% when liquidated after maturity
+
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(u32)]
@@ -351,9 +357,20 @@ impl CollateralEscrow {
         if seize_amount <= 0 || seize_amount > loan.collateral_amount {
             panic_with_error!(&env, Error::TooMuch);
         }
+        // `seize_amount` (engine-signed) covers the debt. On top of that the treasury keeps a
+        // liquidation penalty, plus a late penalty if the loan is past maturity — both substantial, so
+        // being liquidated is never cheaper than repaying. The borrower gets only what's left.
+        let is_late = loan.maturity > 0 && env.ledger().timestamp() > loan.maturity;
+        let fee_bps = LIQUIDATION_FEE_BPS + if is_late { LATE_FEE_BPS } else { 0 };
+        let penalty = seize_amount * fee_bps / 10_000;
+        let mut to_treasury = seize_amount + penalty;
+        if to_treasury > loan.collateral_amount {
+            to_treasury = loan.collateral_amount; // never seize more collateral than exists
+        }
+        let surplus = loan.collateral_amount - to_treasury;
+
         let client = token::TokenClient::new(&env, &loan.collateral_token);
-        client.transfer(&env.current_contract_address(), &treasury, &seize_amount);
-        let surplus = loan.collateral_amount - seize_amount;
+        client.transfer(&env.current_contract_address(), &treasury, &to_treasury);
         if surplus > 0 {
             client.transfer(&env.current_contract_address(), &loan.borrower, &surplus);
         }
@@ -361,7 +378,7 @@ impl CollateralEscrow {
         loan.debt = 0;
         loan.status = LoanStatus::Liquidated;
         Self::put_loan(&env, &loan_id, &loan);
-        env.events().publish((LIQUIDATE_EV, loan.borrower.clone()), (loan_id, seize_amount, surplus));
+        env.events().publish((LIQUIDATE_EV, loan.borrower.clone()), (loan_id, to_treasury, penalty, surplus));
     }
 
     // ---- views ----

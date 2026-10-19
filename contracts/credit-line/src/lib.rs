@@ -40,6 +40,8 @@ const PREMIUM_AT_100_BPS: i128 = 300; // ... and at score 100
 const UNSECURED_SURCHARGE_BPS: i128 = 300;
 const MIN_APR_BPS: i128 = 600;
 const MAX_APR_BPS: i128 = 3_600;
+const LATE_PENALTY_BPS: i128 = 1_200; // extra APR charged while a fixed-term line is past its due date
+const DAY_SECONDS: u64 = 24 * 60 * 60;
 const TIER_A_MIN_SCORE: u32 = 67;
 const TIER_B_MIN_SCORE: u32 = 34;
 const UNSECURED_MIN_SCORE: u32 = 60; // minimum score for any unsecured line
@@ -53,8 +55,10 @@ const TIER_B_CEILING: i128 = 250 * USDC_ONE;
 
 const CYCLE_DISCOUNT_BPS: i128 = 50; // APR reduction per completed cycle
 const MAX_CYCLE_DISCOUNT_BPS: i128 = 200;
-const CYCLE_MIN_DURATION: u64 = 7 * 24 * 60 * 60; // 7 days
-const CYCLE_MIN_USE_DIVISOR: i128 = 4; // must draw at least limit / 4
+const CYCLE_MIN_DURATION: u64 = 21 * 24 * 60 * 60; // 21 days held before a cycle counts
+const CYCLE_MIN_USE_DIVISOR: i128 = 2; // must draw at least limit / 2 (50% utilization) at peak
+const LADDER_MIN_INTERVAL: u64 = 30 * 24 * 60 * 60; // velocity cap: at most one ladder step per 30 days
+const WRITEOFF_LADDER_PAUSE: u64 = 90 * 24 * 60 * 60; // ladder is frozen for 90 days after a write-off
 const SECURED_ADVANCE_BPS: i128 = 7_125; // 95% after haircut × 75% advance
 const SECURED_PREMIUM_SHARE_BPS: i128 = 3_500; // share of the score premium on secured credit
 
@@ -94,6 +98,7 @@ pub enum Error {
     NotSecured = 17,
     CollateralLocked = 18,
     BadBuffer = 19,
+    LinePastDue = 20,
 }
 
 /// A borrower's credit line.
@@ -110,6 +115,8 @@ pub struct Line {
     pub active: bool,          // can draw; repayments are always accepted
     pub last_accrued: u64,     // timestamp of the last accrual (0 = never touched)
     pub score_ref: BytesN<32>, // hash of the off-chain score report backing this line
+    pub term_days: u32,        // fixed term in days (0 = open-ended / revolving)
+    pub due_at: u64,           // repayment due timestamp (0 = no due date)
 }
 
 /// Repayment record, per borrower. Survives line updates; reset only by a write-off.
@@ -125,6 +132,8 @@ pub struct History {
     pub cycle_peak: i128,      // largest principal during the current loan
     pub total_borrowed: i128,  // lifetime principal drawn
     pub total_repaid: i128,    // lifetime principal + interest repaid
+    pub last_laddered_at: u64, // last time a cycle raised the limit (velocity cap)
+    pub last_writeoff_at: u64, // last write-off/seizure (ladder pauses after one)
 }
 
 #[contracttype]
@@ -451,7 +460,18 @@ impl CreditLine {
     /// Open or update a borrower's unsecured line from their LCRD score. The contract derives the tier
     /// and APR and caps the limit by tier. Accrues interest at the old rate first. `score_ref` is the
     /// hash of the off-chain LCRD score report (no personal data on-chain).
+    /// Open or update an OPEN-ENDED (revolving) unsecured line — no due date.
     pub fn set_line(env: Env, borrower: Address, score: u32, limit: i128, score_ref: BytesN<32>) {
+        Self::set_line_inner(env, borrower, score, limit, score_ref, 0);
+    }
+
+    /// Open or update a FIXED-TERM unsecured line with a repayment due date `term_days` out. Same
+    /// pricing; past the due date interest accrues at a penalty rate and no new draws are allowed.
+    pub fn set_fixed_term_line(env: Env, borrower: Address, score: u32, limit: i128, score_ref: BytesN<32>, term_days: u32) {
+        Self::set_line_inner(env, borrower, score, limit, score_ref, term_days);
+    }
+
+    fn set_line_inner(env: Env, borrower: Address, score: u32, limit: i128, score_ref: BytesN<32>, term_days: u32) {
         Self::underwriter(&env).require_auth();
         let (tier, apr, max_limit) = Self::quote(env.clone(), score, Self::get_history(env.clone(), borrower.clone()).cycles_completed);
         if max_limit == 0 {
@@ -471,6 +491,8 @@ impl CreditLine {
         l.tier = tier;
         l.score = score;
         l.score_ref = score_ref.clone();
+        l.term_days = term_days;
+        l.due_at = if term_days > 0 { env.ledger().timestamp() + (term_days as u64) * DAY_SECONDS } else { 0 };
         l.active = true;
         Self::put_line(&env, &borrower, &l);
         env.events().publish((LINE_SET, borrower), (limit, score, tier, apr, score_ref));
@@ -507,6 +529,7 @@ impl CreditLine {
         h.cycles_completed = 0;
         h.cycle_start = 0;
         h.cycle_peak = 0;
+        h.last_writeoff_at = env.ledger().timestamp();
         Self::put_history(&env, &borrower, &h);
         env.events().publish((WRITEOFF, borrower), (principal, interest));
     }
@@ -555,6 +578,7 @@ impl CreditLine {
         h.cycles_completed = 0;
         h.cycle_start = 0;
         h.cycle_peak = 0;
+        h.last_writeoff_at = env.ledger().timestamp();
         Self::put_history(&env, &borrower, &h);
         env.events().publish((SEIZED, borrower), (take, value, leftover));
     }
@@ -569,6 +593,9 @@ impl CreditLine {
         let mut l = Self::get_line(env.clone(), borrower.clone());
         if !l.active {
             panic_with_error!(&env, Error::LineInactive);
+        }
+        if l.due_at > 0 && env.ledger().timestamp() > l.due_at {
+            panic_with_error!(&env, Error::LinePastDue); // a matured fixed-term line can't be drawn on
         }
         Self::accrue(&env, &mut l);
         if l.secured {
@@ -644,12 +671,18 @@ impl CreditLine {
         h.last_repaid_at = env.ledger().timestamp();
         h.total_repaid += paid;
         if l.principal == 0 && l.interest == 0 && h.cycle_start != 0 {
-            let qualifies = env.ledger().timestamp() - h.cycle_start >= CYCLE_MIN_DURATION
-                && h.cycle_peak * CYCLE_MIN_USE_DIVISOR >= l.limit;
+            let now = env.ledger().timestamp();
+            // A cycle only ladders the line if ALL anti-gaming guards pass:
+            let held_long_enough = now - h.cycle_start >= CYCLE_MIN_DURATION;      // real duration
+            let used_enough = h.cycle_peak * CYCLE_MIN_USE_DIVISOR >= l.limit;      // real utilization (≥50%)
+            let velocity_ok = h.last_laddered_at == 0 || now - h.last_laddered_at >= LADDER_MIN_INTERVAL; // ≤1 step / 30d
+            let clean_history = h.last_writeoff_at == 0 || now - h.last_writeoff_at >= WRITEOFF_LADDER_PAUSE; // no recent default
+            let qualifies = held_long_enough && used_enough && velocity_ok && clean_history;
             h.cycle_start = 0;
             h.cycle_peak = 0;
             if qualifies {
                 h.cycles_completed += 1;
+                h.last_laddered_at = now;
                 if l.secured {
                     // Secured lines are sized by collateral, so only the rate improves.
                     l.apr_bps = Self::secured_quote(env.clone(), l.score, h.cycles_completed);
@@ -713,6 +746,8 @@ impl CreditLine {
             active: false,
             last_accrued: 0,
             score_ref: BytesN::from_array(&env, &[0u8; 32]),
+            term_days: 0,
+            due_at: 0,
         })
     }
 
@@ -727,6 +762,8 @@ impl CreditLine {
             cycle_peak: 0,
             total_borrowed: 0,
             total_repaid: 0,
+            last_laddered_at: 0,
+            last_writeoff_at: 0,
         })
     }
 
@@ -932,6 +969,8 @@ impl CreditLine {
             active: false,
             last_accrued: 0,
             score_ref: BytesN::from_array(env, &[0u8; 32]),
+            term_days: 0,
+            due_at: 0,
         })
     }
 
@@ -953,8 +992,15 @@ impl CreditLine {
         if l.principal == 0 || l.last_accrued == 0 {
             return 0;
         }
-        let elapsed = (env.ledger().timestamp() - l.last_accrued) as i128;
-        l.principal * (l.apr_bps as i128) * elapsed / (YEAR * 10_000)
+        let now = env.ledger().timestamp();
+        let elapsed = (now - l.last_accrued) as i128;
+        // A fixed-term line past its due date accrues at a penalty rate (the late-payment fee).
+        let rate = if l.due_at > 0 && now > l.due_at {
+            l.apr_bps as i128 + LATE_PENALTY_BPS
+        } else {
+            l.apr_bps as i128
+        };
+        l.principal * rate * elapsed / (YEAR * 10_000)
     }
 
     fn accrue(env: &Env, l: &mut Line) {

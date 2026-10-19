@@ -3,7 +3,7 @@
 import "./ui.css";
 import { connect, invoke, readCall, sAddr, sI128 } from "./soroban";
 
-const POOL = "CDQ3B7LFFEQ56GAPYRJDXTJQA3CSQUAVVO4IUPM4QXHC5DRMMFYRZLI2";
+const POOL = "CD4XBOWYMD53Y2HT5K3ICOTQ5IVATV6PZFZ77VWIUVP3IL5DZVBPXUX6";
 const USDC = "CDXDVJLAYLFR2BRDHVUHM5NSVEN5EJVC5QPKW5I7LWNFKMQFX35V35ZJ";
 const EXPLORER = "https://stellar.expert/explorer/testnet";
 const VAULT_APR = 0.10; // the fixed-APR strategy the pool's idle USDC is invested in (deployed rate)
