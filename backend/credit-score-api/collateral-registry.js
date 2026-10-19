@@ -32,6 +32,24 @@ const REGISTRIES = {
       priceSource: "underlying",
       enabled: true,
     },
+    // Mock dfToken from the Stage-B collateral-escrow testnet setup. It's a plain mock token (no
+    // on-chain vault read), so it's priced at par ($1/token) rather than via get_asset_amounts_per_shares.
+    // Already on the escrow contract's own on-chain asset allowlist; its faucet drips it with test USDC,
+    // so testers can actually get it and pledge it end-to-end.
+    CDCW5LKOFURA3H2FN7UQNVDLHO6NGUWDZKJRKAITHFLRYG2KBSJCM6UI: {
+      protocol: "defindex",
+      kind: "vault",
+      label: "Mock dfToken (escrow test)",
+      symbol: "dfTEST",
+      underlyingClass: "stable",
+      advanceBps: 7000,
+      liquidationLtvBps: 9000,
+      priceSource: "par",
+      parUsd: 1,
+      faucet: "CB5LTMEKUKMSTRBC4CMML5YAHBCPHIDTPZ6F6INKX56FS6XA73C4Y7S3",
+      escrow: "CCM4QHKGCEAE3FKNB3SGJ74ZHPHLWNAAB5BBVMDECXISB26MXAPHNFZG",
+      enabled: true,
+    },
     // Add more as they are deployed + risk-approved on testnet, same shape.
   },
 
@@ -71,6 +89,9 @@ function supportedCollateral(network = activeNetwork()) {
       underlyingClass: v.underlyingClass,
       advanceRate: v.advanceBps / 10000,
       liquidationLtv: v.liquidationLtvBps / 10000,
+      priceSource: v.priceSource || "underlying",
+      parUsd: v.parUsd != null ? v.parUsd : null,
+      faucet: v.faucet || null,
     }));
 }
 

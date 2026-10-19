@@ -56,12 +56,19 @@ assert.strictEqual(colNoReg.marketUsd, 25000);
 
 // 6. supportedCollateral() exposes the active-network list with human-ready advance/liq rates.
 const testnetList = supportedCollateral("testnet");
-assert.ok(testnetList.length >= 1, "testnet should ship at least one supported vault");
+assert.ok(testnetList.length >= 2, "testnet should ship the DeFindex vault + the mock dfToken");
 const dfUsdc = testnetList.find((c) => c.symbol === "dfUSDC");
 assert.ok(dfUsdc, "the deployed DeFindex USDC vault should be in the testnet list");
 assert.strictEqual(dfUsdc.advanceRate, 0.75);
 assert.strictEqual(dfUsdc.liquidationLtv, 0.92);
 assert.strictEqual(dfUsdc.kind, "vault");
+
+// The escrow-flow mock dfToken: present, priced at par, with its faucet surfaced.
+const dfTest = testnetList.find((c) => c.symbol === "dfTEST");
+assert.ok(dfTest, "the mock dfToken should be in the testnet list");
+assert.strictEqual(dfTest.priceSource, "par");
+assert.strictEqual(dfTest.parUsd, 1);
+assert.ok(dfTest.faucet && dfTest.faucet.startsWith("C"), "mock dfToken should carry its faucet address");
 
 // 7. Mainnet is an empty placeholder today (filled in at launch) — must not throw.
 assert.deepStrictEqual(getCollateralRegistry("mainnet"), {});
