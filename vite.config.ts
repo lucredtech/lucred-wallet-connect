@@ -15,6 +15,8 @@ export default defineConfig({
         earn: resolve(__dirname, "earn.html"),
         collateral: resolve(__dirname, "collateral.html"),
         score: resolve(__dirname, "score.html"),
+        home: resolve(__dirname, "home.html"),
+        portfolio: resolve(__dirname, "portfolio.html"),
       },
     },
   },
