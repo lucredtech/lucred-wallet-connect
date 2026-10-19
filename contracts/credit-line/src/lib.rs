@@ -22,8 +22,9 @@
 //! borrower's own Stellar address — there is no cross-chain proof step (unlike the Arc/EVM original).
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, panic_with_error, symbol_short, token,
-    Address, BytesN, Env, Symbol, Vec,
+    auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation},
+    contract, contracterror, contractimpl, contracttype, panic_with_error, symbol_short, token, vec,
+    Address, BytesN, Env, IntoVal, Symbol, Val, Vec,
 };
 
 // ---- time / TTL ----
@@ -61,6 +62,15 @@ const SECURED_PREMIUM_SHARE_BPS: i128 = 3_500; // share of the score premium on 
 const VIRTUAL_SHARES: i128 = 1_000_000;
 const VIRTUAL_ASSETS: i128 = 1;
 
+// ---- idle-capital yield (optional DeFindex vault) ----
+// When a vault is configured, USDC the pool is not currently lending out is parked in a DeFindex
+// vault so it earns yield for lenders. A buffer of raw USDC is kept on hand for instant draws and
+// withdrawals; only the excess is invested, and the pool pulls back from the vault when the buffer
+// runs short. The vault's share value carries the yield, so counting the pool's vault position in
+// `cash` makes every lender share appreciate with it — no extra bookkeeping.
+const DEFAULT_BUFFER_BPS: u32 = 2_000; // keep 20% of liquidity liquid; invest the other 80%
+const BPS_DENOM: i128 = 10_000;
+
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(u32)]
@@ -83,6 +93,7 @@ pub enum Error {
     NoCollateral = 16,
     NotSecured = 17,
     CollateralLocked = 18,
+    BadBuffer = 19,
 }
 
 /// A borrower's credit line.
@@ -130,6 +141,8 @@ pub enum DataKey {
     Shares(Address),
     Line(Address),
     History(Address),
+    Vault,     // Option<Address> of the DeFindex vault idle USDC is parked in
+    BufferBps, // u32 target share of liquidity kept as raw USDC (rest is invested)
 }
 
 // Event topics (≤ 9 chars for symbol_short).
@@ -143,6 +156,8 @@ const WRITEOFF: Symbol = symbol_short!("writeoff");
 const CYCLE: Symbol = symbol_short!("cycle");
 const SECURED: Symbol = symbol_short!("secured");
 const SEIZED: Symbol = symbol_short!("seized");
+const INVESTED: Symbol = symbol_short!("invested");
+const DIVESTED: Symbol = symbol_short!("divested");
 
 #[contract]
 pub struct CreditLine;
@@ -161,11 +176,80 @@ impl CreditLine {
         s.set(&DataKey::Usdc, &usdc);
     }
 
+    // ------------------------------------------------------ idle-yield config --
+
+    /// Owner points the pool's idle USDC at a DeFindex vault and sets the liquidity buffer (bps of
+    /// total liquidity kept as raw USDC; the rest is invested). Setting it does not move funds — call
+    /// `rebalance_idle` (or any deposit/repay) to invest, and any withdraw/borrow pulls back as needed.
+    /// The vault's asset MUST be this pool's USDC.
+    pub fn set_vault(env: Env, vault: Address, buffer_bps: u32) {
+        Self::owner(&env).require_auth();
+        if buffer_bps > 10_000 {
+            panic_with_error!(&env, Error::BadBuffer);
+        }
+        env.storage().instance().set(&DataKey::Vault, &vault);
+        env.storage().instance().set(&DataKey::BufferBps, &buffer_bps);
+        env.events().publish((symbol_short!("vaultset"),), (vault, buffer_bps));
+    }
+
+    /// Owner detaches the vault. Pulls everything back to raw USDC first so the pool stays whole.
+    pub fn clear_vault(env: Env) {
+        Self::owner(&env).require_auth();
+        if let Some(vault) = Self::vault_opt(&env) {
+            let shares = Self::vault_shares(&env, &vault);
+            if shares > 0 {
+                Self::vault_withdraw(&env, &vault, shares);
+            }
+        }
+        env.storage().instance().remove(&DataKey::Vault);
+        env.storage().instance().remove(&DataKey::BufferBps);
+        env.events().publish((symbol_short!("vaultclr"),), ());
+    }
+
+    pub fn vault_address(env: Env) -> Option<Address> {
+        Self::vault_opt(&env)
+    }
+    pub fn buffer_bps(env: Env) -> u32 {
+        env.storage().instance().get(&DataKey::BufferBps).unwrap_or(DEFAULT_BUFFER_BPS)
+    }
+    /// USDC value of the pool's position in the vault (principal parked + yield earned), 0 if no vault.
+    pub fn vault_value(env: Env) -> i128 {
+        match Self::vault_opt(&env) {
+            Some(vault) => Self::vault_value_of(&env, &vault),
+            None => 0,
+        }
+    }
+    /// Raw USDC sitting in the pool contract (not invested).
+    pub fn idle_cash(env: Env) -> i128 {
+        token::TokenClient::new(&env, &Self::usdc(&env)).balance(&env.current_contract_address())
+    }
+
+    /// Anyone may sweep the pool to its target buffer: invest raw USDC above the buffer, or top the
+    /// buffer back up from the vault. Keeps idle capital earning without waiting for the next deposit.
+    pub fn rebalance_idle(env: Env) {
+        let vault = match Self::vault_opt(&env) {
+            Some(v) => v,
+            None => return,
+        };
+        let raw = Self::idle_cash(env.clone());
+        let invested = Self::vault_value_of(&env, &vault);
+        let target = (raw + invested) * (Self::buffer_bps(env.clone()) as i128) / BPS_DENOM;
+        if raw > target {
+            Self::vault_deposit(&env, &vault, raw - target);
+        } else if raw < target {
+            Self::ensure_idle(&env, target - raw);
+        }
+    }
+
     // ----------------------------------------------------------- pool views --
 
-    /// USDC held by the pool and available to lend or withdraw.
+    /// USDC the pool can lend or pay out: raw USDC on hand plus whatever is parked in the vault
+    /// (principal + yield). Counting the vault position here is what lets lender shares appreciate
+    /// with the earned yield, and keeps every liquidity/limit check honest about total firepower.
     pub fn cash(env: Env) -> i128 {
-        token::TokenClient::new(&env, &Self::usdc(&env)).balance(&env.current_contract_address())
+        let raw =
+            token::TokenClient::new(&env, &Self::usdc(&env)).balance(&env.current_contract_address());
+        raw + Self::vault_value(env)
     }
 
     /// What the pool is worth to lenders: cash plus principal still out. Accrued-but-unpaid interest
@@ -262,6 +346,7 @@ impl CreditLine {
         Self::set_total_shares(&env, Self::total_shares(&env) + shares);
         Self::set_shares(&env, &lender, Self::shares_of(env.clone(), lender.clone()) + shares);
         env.events().publish((DEPOSITED, lender), (assets, shares));
+        Self::invest_excess(&env); // park the fresh USDC (above the buffer) in the vault
         shares
     }
 
@@ -292,6 +377,7 @@ impl CreditLine {
         }
         Self::set_shares(&env, &lender, held - shares);
         Self::set_total_shares(&env, Self::total_shares(&env) - shares);
+        Self::ensure_idle(&env, assets); // unwind from the vault if raw USDC is short
         token::TokenClient::new(&env, &Self::usdc(&env)).transfer(
             &env.current_contract_address(),
             &lender,
@@ -513,6 +599,7 @@ impl CreditLine {
         Self::set_total_principal(&env, Self::total_principal(&env) + amount);
         Self::put_line(&env, &borrower, &l);
         Self::put_history(&env, &borrower, &h);
+        Self::ensure_idle(&env, amount); // unwind from the vault if raw USDC is short
         token::TokenClient::new(&env, &Self::usdc(&env)).transfer(
             &env.current_contract_address(),
             &borrower,
@@ -585,6 +672,7 @@ impl CreditLine {
         Self::put_line(&env, &borrower, &l);
         Self::put_history(&env, &borrower, &h);
         env.events().publish((REPAID, borrower), (payer, to_interest, to_principal));
+        Self::invest_excess(&env); // park the repaid USDC (above the buffer) back in the vault
         paid
     }
 
@@ -659,6 +747,137 @@ impl CreditLine {
     }
     fn usdc(env: &Env) -> Address {
         env.storage().instance().get(&DataKey::Usdc).unwrap_or_else(|| panic_with_error!(env, Error::NotInitialized))
+    }
+
+    // ------------------------------------------------------- DeFindex vault --
+    // The pool is just a depositor in the vault: it holds vault shares, and the vault's share value
+    // carries the yield. All calls are made by the pool itself, so the token transfers they trigger
+    // are authorized with `authorize_as_current_contract`. When no vault is set, everything no-ops.
+
+    fn vault_opt(env: &Env) -> Option<Address> {
+        env.storage().instance().get(&DataKey::Vault)
+    }
+
+    /// Vault shares the pool holds (the vault is itself a SEP-41 share token).
+    fn vault_shares(env: &Env, vault: &Address) -> i128 {
+        env.invoke_contract::<i128>(
+            vault,
+            &Symbol::new(env, "balance"),
+            vec![env, env.current_contract_address().into_val(env)],
+        )
+    }
+
+    /// USDC value of the pool's vault shares right now (principal parked + yield).
+    fn vault_value_of(env: &Env, vault: &Address) -> i128 {
+        let shares = Self::vault_shares(env, vault);
+        if shares <= 0 {
+            return 0;
+        }
+        let amounts: Vec<i128> = env.invoke_contract(
+            vault,
+            &Symbol::new(env, "get_asset_amounts_per_shares"),
+            vec![env, shares.into_val(env)],
+        );
+        amounts.get(0).unwrap_or(0)
+    }
+
+    /// Invest raw USDC above the buffer into the vault (no-op without a vault, or below the buffer).
+    fn invest_excess(env: &Env) {
+        let vault = match Self::vault_opt(env) {
+            Some(v) => v,
+            None => return,
+        };
+        let raw =
+            token::TokenClient::new(env, &Self::usdc(env)).balance(&env.current_contract_address());
+        let invested = Self::vault_value_of(env, &vault);
+        let buffer_bps = Self::buffer_bps(env.clone()) as i128;
+        let target = (raw + invested) * buffer_bps / BPS_DENOM;
+        if raw > target {
+            Self::vault_deposit(env, &vault, raw - target);
+        }
+    }
+
+    /// Make sure at least `needed` raw USDC is on hand, unwinding from the vault if short.
+    fn ensure_idle(env: &Env, needed: i128) {
+        let vault = match Self::vault_opt(env) {
+            Some(v) => v,
+            None => return,
+        };
+        let usdc = Self::usdc(env);
+        let raw = token::TokenClient::new(env, &usdc).balance(&env.current_contract_address());
+        if raw >= needed {
+            return;
+        }
+        let shortfall = needed - raw;
+        let invested = Self::vault_value_of(env, &vault);
+        if invested <= 0 {
+            return; // nothing parked; the caller's own liquidity check will reject if truly short
+        }
+        let shares_held = Self::vault_shares(env, &vault);
+        // Shares worth `shortfall`, rounded up, capped at what the pool holds. Pulling the whole
+        // position when the shortfall meets or exceeds it avoids leaving dust unredeemable.
+        let mut shares = if shortfall >= invested {
+            shares_held
+        } else {
+            (shortfall * shares_held + invested - 1) / invested
+        };
+        if shares > shares_held {
+            shares = shares_held;
+        }
+        if shares > 0 {
+            Self::vault_withdraw(env, &vault, shares);
+        }
+    }
+
+    fn vault_deposit(env: &Env, vault: &Address, amount: i128) {
+        if amount <= 0 {
+            return;
+        }
+        let usdc = Self::usdc(env);
+        let me = env.current_contract_address();
+        let amounts: Vec<i128> = vec![env, amount];
+        let mins: Vec<i128> = vec![env, 0i128];
+        // The vault pulls `amount` USDC from us; pre-authorize that transfer on our own behalf.
+        let transfer_args: Vec<Val> = (me.clone(), vault.clone(), amount).into_val(env);
+        env.authorize_as_current_contract(vec![
+            env,
+            InvokerContractAuthEntry::Contract(SubContractInvocation {
+                context: ContractContext {
+                    contract: usdc.clone(),
+                    fn_name: Symbol::new(env, "transfer"),
+                    args: transfer_args,
+                },
+                sub_invocations: vec![env],
+            }),
+        ]);
+        let args: Vec<Val> = (amounts, mins, me, false).into_val(env);
+        env.invoke_contract::<Val>(vault, &Symbol::new(env, "deposit"), args);
+        env.events().publish((INVESTED, vault.clone()), amount);
+    }
+
+    fn vault_withdraw(env: &Env, vault: &Address, shares: i128) -> i128 {
+        if shares <= 0 {
+            return 0;
+        }
+        let me = env.current_contract_address();
+        let mins: Vec<i128> = vec![env, 0i128];
+        let args: Vec<Val> = (shares, mins, me.clone()).into_val(env);
+        // The vault burns our shares (from == this pool); authorize that withdraw on our own behalf.
+        env.authorize_as_current_contract(vec![
+            env,
+            InvokerContractAuthEntry::Contract(SubContractInvocation {
+                context: ContractContext {
+                    contract: vault.clone(),
+                    fn_name: Symbol::new(env, "withdraw"),
+                    args: args.clone(),
+                },
+                sub_invocations: vec![env],
+            }),
+        ]);
+        let out: Vec<i128> = env.invoke_contract(vault, &Symbol::new(env, "withdraw"), args);
+        let got = out.get(0).unwrap_or(0);
+        env.events().publish((DIVESTED, vault.clone()), got);
+        got
     }
     fn total_shares(env: &Env) -> i128 {
         env.storage().instance().get(&DataKey::TotalShares).unwrap_or(0)
