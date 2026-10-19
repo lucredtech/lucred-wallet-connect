@@ -302,7 +302,11 @@ async function repayLoan(id: string, btn: HTMLButtonElement) {
   btn.disabled = true; btn.textContent = "Repaying…";
   try {
     const payoff = BigInt(String(await readCall<bigint>(ESCROW, "payoff", [sBytes32(id)], address)));
-    const tx = await invoke(ESCROW, "repay", [sBytes32(id), sI128(payoff)], address);
+    // Overpay by a small buffer: interest keeps accruing between this read and the tx landing, which
+    // would leave a dust debt that blocks `close`. The contract caps the pull at the true debt, so
+    // overpaying never overcharges.
+    const amount = payoff + payoff / 100n + 100000n;
+    const tx = await invoke(ESCROW, "repay", [sBytes32(id), sI128(amount)], address);
     toast("Loan repaid — you can now unlock your collateral.", { tx });
     await loadLoans();
   } catch (e) {
