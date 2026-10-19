@@ -16,7 +16,7 @@
 //! Pricing (LCRD policy 2026-10), in basis points:
 //!   unsecured APR = 800 cost of funds + score premium (2000 at score 0 → 300 at 100) + 300 surcharge,
 //!   clamped to [600, 3600]; secured APR = 800 + 35% of the score premium; both − 50 bps per completed
-//!   cycle (max 200). Tiers: A = 67-100, B = 34-66, C = 0-33. Unsecured needs score ≥ 55.
+//!   cycle (max 200). Tiers: A = 67-100, B = 34-66, C = 0-33. Unsecured needs score ≥ 60.
 //!
 //! Amounts are in USDC base units at **7 decimals** (Stellar USDC), as `i128`. Identity is the
 //! borrower's own Stellar address — there is no cross-chain proof step (unlike the Arc/EVM original).
@@ -42,12 +42,12 @@ const MIN_APR_BPS: i128 = 600;
 const MAX_APR_BPS: i128 = 3_600;
 const TIER_A_MIN_SCORE: u32 = 67;
 const TIER_B_MIN_SCORE: u32 = 34;
-const UNSECURED_MIN_SCORE: u32 = 55; // tier A, or the upper half of tier B
+const UNSECURED_MIN_SCORE: u32 = 60; // minimum score for any unsecured line
 
 // 7-decimal USDC base units.
 const USDC_ONE: i128 = 10_000_000;
-const TIER_A_MAX_LIMIT: i128 = 100 * USDC_ONE; // starter line, tier A
-const TIER_B_MAX_LIMIT: i128 = 75 * USDC_ONE; // starter line, tier B
+const TIER_A_MAX_LIMIT: i128 = 50 * USDC_ONE; // starter line, tier A
+const TIER_B_MAX_LIMIT: i128 = 25 * USDC_ONE; // starter line, tier B
 const TIER_A_CEILING: i128 = 2_500 * USDC_ONE; // reachable through repayments
 const TIER_B_CEILING: i128 = 250 * USDC_ONE;
 

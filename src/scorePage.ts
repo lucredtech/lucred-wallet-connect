@@ -3,7 +3,7 @@
 import "./ui.css";
 import { connect, invoke, readCall, sAddr, sI128, sU32 } from "./soroban";
 
-const POOL = "CBW426LFZAFUW2YMPUFZRMEV6VCZ2XSVOMHFQS7C6VCO4DIVK6SDB5ZP";
+const POOL = "CDQ3B7LFFEQ56GAPYRJDXTJQA3CSQUAVVO4IUPM4QXHC5DRMMFYRZLI2";
 const API = import.meta.env.VITE_CREDIT_SCORE_API_URL as string | undefined;
 const EXPLORER = "https://stellar.expert/explorer/testnet";
 const ONE = 10_000_000;
