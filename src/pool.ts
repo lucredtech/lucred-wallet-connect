@@ -1,5 +1,6 @@
 import "./style.css";
-import { connect, invoke, readCall, sAddr, sI128, explorerTx, TESTNET_RPC } from "./soroban";
+import { connect, invoke, readCall, sAddr, sI128, explorerTx, getContractEvents, TESTNET_RPC } from "./soroban";
+import type { ActivityEvent } from "./soroban";
 import { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit";
 import { Networks } from "@stellar/stellar-sdk";
 
@@ -164,6 +165,59 @@ async function loadTable() {
 }
 
 // ---- actions ----
+// One human line for an on-chain pool event (topics[0]=event name, topics[1]=the wallet, value=data).
+function activityLine(e: ActivityEvent): string {
+  const t = String(e.topics[0] ?? "");
+  const who = typeof e.topics[1] === "string" ? short(e.topics[1] as string) : "";
+  const v = e.value as unknown;
+  const arr = Array.isArray(v) ? (v as unknown[]) : [];
+  const n = (x: unknown) => fromBase(typeof x === "bigint" ? x : BigInt((x as number | string) ?? 0));
+  const by = who ? ` · ${who}` : "";
+  switch (t) {
+    case "deposited": return `Deposited ${n(arr[0])} USDC${by}`;
+    case "withdrawn": return `Withdrew ${n(arr[0])} USDC${by}`;
+    case "borrowed": return `Borrowed ${n(v)} USDC${by}`;
+    case "repaid": return `Repaid ${n(((arr[1] as bigint) ?? 0n) + ((arr[2] as bigint) ?? 0n))} USDC${by}`;
+    case "line_set": return `Line opened ${n(arr[0])} USDC @ ${pct(Number(arr[3]))}${by}`;
+    case "secured": return `Secured line ${n(arr[0])} USDC @ ${pct(Number(arr[1]))}${by}`;
+    case "cycle": return `Cycle ${Number(arr[0])} — limit ${n(arr[2])} USDC @ ${pct(Number(arr[1]))}${by}`;
+    case "writeoff": return `Written off ${n(arr[0])} USDC${by}`;
+    case "seized": return `Collateral seized${by}`;
+    case "frozen": return `Line frozen${by}`;
+    default: return `${t}${by}`;
+  }
+}
+
+async function loadActivity() {
+  if (!address) return;
+  const el = $("pl-activity");
+  try {
+    const evs = await getContractEvents(pool(), 20);
+    el.innerHTML = "";
+    if (!evs.length) {
+      el.innerHTML = '<div class="te-muted">No recent on-chain activity.</div>';
+      return;
+    }
+    for (const e of evs) {
+      const row = document.createElement("div");
+      row.className = "te-log-line";
+      row.textContent = activityLine(e);
+      if (e.txHash) {
+        const a = document.createElement("a");
+        a.href = explorerTx(e.txHash);
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.textContent = " ↗";
+        a.className = "btn-link";
+        row.append(a);
+      }
+      el.append(row);
+    }
+  } catch (err) {
+    el.innerHTML = '<div class="te-muted">Couldn’t load activity — ' + friendlyError(err) + "</div>";
+  }
+}
+
 async function run(label: string, fn: () => Promise<string>) {
   if (!address) return;
   setBusy(true);
@@ -172,6 +226,7 @@ async function run(label: string, fn: () => Promise<string>) {
     log(label + " ✓", explorerTx(hash));
     await refresh();
     await loadTable();
+    await loadActivity();
   } catch (e) {
     log(label + " failed — " + friendlyError(e));
   } finally {
@@ -202,6 +257,7 @@ async function requestUnsecuredLine() {
     }
     await refresh();
     await loadTable();
+    await loadActivity();
   } catch (e) {
     log("Couldn’t open a line — " + friendlyError(e));
   } finally {
@@ -233,12 +289,13 @@ function wire() {
       log("Connected " + short(address) + " (testnet, " + TESTNET_RPC + ")");
       await refresh();
       await loadTable();
+      await loadActivity();
     } catch (e) {
       log("Couldn’t connect your wallet — " + friendlyError(e));
     }
   });
 
-  $("pl-refresh").addEventListener("click", () => { refresh(); loadTable(); });
+  $("pl-refresh").addEventListener("click", () => { refresh(); loadTable(); loadActivity(); });
   $("pl-faucet").addEventListener("click", () =>
     run("Claim test USDC (faucet)", () => invoke(DEFAULTS.faucet, "drip", [sAddr(address)], address)));
   $("pl-deposit").addEventListener("click", async () => {

@@ -75,3 +75,38 @@ export async function invoke(contractId: string, method: string, args: xdr.ScVal
 }
 
 export const explorerTx = (hash: string) => `https://stellar.expert/explorer/testnet/tx/${hash}`;
+
+/** A parsed on-chain contract event (topics + value decoded to native). */
+export type ActivityEvent = { ledger: number; txHash: string; topics: unknown[]; value: unknown };
+
+/** Recent events emitted by a contract, newest first (up to `limit`). Reads from Soroban RPC's event
+ * retention window (~24h on testnet); backs off the start ledger if it's beyond retention. */
+export async function getContractEvents(contractId: string, limit = 20): Promise<ActivityEvent[]> {
+  const latest = await server.getLatestLedger();
+  const toNative = (v: unknown) => {
+    try {
+      const sv = typeof v === "string" ? xdr.ScVal.fromXDR(v, "base64") : (v as xdr.ScVal);
+      return scValToNative(sv);
+    } catch {
+      return null;
+    }
+  };
+  for (const back of [17000, 9000, 4000, 1000]) {
+    try {
+      const resp = await server.getEvents({
+        startLedger: Math.max(latest.sequence - back, 1),
+        filters: [{ type: "contract", contractIds: [contractId] }],
+      });
+      const evs = resp.events.map((e: { ledger: number; txHash: string; topic: unknown[]; value: unknown }) => ({
+        ledger: e.ledger,
+        txHash: e.txHash,
+        topics: (e.topic ?? []).map(toNative),
+        value: toNative(e.value),
+      }));
+      return evs.slice(-limit).reverse();
+    } catch (err) {
+      if (back === 1000) throw err;
+    }
+  }
+  return [];
+}
