@@ -11,6 +11,7 @@ export default defineConfig({
         testEscrow: resolve(__dirname, "test-escrow.html"),
         pool: resolve(__dirname, "pool.html"),
         analytics: resolve(__dirname, "analytics.html"),
+        faucet: resolve(__dirname, "faucet.html"),
       },
     },
   },

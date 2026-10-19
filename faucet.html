@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>LCRD — Testnet Faucet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+</head>
+<body>
+  <header>
+    <div class="wrap bar">
+      <a class="logo" href="/" style="color:inherit"><span class="dot"></span>LCRD</a>
+      <div class="grow"></div>
+      <span class="net"><span class="d"></span>Testnet</span>
+      <button class="pill-addr" id="walletBtn"><span class="avatar"></span><span id="walletLbl">Connect</span></button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="view">
+      <div><div class="eyebrow">Testnet faucet</div><h2 style="font-size:26px;">Get test tokens</h2>
+        <p class="lede" style="margin-top:6px;">Grab test USDC and dfTEST to try lending, borrowing and collateral on LCRD testnet. These tokens have no real value.</p></div>
+
+      <div class="banner">⚠️ Testnet only — these tokens have no real value. You're on <b>Stellar&nbsp;Testnet</b>.</div>
+
+      <div class="card">
+        <div class="between" style="margin-bottom:4px;"><h3 style="font-size:16px;">Claim</h3><span class="tiny faint">connect a wallet, then one tap per asset</span></div>
+
+        <div class="frow">
+          <div class="tok" style="background:#111;">✦</div>
+          <div class="grow" style="min-width:0"><div class="sm" style="font-weight:600;">Test XLM (network fees)</div><div class="bal">Balance: <span id="bal-xlm">—</span></div></div>
+          <button class="btn" id="btn-xlm" disabled>Fund XLM</button>
+        </div>
+
+        <div class="frow">
+          <div class="tok" style="background:#2775CA;">$</div>
+          <div class="grow" style="min-width:0"><div class="sm" style="font-weight:600;">Test USDC</div><div class="bal"><span class="mono tiny faint" id="addr-usdc"></span> · Balance: <span id="bal-usdc">—</span></div></div>
+          <button class="btn btn-primary" id="btn-usdc" disabled>Get 2,000 USDC</button>
+        </div>
+
+        <div class="frow">
+          <div class="tok" style="background:linear-gradient(135deg,var(--brand),var(--good));">df</div>
+          <div class="grow" style="min-width:0"><div class="sm" style="font-weight:600;">Test dfToken <span class="tiny faint">(dfTEST)</span></div><div class="bal"><span class="mono tiny faint" id="addr-df"></span> · Balance: <span id="bal-df">—</span></div></div>
+          <button class="btn btn-primary" id="btn-df" disabled>Get dfTEST</button>
+        </div>
+
+        <p class="explain" style="margin-top:14px;">USDC lets you lend to earn or repay a line; dfTEST is a mock DeFindex vault token you can pledge as collateral. Each claim is one signature; a short cooldown applies between claims of the same asset.</p>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow" style="color:var(--muted)">Deployed contracts · testnet</div>
+        <div class="lv" style="border-top:0;"><span class="muted">Pool</span><a class="v mono tiny" id="lnk-pool" target="_blank" rel="noopener">CBW426LF…B5ZP ↗</a></div>
+        <div class="lv"><span class="muted">USDC</span><a class="v mono tiny" id="lnk-usdc" target="_blank" rel="noopener">CDXDVJLA…35ZJ ↗</a></div>
+        <div class="lv"><span class="muted">DeFindex vault</span><a class="v mono tiny" id="lnk-vault" target="_blank" rel="noopener">CCMJ4NKH…6HKA ↗</a></div>
+        <div class="lv"><span class="muted">dfTEST</span><a class="v mono tiny" id="lnk-df" target="_blank" rel="noopener">CDCW5LKO…JCM6UI ↗</a></div>
+      </div>
+
+      <p class="foot">LCRD · testnet faucet</p>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+  <script type="module" src="/src/faucet.ts"></script>
+</body>
+</html>
