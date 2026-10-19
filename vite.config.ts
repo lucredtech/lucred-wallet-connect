@@ -12,6 +12,7 @@ export default defineConfig({
         pool: resolve(__dirname, "pool.html"),
         analytics: resolve(__dirname, "analytics.html"),
         faucet: resolve(__dirname, "faucet.html"),
+        earn: resolve(__dirname, "earn.html"),
       },
     },
   },

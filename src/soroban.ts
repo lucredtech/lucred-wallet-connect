@@ -8,15 +8,43 @@ import { FreighterModule } from "@creit.tech/stellar-wallets-kit/modules/freight
 import { xBullModule } from "@creit.tech/stellar-wallets-kit/modules/xbull";
 import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo";
 import { HanaModule } from "@creit.tech/stellar-wallets-kit/modules/hana";
+import { RabetModule } from "@creit.tech/stellar-wallets-kit/modules/rabet";
+import { LobstrModule } from "@creit.tech/stellar-wallets-kit/modules/lobstr";
+import { WalletConnectModule, WalletConnectTargetChain } from "@creit.tech/stellar-wallets-kit/modules/wallet-connect";
 
 export const TESTNET_RPC = "https://soroban-testnet.stellar.org";
 const server = new rpc.Server(TESTNET_RPC);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-StellarWalletsKit.init({
-  network: Networks.TESTNET,
-  modules: [new FreighterModule(), new xBullModule(), new AlbedoModule(), new HanaModule()],
-});
+const modules = [
+  new FreighterModule(),
+  new xBullModule(),
+  new AlbedoModule(),
+  new LobstrModule(),
+  new RabetModule(),
+  new HanaModule(),
+];
+
+// Scan-to-connect via WalletConnect (mobile wallets show a QR). Enabled only when a project id is
+// configured (get one free at reown.com), so the app still works without it. Set the env var
+// VITE_WALLETCONNECT_PROJECT_ID to turn it on.
+const wcProjectId = (import.meta.env as Record<string, string | undefined>).VITE_WALLETCONNECT_PROJECT_ID;
+if (wcProjectId) {
+  modules.push(
+    new WalletConnectModule({
+      projectId: wcProjectId,
+      metadata: {
+        name: "LCRD",
+        description: "On-chain credit on Stellar",
+        url: typeof window !== "undefined" ? window.location.origin : "https://stellar.lcrd.fi",
+        icons: [],
+      },
+      allowedChains: [WalletConnectTargetChain.TESTNET],
+    }) as unknown as (typeof modules)[number],
+  );
+}
+
+StellarWalletsKit.init({ network: Networks.TESTNET, modules });
 
 export async function connect(): Promise<string> {
   const { address } = await StellarWalletsKit.authModal();
