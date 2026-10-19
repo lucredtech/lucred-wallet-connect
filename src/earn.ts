@@ -99,6 +99,7 @@ function syncCounter(worthUsd: number) {
   baseWorth = worthUsd;
   baseAt = performance.now();
   tickRate = estApy; // the estimated pool yield shown in the headline
+  $("pos-bal").textContent = "$" + usd(worthUsd); // reflect current worth now (incl. $0 after a full exit)
   const wrap = $("earned-wrap") as HTMLElement;
   if (shares <= 0n || worthUsd <= 0) { wrap.hidden = true; stopTicker(); return; }
   let b = getBasis();
