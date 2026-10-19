@@ -3,7 +3,7 @@
 // line, and open it by depositing the collateral into the Stage-B escrow (the auto-disburser then
 // sends the USDC). Tokens the escrow doesn't yet accept show a quote only.
 import "./ui.css";
-import { connect, invoke, readCall, sAddr, sI128, sU32, sBytes32, sEnum } from "./soroban";
+import { connect, invoke, readCall, sAddr, sI128, sU32, sBytes32, sEnum, getContractEvents } from "./soroban";
 
 const ESCROW = "CCM4QHKGCEAE3FKNB3SGJ74ZHPHLWNAAB5BBVMDECXISB26MXAPHNFZG";
 const DFTEST = "CDCW5LKOFURA3H2FN7UQNVDLHO6NGUWDZKJRKAITHFLRYG2KBSJCM6UI";
@@ -191,12 +191,14 @@ async function borrow() {
       sBytes32(loanId), sAddr(address), sAddr(sel.shareToken),
       sI128(selRaw), sI128(BigInt(Math.round(v * ONE))), sU32(aprBps), sEnum("OpenEnded"), sU32(0),
     ], address);
+    rememberLoan(loanId); // so it shows under "Your open loans" for repay/close
     toast("Collateral pledged — funding your USDC…", { tx });
     btn.textContent = "Waiting for disbursement…";
     const funded = await waitForDisburse(loanId);
     if (funded) toast("Borrowed! USDC is in your wallet.", {});
     else toast("Collateral locked; disbursement is pending (treasury).", {});
     await select(list.indexOf(sel));
+    await loadLoans();
   } catch (e) {
     toast(friendly((e as Error)?.message), { err: true });
     syncBtn();
@@ -223,6 +225,107 @@ function friendly(msg = ""): string {
   return "Couldn't open the line right now. Try again.";
 }
 
+// ---------- Your open loans (repay / close) ----------
+// The escrow has no "loans by borrower" view, so we discover the wallet's loan ids from its own
+// deposit events (within the RPC retention window) and merge any we've saved locally on pledge.
+const loansKey = () => `lcrd.collateralLoans.${address}`;
+function storedLoans(): string[] {
+  try { return JSON.parse(localStorage.getItem(loansKey()) || "[]"); } catch { return []; }
+}
+function rememberLoan(id: string) {
+  try { const s = new Set(storedLoans()); s.add(id); localStorage.setItem(loansKey(), JSON.stringify([...s])); } catch { /* private mode */ }
+}
+function toHex(v: unknown): string {
+  if (typeof v === "string") return v.replace(/^0x/, "");
+  if (v instanceof Uint8Array || Array.isArray(v)) return Array.from(v as Uint8Array).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return "";
+}
+
+interface Loan { id: string; status: string; collateral_token: string; collateral_amount: bigint; debt: bigint; apr_bps: number; }
+
+async function loadLoans() {
+  if (!address) return;
+  const card = $("loansCard");
+  const box = $("loansList");
+  const ids = new Set<string>(storedLoans());
+  try {
+    const evs = await getContractEvents(ESCROW, 80);
+    for (const e of evs) {
+      if (String(e.topics[0]) !== "deposit") continue;
+      if ((typeof e.topics[1] === "string" ? e.topics[1] : "") !== address) continue;
+      const id = toHex(Array.isArray(e.value) ? (e.value as unknown[])[0] : null);
+      if (id) ids.add(id);
+    }
+  } catch { /* fall back to stored ids only */ }
+
+  const loans: Loan[] = [];
+  for (const id of ids) {
+    try {
+      const l = await readCall<Record<string, unknown>>(ESCROW, "get_loan", [sBytes32(id)], address);
+      if (l && String(l.status) !== "Closed") {
+        loans.push({ id, status: String(l.status), collateral_token: String(l.collateral_token),
+          collateral_amount: BigInt(String(l.collateral_amount)), debt: BigInt(String(l.debt)), apr_bps: Number(l.apr_bps) });
+      }
+    } catch { /* unreadable/old id — skip */ }
+  }
+
+  if (!loans.length) { card.hidden = true; return; }
+  card.hidden = false;
+  box.innerHTML = "";
+  for (const l of loans) {
+    const tok = list.find((c) => c.shareToken === l.collateral_token);
+    const sym = tok ? tok.symbol : short(l.collateral_token);
+    const owed = Number(l.debt) / ONE;
+    const coll = Number(l.collateral_amount) / ONE;
+    const row = document.createElement("div");
+    row.className = "lv";
+    row.style.cssText = "display:block;padding:14px 0;";
+    row.innerHTML =
+      `<div class="between" style="margin-bottom:8px;">
+         <div><div style="font-weight:600;">${coll.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${sym} pledged</div>
+         <div class="tiny faint mono">loan ${l.id.slice(0, 6)}… · ${(l.apr_bps / 100).toFixed(1)}% APR</div></div>
+         <div style="text-align:right;"><div class="sm muted">Owed</div><div class="mono" style="font-weight:700;">$${usd2(owed)}</div></div>
+       </div>
+       <div class="row" style="gap:8px;">
+         <button class="btn btn-primary ln-repay" data-id="${l.id}" ${owed <= 0 ? "disabled" : ""} style="flex:1;justify-content:center;">${owed <= 0 ? "Repaid" : `Repay $${usd2(owed)}`}</button>
+         <button class="btn ln-close" data-id="${l.id}" ${owed > 0 ? "disabled" : ""} style="flex:1;justify-content:center;">Close &amp; unlock</button>
+       </div>`;
+    box.append(row);
+  }
+  box.querySelectorAll<HTMLButtonElement>(".ln-repay").forEach((b) => b.addEventListener("click", () => repayLoan(b.dataset.id!, b)));
+  box.querySelectorAll<HTMLButtonElement>(".ln-close").forEach((b) => b.addEventListener("click", () => closeLoan(b.dataset.id!, b)));
+}
+
+async function repayLoan(id: string, btn: HTMLButtonElement) {
+  if (!address) return;
+  const prev = btn.textContent;
+  btn.disabled = true; btn.textContent = "Repaying…";
+  try {
+    const payoff = BigInt(String(await readCall<bigint>(ESCROW, "payoff", [sBytes32(id)], address)));
+    const tx = await invoke(ESCROW, "repay", [sBytes32(id), sI128(payoff)], address);
+    toast("Loan repaid — you can now unlock your collateral.", { tx });
+    await loadLoans();
+  } catch (e) {
+    toast(friendly((e as Error)?.message), { err: true });
+    btn.disabled = false; btn.textContent = prev;
+  }
+}
+
+async function closeLoan(id: string, btn: HTMLButtonElement) {
+  if (!address) return;
+  const prev = btn.textContent;
+  btn.disabled = true; btn.textContent = "Unlocking…";
+  try {
+    const tx = await invoke(ESCROW, "close", [sBytes32(id)], address);
+    toast("Collateral returned to your wallet.", { tx });
+    if (sel) await select(list.indexOf(sel)); // refresh the balance of the pledged token
+    await loadLoans();
+  } catch (e) {
+    toast(friendly((e as Error)?.message), { err: true });
+    btn.disabled = false; btn.textContent = prev;
+  }
+}
+
 function wire() {
   $("walletBtn").addEventListener("click", async () => {
     try {
@@ -230,6 +333,7 @@ function wire() {
       $("walletLbl").textContent = short(address);
       renderList();
       if (sel) await select(list.indexOf(sel));
+      await loadLoans();
     } catch { toast("Wallet connection cancelled", { err: true }); }
   });
   $("borrowRange").addEventListener("input", calc);
