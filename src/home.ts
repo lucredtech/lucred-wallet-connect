@@ -1,8 +1,8 @@
 // LCRD home — landing + live market stats (read from the pool before any wallet connect).
 import "./ui.css";
-import { connect, readCall } from "./soroban";
+import { connect, restoreSession, readCall } from "./soroban";
 
-const POOL = "CD4XBOWYMD53Y2HT5K3ICOTQ5IVATV6PZFZ77VWIUVP3IL5DZVBPXUX6";
+const POOL = "CDW4G2YMN5RIXFTS6CW6XVNKPHJI4WZNAMUNHVKQZBD3G7QT45HELX63";
 const READ_SOURCE = "GC6PEHH3UNMWN2V7LS6DRBCF7UNPX6EDZUBZ2MVFZIPHIWWWTQIJ6QBT";
 const VAULT_APR = 0.10;
 const ONE = 10_000_000;
@@ -36,5 +36,6 @@ $("walletBtn").addEventListener("click", async () => {
     $("walletLbl").textContent = short(address);
   } catch { /* cancelled */ }
 });
+restoreSession().then((a) => { if (a) $("walletLbl").textContent = short(a); });
 
 stats();

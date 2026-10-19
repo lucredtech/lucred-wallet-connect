@@ -3,7 +3,7 @@
 // line, and open it by depositing the collateral into the Stage-B escrow (the auto-disburser then
 // sends the USDC). Tokens the escrow doesn't yet accept show a quote only.
 import "./ui.css";
-import { connect, invoke, readCall, sAddr, sI128, sU32, sBytes32, sEnum, getContractEvents } from "./soroban";
+import { connect, restoreSession, invoke, readCall, sAddr, sI128, sU32, sBytes32, sEnum, getContractEvents } from "./soroban";
 
 const ESCROW = "CCM4QHKGCEAE3FKNB3SGJ74ZHPHLWNAAB5BBVMDECXISB26MXAPHNFZG";
 const DFTEST = "CDCW5LKOFURA3H2FN7UQNVDLHO6NGUWDZKJRKAITHFLRYG2KBSJCM6UI";
@@ -343,7 +343,10 @@ function wire() {
   $("borrowRange").addEventListener("input", calc);
   $("ack").addEventListener("change", syncBtn);
   $("borrowBtn").addEventListener("click", borrow);
-  loadList().then(renderList);
+  loadList().then(() => {
+    renderList();
+    restoreSession().then((a) => { if (a) { address = a; $("walletLbl").textContent = short(a); renderList(); loadLoans(); } });
+  });
 }
 
 wire();

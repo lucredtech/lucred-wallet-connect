@@ -39,7 +39,15 @@ const PREMIUM_AT_0_BPS: i128 = 2_000; // score-risk premium at score 0
 const PREMIUM_AT_100_BPS: i128 = 300; // ... and at score 100
 const UNSECURED_SURCHARGE_BPS: i128 = 300;
 const MIN_APR_BPS: i128 = 600;
-const MAX_APR_BPS: i128 = 3_600;
+const MAX_APR_BPS: i128 = 7_000; // raised to let the default premium be priced in for risky cohorts
+// Default/expected-loss premium (PD × LGD, LGD≈100% unsecured). Grounded in ~40% first-loan default
+// rates seen on comparable unsecured crypto credit (e.g. Divine Research); priced highest for new,
+// low-score borrowers and decaying as they prove repayment. This is what makes the pool solvent and
+// the yield substantial: interest from the performing book covers the cohort that defaults.
+const DEFAULT_PD_AT_MIN_BPS: i128 = 3_500; // 35% PD at the minimum eligible score (60)
+const DEFAULT_PD_AT_MAX_BPS: i128 = 1_200; // 12% PD at score 100
+const DEFAULT_PD_CYCLE_RELIEF_BPS: i128 = 250; // each proven cycle cuts PD 2.5%
+const DEFAULT_PD_FLOOR_BPS: i128 = 500; // 5% residual PD even for long-proven borrowers
 const LATE_PENALTY_BPS: i128 = 1_200; // extra APR charged while a fixed-term line is past its due date
 const DAY_SECONDS: u64 = 24 * 60 * 60;
 const TIER_A_MIN_SCORE: u32 = 67;
@@ -183,6 +191,13 @@ impl CreditLine {
         s.set(&DataKey::Owner, &owner);
         s.set(&DataKey::Underwriter, &underwriter);
         s.set(&DataKey::Usdc, &usdc);
+    }
+
+    /// Owner-gated in-place upgrade — so future pricing/policy changes don't require a fresh pool
+    /// address + re-pointing the whole app (state, shares, lines and the vault link are preserved).
+    pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+        Self::owner(&env).require_auth();
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 
     // ------------------------------------------------------ idle-yield config --
@@ -1033,8 +1048,22 @@ impl CreditLine {
         apr
     }
     fn unsecured_apr(score: u32, cycles_completed: u32) -> u32 {
-        let apr = BASE_BPS + Self::premium(score) + UNSECURED_SURCHARGE_BPS;
+        let apr = BASE_BPS + Self::premium(score) + UNSECURED_SURCHARGE_BPS
+            + Self::default_premium(score, cycles_completed);
         Self::apply_discount_and_clamp(apr, cycles_completed) as u32
+    }
+
+    /// Expected-loss premium (bps). PD falls linearly with score across the eligible band and by a
+    /// fixed relief per completed cycle (proven repayment), with a floor. LGD is ~100% (unsecured), so
+    /// the premium ≈ PD. This is the component that prices real-world default risk into the APR.
+    fn default_premium(score: u32, cycles_completed: u32) -> i128 {
+        let s = if score > 100 { 100 } else if score < UNSECURED_MIN_SCORE { UNSECURED_MIN_SCORE } else { score } as i128;
+        let span = 100 - UNSECURED_MIN_SCORE as i128; // eligible score band width
+        let mut pd = DEFAULT_PD_AT_MIN_BPS
+            - (DEFAULT_PD_AT_MIN_BPS - DEFAULT_PD_AT_MAX_BPS) * (s - UNSECURED_MIN_SCORE as i128) / span;
+        let relief = (cycles_completed as i128) * DEFAULT_PD_CYCLE_RELIEF_BPS;
+        pd = if pd > relief { pd - relief } else { 0 };
+        if pd < DEFAULT_PD_FLOOR_BPS { DEFAULT_PD_FLOOR_BPS } else { pd }
     }
 }
 

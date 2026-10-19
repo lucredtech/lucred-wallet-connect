@@ -1,9 +1,9 @@
 // LCRD Earn — deposit USDC to the pool to earn (loan interest + DeFindex vault yield), withdraw anytime.
 // Wired to the deployed testnet credit-line pool.
 import "./ui.css";
-import { connect, invoke, readCall, sAddr, sI128 } from "./soroban";
+import { connect, restoreSession, invoke, readCall, sAddr, sI128 } from "./soroban";
 
-const POOL = "CD4XBOWYMD53Y2HT5K3ICOTQ5IVATV6PZFZ77VWIUVP3IL5DZVBPXUX6";
+const POOL = "CDW4G2YMN5RIXFTS6CW6XVNKPHJI4WZNAMUNHVKQZBD3G7QT45HELX63";
 const USDC = "CDXDVJLAYLFR2BRDHVUHM5NSVEN5EJVC5QPKW5I7LWNFKMQFX35V35ZJ";
 const EXPLORER = "https://stellar.expert/explorer/testnet";
 const VAULT_APR = 0.10; // the fixed-APR strategy the pool's idle USDC is invested in (deployed rate)
@@ -220,6 +220,8 @@ function wire() {
   $("btn-withdraw").addEventListener("click", () => withdraw(false));
   $("btn-withdraw-all").addEventListener("click", () => withdraw(true));
   refresh(); // show live pool stats before connect (browse before connect)
+  // Resume a prior wallet session silently so navigating here keeps you connected.
+  restoreSession().then((a) => { if (a) { address = a; $("walletLbl").textContent = short(a); setConnected(true); refresh(); } });
 }
 
 wire();

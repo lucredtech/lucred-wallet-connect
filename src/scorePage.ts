@@ -1,9 +1,9 @@
 // LCRD Borrow-on-score — show the wallet's credit score (score-api), the on-chain repayment ladder
 // and line (credit-line pool), and draw/repay against an active unsecured line.
 import "./ui.css";
-import { connect, invoke, readCall, sAddr, sI128, sU32 } from "./soroban";
+import { connect, restoreSession, invoke, readCall, sAddr, sI128, sU32 } from "./soroban";
 
-const POOL = "CD4XBOWYMD53Y2HT5K3ICOTQ5IVATV6PZFZ77VWIUVP3IL5DZVBPXUX6";
+const POOL = "CDW4G2YMN5RIXFTS6CW6XVNKPHJI4WZNAMUNHVKQZBD3G7QT45HELX63";
 const API = import.meta.env.VITE_CREDIT_SCORE_API_URL as string | undefined;
 const EXPLORER = "https://stellar.expert/explorer/testnet";
 const ONE = 10_000_000;
@@ -181,6 +181,7 @@ function wire() {
   });
   $("btn-borrow").addEventListener("click", () => act("borrow"));
   $("btn-repay").addEventListener("click", () => act("repay"));
+  restoreSession().then((a) => { if (a) { address = a; $("walletLbl").textContent = short(a); load(); } });
 }
 
 renderGauge(null); // placeholder so the score card keeps its shape before a wallet connects

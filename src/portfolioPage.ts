@@ -1,9 +1,9 @@
 // LCRD portfolio — the three-number header (net worth / net APY / credit health) + supplied/borrowed,
 // aggregated from the credit-line pool for the connected wallet.
 import "./ui.css";
-import { connect, invoke, readCall, sAddr, sI128, sBytes32, getContractEvents } from "./soroban";
+import { connect, restoreSession, invoke, readCall, sAddr, sI128, sBytes32, getContractEvents } from "./soroban";
 
-const POOL = "CD4XBOWYMD53Y2HT5K3ICOTQ5IVATV6PZFZ77VWIUVP3IL5DZVBPXUX6";
+const POOL = "CDW4G2YMN5RIXFTS6CW6XVNKPHJI4WZNAMUNHVKQZBD3G7QT45HELX63";
 const ESCROW = "CCM4QHKGCEAE3FKNB3SGJ74ZHPHLWNAAB5BBVMDECXISB26MXAPHNFZG";
 const DFTEST = "CDCW5LKOFURA3H2FN7UQNVDLHO6NGUWDZKJRKAITHFLRYG2KBSJCM6UI";
 const DFUSDC = "CCMJ4NKHFHD26Z3OIXIU2MNY3IZZJK2HAIDQI5HECYOE27RXORBB6HKA";
@@ -137,3 +137,4 @@ $("walletBtn").addEventListener("click", async () => {
     await loadLoans();
   } catch { /* cancelled */ }
 });
+restoreSession().then((a) => { if (a) { address = a; $("walletLbl").textContent = short(a); load(); loadLoans(); } });

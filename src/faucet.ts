@@ -2,10 +2,10 @@
 // Wired to the live testnet faucet contracts. Our USDC/dfTEST are Soroban contract tokens, so there
 // are no trustlines to establish — a claim is just one `drip` signature.
 import "./ui.css";
-import { connect, invoke, readCall, sAddr } from "./soroban";
+import { connect, restoreSession, invoke, readCall, sAddr } from "./soroban";
 
 // --- deployed testnet contracts ---
-const POOL = "CD4XBOWYMD53Y2HT5K3ICOTQ5IVATV6PZFZ77VWIUVP3IL5DZVBPXUX6";
+const POOL = "CDW4G2YMN5RIXFTS6CW6XVNKPHJI4WZNAMUNHVKQZBD3G7QT45HELX63";
 const USDC = "CDXDVJLAYLFR2BRDHVUHM5NSVEN5EJVC5QPKW5I7LWNFKMQFX35V35ZJ"; // pool USDC
 const POOL_FAUCET = "CAQWIO5LBNYTM6ZOPUB57WXDDXTJCKROAWBRBQY4V67GZQJIKQ4RXDYV"; // drips pool USDC
 const VAULT = "CCMJ4NKHFHD26Z3OIXIU2MNY3IZZJK2HAIDQI5HECYOE27RXORBB6HKA";
@@ -165,6 +165,7 @@ function wire() {
   $("btn-usdc").addEventListener("click", () => claim($<HTMLButtonElement>("btn-usdc"), POOL_FAUCET, "usdc", "Get 2,000 USDC"));
   $("btn-df").addEventListener("click", () => claim($<HTMLButtonElement>("btn-df"), ESCROW_FAUCET, "df", "Get dfTEST"));
   $("btn-xlm").addEventListener("click", fundXlm);
+  restoreSession().then((a) => { if (a) { address = a; $("walletLbl").textContent = short(a); enableButtons(true); refresh(); } });
 }
 
 wire();

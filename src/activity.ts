@@ -1,10 +1,10 @@
 // LCRD Activity — a live, human-readable feed of the pool's on-chain events (deposits, withdrawals,
 // borrows, repayments, cycles, vault moves). Toggle between the whole pool and just your wallet.
 import "./ui.css";
-import { connect, getContractEvents, latestLedgerSeq, explorerTx } from "./soroban";
+import { connect, restoreSession, getContractEvents, latestLedgerSeq, explorerTx } from "./soroban";
 import type { ActivityEvent } from "./soroban";
 
-const POOL = "CD4XBOWYMD53Y2HT5K3ICOTQ5IVATV6PZFZ77VWIUVP3IL5DZVBPXUX6";
+const POOL = "CDW4G2YMN5RIXFTS6CW6XVNKPHJI4WZNAMUNHVKQZBD3G7QT45HELX63";
 const ONE = 10_000_000;
 const LEDGER_SEC = 5; // ~5s per ledger on testnet, for age estimates
 
@@ -132,6 +132,7 @@ function wire() {
       setMode("you");
     } catch { toast("Wallet connection cancelled", true); }
   });
+  restoreSession().then((a) => { if (a) { address = a; $("walletLbl").textContent = short(a); ($("seg-you") as HTMLButtonElement).disabled = false; } });
   load();
 }
 

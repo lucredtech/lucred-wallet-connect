@@ -51,6 +51,23 @@ export async function connect(): Promise<string> {
   return address;
 }
 
+/** Silently resume a prior connection on page load. The kit persists the selected wallet, so after a
+ * navigation (this is a multi-page app, every click is a full reload) we can re-read the address with
+ * NO modal — keeping the session instead of forcing a reconnect on every page. Returns null if there's
+ * nothing to resume. */
+export async function restoreSession(): Promise<string | null> {
+  try {
+    const { address } = await StellarWalletsKit.getAddress();
+    return address || null;
+  } catch {
+    return null; // no wallet selected / not authorized yet
+  }
+}
+
+export async function disconnect(): Promise<void> {
+  try { await StellarWalletsKit.disconnect(); } catch { /* already gone */ }
+}
+
 // ---- ScVal builders matching the contract signatures ----
 export const sAddr = (a: string) => new Address(a).toScVal();
 export const sI128 = (n: bigint | number | string) => nativeToScVal(typeof n === "bigint" ? n : BigInt(n), { type: "i128" });
