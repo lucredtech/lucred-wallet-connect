@@ -14,6 +14,7 @@ export default defineConfig({
         faucet: resolve(__dirname, "faucet.html"),
         earn: resolve(__dirname, "earn.html"),
         collateral: resolve(__dirname, "collateral.html"),
+        score: resolve(__dirname, "score.html"),
       },
     },
   },

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>LCRD — Borrow on score</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+</head>
+<body>
+  <header>
+    <div class="wrap bar">
+      <a class="logo" href="/" style="color:inherit"><span class="dot"></span>LCRD</a>
+      <div class="grow"></div>
+      <span class="net"><span class="d"></span>Testnet</span>
+      <button class="pill-addr" id="walletBtn"><span class="avatar"></span><span id="walletLbl">Connect</span></button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="view">
+      <div><div class="eyebrow">Borrow on score</div><h2 style="font-size:26px;">Your credit line</h2></div>
+
+      <div class="card" style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div class="sm muted" style="align-self:flex-start;font-weight:600;">LCRD SCORE</div>
+        <div id="gauge" style="display:flex;flex-direction:column;align-items:center;gap:2px;"></div>
+        <div class="gauge-of faint tiny">of 100</div>
+        <div class="row" id="score-chips" style="gap:7px;margin-top:6px;"></div>
+        <p class="tiny muted" style="text-align:center;margin-top:6px;max-width:38ch;">Built from your on-chain footprint — DeFi history, stablecoin flows, wallet age — plus your LCRD repayments. Updated continuously, not a stale bureau snapshot.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:16px;margin-bottom:4px;">Your limit grows with every on-time repayment</h3>
+        <p class="tiny muted" style="margin-bottom:14px;">Each completed cycle is recorded on-chain and ladders your limit up (and your APR down).</p>
+        <div id="ladder" class="sm muted">Connect to see your ladder.</div>
+        <div class="note" id="ladder-note" hidden style="margin-top:14px;"></div>
+      </div>
+
+      <div class="card" id="line-card">
+        <div class="between"><h3 style="font-size:16px;">Your line</h3><span class="chip" id="line-chip" hidden></span></div>
+        <div id="line-body" class="sm muted" style="margin-top:10px;">Connect your wallet to see your line.</div>
+        <div id="draw-wrap" hidden style="margin-top:14px;">
+          <div class="lv"><span class="muted">Available to draw</span><span class="v mono" id="avail">—</span></div>
+          <div class="lv"><span class="muted">Owed now</span><span class="v mono" id="owed">—</span></div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+            <input id="amt" inputmode="decimal" placeholder="USDC amount" class="field" style="flex:1;min-width:140px;" />
+            <button class="btn btn-primary" id="btn-borrow">Draw</button>
+            <button class="btn" id="btn-repay">Repay</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="fallback" hidden style="border-color:var(--brand);">
+        <div class="eyebrow">No line yet?</div>
+        <h3 style="font-size:17px;margin:6px 0;">Build credit from zero</h3>
+        <p class="sm muted">An unsecured line is issued once your score and history qualify. You don't have to wait: <b>provide liquidity and borrow against your own deposit</b> (no score needed) — every on-time repayment raises your score toward an unsecured line.</p>
+        <div class="row" style="margin-top:12px;gap:8px;">
+          <a class="btn btn-primary" href="/earn.html">Provide liquidity</a>
+          <a class="btn" href="/collateral.html">Borrow on collateral →</a>
+        </div>
+      </div>
+
+      <p class="foot">LCRD · borrow on score · testnet</p>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+  <script type="module" src="/src/scorePage.ts"></script>
+</body>
+</html>
