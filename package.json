@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "build:credit": "tsc && vite build --mode credit && cp dist/credit/home.html dist/credit/index.html"
+    "build:credit": "tsc && vite build --mode credit && cp dist/credit/home.html dist/credit/index.html",
+    "build:all": "npm run build && vite build --mode credit && cp dist/credit/home.html dist/credit/index.html"
   },
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "^2.7.0",
