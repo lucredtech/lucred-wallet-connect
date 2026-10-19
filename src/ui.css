@@ -51,6 +51,13 @@ header{position:sticky; top:env(safe-area-inset-top,0px); z-index:30; background
 .netchip{margin-left:auto; flex:none; display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--warn); background:var(--warn-tint); border:1px solid color-mix(in srgb,var(--warn) 30%, transparent); padding:5px 9px; border-radius:999px; white-space:nowrap;}
 .pill-addr{flex:none;}
 .netchip .d{width:7px;height:7px;border-radius:50%; background:var(--warn);}
+/* primary page navigation — shown in the header on every page */
+nav.pages{display:flex; gap:4px; overflow-x:auto; padding-bottom:8px; scrollbar-width:none;}
+nav.pages::-webkit-scrollbar{display:none;}
+nav.pages a{white-space:nowrap; color:var(--muted); font-weight:600; font-size:14px; padding:8px 13px; border-radius:999px; transition:.15s;}
+nav.pages a:hover{color:var(--ink);}
+nav.pages a[aria-current="page"]{background:var(--ink); color:var(--paper);}
+
 .btn{border:1px solid var(--line); background:var(--surface); color:var(--ink); font-weight:600; font-size:14px; padding:9px 14px; border-radius:var(--r-sm); display:inline-flex; align-items:center; gap:8px; transition:.15s;}
 .btn:hover{border-color:var(--brand); color:var(--brand);}
 .btn-primary{background:var(--brand); border-color:var(--brand); color:#fff;}

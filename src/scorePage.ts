@@ -49,7 +49,10 @@ async function fetchScore(): Promise<{ score: number; tier: string } | null> {
     const res = await fetch(`${API.replace(/\/$/, "")}/credit-line?wallet=${encodeURIComponent(address)}`);
     if (!res.ok) return null;
     const data = await res.json();
-    const s = data.score && typeof data.score === "object" ? data.score : data;
+    // /credit-line returns the score + tier under `inputs`; fall back to a flat/object `score`.
+    const s = (data.inputs && typeof data.inputs === "object" ? data.inputs
+      : data.score && typeof data.score === "object" ? data.score
+      : data);
     return { score: Math.round(Number(s.score) || 0), tier: String(s.tier || "—") };
   } catch {
     return null;
