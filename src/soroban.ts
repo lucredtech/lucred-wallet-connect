@@ -1,7 +1,7 @@
 // Minimal Soroban (testnet) helpers for the Stage B test page: connect a wallet, read contract state,
 // and sign+submit a contract invocation. Separate from src/wallet.ts (which is mainnet, read-only).
 import {
-  Address, BASE_FEE, Contract, Networks, TransactionBuilder, nativeToScVal, scValToNative, rpc, xdr,
+  Account, Address, BASE_FEE, Contract, Networks, TransactionBuilder, nativeToScVal, scValToNative, rpc, xdr,
 } from "@stellar/stellar-sdk";
 import { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit";
 import { FreighterModule } from "@creit.tech/stellar-wallets-kit/modules/freighter";
@@ -56,11 +56,19 @@ export async function connect(): Promise<string> {
  * NO modal — keeping the session instead of forcing a reconnect on every page. Returns null if there's
  * nothing to resume. */
 export async function restoreSession(): Promise<string | null> {
+  // The kit persists the last connected address + selected wallet in localStorage. Prefer the cached
+  // address — it's instant and doesn't depend on the extension being unlocked/responsive (getAddress
+  // can hang or throw when Freighter is locked). Signing still works because the selected wallet
+  // (selectedModuleId) is restored by the kit, so it prompts the right wallet at sign time.
+  try {
+    const cached = localStorage.getItem("@StellarWalletsKit/activeAddress");
+    if (cached && /^G[A-Z2-7]{55}$/.test(cached)) return cached;
+  } catch { /* storage blocked */ }
   try {
     const { address } = await StellarWalletsKit.getAddress();
     return address || null;
   } catch {
-    return null; // no wallet selected / not authorized yet
+    return null;
   }
 }
 
@@ -84,7 +92,9 @@ export const sEnum = (variant: string) => xdr.ScVal.scvVec([nativeToScVal(varian
 
 /** Read-only contract call via simulation (no signature, no fee). */
 export async function readCall<T = unknown>(contractId: string, method: string, args: xdr.ScVal[], source: string): Promise<T> {
-  const account = await server.getAccount(source);
+  // Read-only simulation doesn't verify the source account, so skip the getAccount RPC round-trip
+  // (testnet RPC can be slow) and use the address with a placeholder sequence — halves read latency.
+  const account = new Account(source, "0");
   const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
     .addOperation(new Contract(contractId).call(method, ...args))
     .setTimeout(60)
