@@ -21,7 +21,7 @@ interface Collat { shareToken: string; symbol: string; label: string; kind: stri
 // Fallback mirrors the testnet registry so the page works before /collateral/supported is deployed.
 const FALLBACK: Collat[] = [
   { shareToken: DFUSDC, symbol: "dfUSDC", label: "DeFindex USDC Vault", kind: "vault", underlyingClass: "stable", advanceRate: 0.75, liquidationLtv: 0.92, priceSource: "underlying", parUsd: null },
-  { shareToken: DFTEST, symbol: "dfTEST", label: "Mock dfToken (escrow test)", kind: "vault", underlyingClass: "stable", advanceRate: 0.70, liquidationLtv: 0.90, priceSource: "par", parUsd: 1 },
+  { shareToken: DFTEST, symbol: "dfTEST", label: "Test dfToken", kind: "vault", underlyingClass: "stable", advanceRate: 0.70, liquidationLtv: 0.90, priceSource: "par", parUsd: 1 },
 ];
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
