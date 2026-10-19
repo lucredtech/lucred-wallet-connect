@@ -11,6 +11,7 @@ const { BigQuery } = require("@google-cloud/bigquery");
 const { createPortfolioService, resolveVaultTicker } = require("./portfolio");
 const { computeOffers, POLICY } = require("./credit-line");
 const collateralEngine = require("./collateral-engine");
+const { getCollateralRegistry, supportedCollateral, activeNetwork } = require("./collateral-registry");
 const { getClassicActivity, classicPoints } = require("./classic-activity");
 const { createAnalytics } = require("./analytics");
 
@@ -856,6 +857,13 @@ app.get("/credit-line", async (req, res) => {
   }
 });
 
+// The curated vault/LP share-tokens accepted as collateral on the active network (see
+// collateral-registry.js) — the exact tokens the app looks for in a wallet, with each one's sizing.
+// Public + read-only; the frontend's collateral picker reads this instead of hardcoding a list.
+app.get("/collateral/supported", (req, res) => {
+  res.json({ network: activeNetwork(), collateral: supportedCollateral() });
+});
+
 // ---- dfToken-backed USDC credit (see collateral-engine.js) ----
 // Off-chain / indicative in this stage: quote the USDC a wallet could draw against its DeFindex vault
 // position, and record an acceptance. NO funds move and nothing is locked on-chain here.
@@ -874,7 +882,7 @@ app.get("/df-credit/quote", async (req, res) => {
       computeWalletScore(wallet),
       portfolioService.getPortfolio(wallet).catch((e) => { console.error("df-credit: portfolio unavailable:", e.message); return null; })
     ]);
-    res.json({ wallet, ...collateralEngine.quote({ portfolio, score, structure, termDays }, POLICY), holdingsAsOf: portfolio ? portfolio.asOf : null });
+    res.json({ wallet, ...collateralEngine.quote({ portfolio, score, structure, termDays }, POLICY, getCollateralRegistry()), holdingsAsOf: portfolio ? portfolio.asOf : null });
   } catch (err) {
     console.error("df-credit quote error:", err);
     if (err.message === "QUERY_TIMEOUT") {
@@ -927,7 +935,7 @@ app.post("/df-credit/accept", express.json({ limit: "4kb" }), async (req, res) =
       computeWalletScore(wallet),
       portfolioService.getPortfolio(wallet).catch(() => null)
     ]);
-    const terms = collateralEngine.quote({ portfolio, score, structure, termDays }, POLICY);
+    const terms = collateralEngine.quote({ portfolio, score, structure, termDays }, POLICY, getCollateralRegistry());
     if (!terms.eligible) return res.status(409).json({ error: terms.reason || "This wallet no longer has an eligible DeFindex position." });
 
     // Tolerance check against what the client says it accepted (guards against tampering/stale quotes).
