@@ -1,9 +1,12 @@
 // LCRD portfolio — the three-number header (net worth / net APY / credit health) + supplied/borrowed,
 // aggregated from the credit-line pool for the connected wallet.
 import "./ui.css";
-import { connect, readCall, sAddr, sI128 } from "./soroban";
+import { connect, invoke, readCall, sAddr, sI128, sBytes32, getContractEvents } from "./soroban";
 
 const POOL = "CBW426LFZAFUW2YMPUFZRMEV6VCZ2XSVOMHFQS7C6VCO4DIVK6SDB5ZP";
+const ESCROW = "CCM4QHKGCEAE3FKNB3SGJ74ZHPHLWNAAB5BBVMDECXISB26MXAPHNFZG";
+const DFTEST = "CDCW5LKOFURA3H2FN7UQNVDLHO6NGUWDZKJRKAITHFLRYG2KBSJCM6UI";
+const DFUSDC = "CCMJ4NKHFHD26Z3OIXIU2MNY3IZZJK2HAIDQI5HECYOE27RXORBB6HKA";
 const EXPLORER = "https://stellar.expert/explorer/testnet";
 const VAULT_APR = 0.10;
 const ONE = 10_000_000;
@@ -57,11 +60,80 @@ async function load() {
   }
 }
 
+// ---- collateral loans (repay / close), mirrored from the Borrow-on-collateral page ----
+const SYM: Record<string, string> = { [DFTEST]: "dfTEST", [DFUSDC]: "dfUSDC" };
+const loansKey = () => `lcrd.collateralLoans.${address}`;
+function storedLoans(): string[] { try { return JSON.parse(localStorage.getItem(loansKey()) || "[]"); } catch { return []; } }
+function toHex(v: unknown): string {
+  if (typeof v === "string") return v.replace(/^0x/, "");
+  if (v instanceof Uint8Array || Array.isArray(v)) return Array.from(v as Uint8Array).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return "";
+}
+
+async function loadLoans() {
+  if (!address) return;
+  const box = $("pf-loansList");
+  const ids = new Set<string>(storedLoans());
+  try {
+    const evs = await getContractEvents(ESCROW, 80);
+    for (const e of evs) {
+      if (String(e.topics[0]) !== "deposit") continue;
+      if ((typeof e.topics[1] === "string" ? e.topics[1] : "") !== address) continue;
+      const id = toHex(Array.isArray(e.value) ? (e.value as unknown[])[0] : null);
+      if (id) ids.add(id);
+    }
+  } catch { /* stored ids only */ }
+
+  const loans: { id: string; token: string; coll: number; debt: number; apr: number }[] = [];
+  for (const id of ids) {
+    try {
+      const l = await readCall<Record<string, unknown>>(ESCROW, "get_loan", [sBytes32(id)], address);
+      if (l && String(l.status) !== "Closed") {
+        loans.push({ id, token: String(l.collateral_token), coll: Number(l.collateral_amount) / ONE, debt: Number(l.debt) / ONE, apr: Number(l.apr_bps) });
+      }
+    } catch { /* skip */ }
+  }
+  if (!loans.length) return; // keep the default "appear here" hint
+
+  box.innerHTML = "";
+  for (const l of loans) {
+    const sym = SYM[l.token] || short(l.token);
+    const row = document.createElement("div");
+    row.style.cssText = "padding:12px 0;border-bottom:1px solid var(--line);";
+    row.innerHTML =
+      `<div class="between" style="margin-bottom:8px;"><div><div style="font-weight:600;">${l.coll.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${sym} pledged</div><div class="tiny faint mono">${(l.apr / 100).toFixed(1)}% APR</div></div><div style="text-align:right;"><div class="sm muted">Owed</div><div class="mono" style="font-weight:700;">$${usd(l.debt)}</div></div></div>
+       <div class="row" style="gap:8px;"><button class="btn btn-primary pf-repay" data-id="${l.id}" ${l.debt <= 0 ? "disabled" : ""} style="flex:1;justify-content:center;">${l.debt <= 0 ? "Repaid" : `Repay $${usd(l.debt)}`}</button><button class="btn pf-close" data-id="${l.id}" ${l.debt > 0 ? "disabled" : ""} style="flex:1;justify-content:center;">Close &amp; unlock</button></div>`;
+    box.append(row);
+  }
+  box.querySelectorAll<HTMLButtonElement>(".pf-repay").forEach((b) => b.addEventListener("click", () => actLoan(b, "repay")));
+  box.querySelectorAll<HTMLButtonElement>(".pf-close").forEach((b) => b.addEventListener("click", () => actLoan(b, "close")));
+}
+
+async function actLoan(btn: HTMLButtonElement, kind: "repay" | "close") {
+  if (!address) return;
+  const id = btn.dataset.id!;
+  const prev = btn.textContent;
+  btn.disabled = true; btn.textContent = kind === "repay" ? "Repaying…" : "Unlocking…";
+  try {
+    if (kind === "repay") {
+      const payoff = BigInt(String(await readCall<bigint>(ESCROW, "payoff", [sBytes32(id)], address)));
+      await invoke(ESCROW, "repay", [sBytes32(id), sI128(payoff + payoff / 100n + 100000n)], address);
+    } else {
+      await invoke(ESCROW, "close", [sBytes32(id)], address);
+    }
+    await load();
+    await loadLoans();
+  } catch {
+    btn.disabled = false; btn.textContent = prev;
+  }
+}
+
 (document.getElementById("lnk-pool") as HTMLAnchorElement).href = `${EXPLORER}/contract/${POOL}`;
 $("walletBtn").addEventListener("click", async () => {
   try {
     address = await connect();
     $("walletLbl").textContent = short(address);
     await load();
+    await loadLoans();
   } catch { /* cancelled */ }
 });
