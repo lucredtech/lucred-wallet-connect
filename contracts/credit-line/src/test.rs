@@ -13,6 +13,12 @@ fn usdc(n: i128) -> i128 {
     n * 10_000_000
 }
 
+// Vault round-trips use integer share math, which can shave a stroop of dust. Treat values within a
+// handful of base units (< 1e-6 USDC) as equal.
+fn close(a: i128, b: i128) -> bool {
+    (a - b).abs() <= 20
+}
+
 struct Setup {
     env: Env,
     client: CreditLineClient<'static>,
@@ -355,4 +361,197 @@ fn owner_can_change_underwriter() {
     let new_uw = Address::generate(&s.env);
     s.client.set_underwriter(&new_uw);
     assert_eq!(s.client.underwriter_of(), new_uw);
+}
+
+// ===================================================================== vault ==
+// A minimal DeFindex-style yield vault: shares track a pro-rata claim on the USDC it holds, so
+// adding USDC without minting shares (add_yield) raises every share's value — simulating earned
+// yield. It exposes exactly the four methods the pool calls plus a test-only add_yield.
+mod mock_vault {
+    use soroban_sdk::{contract, contractimpl, contracttype, token, vec, Address, Env, Vec};
+
+    #[contracttype]
+    pub enum VK {
+        Asset,
+        Total,
+        Shares(Address),
+    }
+
+    #[contract]
+    pub struct MockVault;
+
+    #[contractimpl]
+    impl MockVault {
+        pub fn __constructor(env: Env, asset: Address) {
+            env.storage().instance().set(&VK::Asset, &asset);
+        }
+        fn asset(env: &Env) -> Address {
+            env.storage().instance().get(&VK::Asset).unwrap()
+        }
+        fn total(env: &Env) -> i128 {
+            env.storage().instance().get(&VK::Total).unwrap_or(0)
+        }
+        fn held(env: &Env) -> i128 {
+            token::TokenClient::new(env, &Self::asset(env)).balance(&env.current_contract_address())
+        }
+        pub fn deposit(
+            env: Env,
+            amounts_desired: Vec<i128>,
+            _amounts_min: Vec<i128>,
+            from: Address,
+            _invest: bool,
+        ) -> (Vec<i128>, i128) {
+            from.require_auth();
+            let amount = amounts_desired.get(0).unwrap();
+            let held = Self::held(&env);
+            let total = Self::total(&env);
+            let shares = if total == 0 || held == 0 { amount } else { amount * total / held };
+            token::TokenClient::new(&env, &Self::asset(&env)).transfer(
+                &from,
+                &env.current_contract_address(),
+                &amount,
+            );
+            env.storage().instance().set(&VK::Total, &(total + shares));
+            let s = env.storage().persistent().get(&VK::Shares(from.clone())).unwrap_or(0i128);
+            env.storage().persistent().set(&VK::Shares(from.clone()), &(s + shares));
+            (amounts_desired, shares)
+        }
+        pub fn withdraw(
+            env: Env,
+            withdraw_shares: i128,
+            _min_amounts_out: Vec<i128>,
+            from: Address,
+        ) -> Vec<i128> {
+            from.require_auth();
+            let held = Self::held(&env);
+            let total = Self::total(&env);
+            let amount = withdraw_shares * held / total;
+            let s = env.storage().persistent().get(&VK::Shares(from.clone())).unwrap_or(0i128);
+            env.storage().persistent().set(&VK::Shares(from.clone()), &(s - withdraw_shares));
+            env.storage().instance().set(&VK::Total, &(total - withdraw_shares));
+            token::TokenClient::new(&env, &Self::asset(&env)).transfer(
+                &env.current_contract_address(),
+                &from,
+                &amount,
+            );
+            vec![&env, amount]
+        }
+        pub fn balance(env: Env, id: Address) -> i128 {
+            env.storage().persistent().get(&VK::Shares(id)).unwrap_or(0)
+        }
+        pub fn get_asset_amounts_per_shares(env: Env, vault_shares: i128) -> Vec<i128> {
+            let held = Self::held(&env);
+            let total = Self::total(&env);
+            let amt = if total == 0 { 0 } else { vault_shares * held / total };
+            vec![&env, amt]
+        }
+        /// Test-only: an outsider adds USDC to the vault = yield (value per share rises).
+        pub fn add_yield(env: Env, from: Address, amount: i128) {
+            from.require_auth();
+            token::TokenClient::new(&env, &Self::asset(&env)).transfer(
+                &from,
+                &env.current_contract_address(),
+                &amount,
+            );
+        }
+    }
+}
+
+use mock_vault::{MockVault, MockVaultClient};
+
+/// Attach a mock vault (over the same USDC) to the pool with a 20% buffer; return (vault client, yield source).
+fn attach_vault(s: &Setup) -> (MockVaultClient<'static>, Address) {
+    let usdc_addr = s.usdc_tok.address.clone();
+    let vault_id = s.env.register(MockVault, (usdc_addr,));
+    let vault = MockVaultClient::new(&s.env, &vault_id);
+    s.client.set_vault(&vault_id, &2_000); // 20% buffer, 80% invested
+    let yield_src = Address::generate(&s.env);
+    s.usdc_admin.mint(&yield_src, &usdc(100_000));
+    (vault, yield_src)
+}
+
+#[test]
+fn vault_parks_idle_above_buffer_and_counts_in_cash() {
+    let s = setup();
+    let (vault, _) = attach_vault(&s);
+    s.client.deposit(&s.lender, &usdc(1_000));
+    // 20% buffer stays as raw USDC; 80% is parked in the vault.
+    assert_eq!(s.client.idle_cash(), usdc(200));
+    assert_eq!(s.client.vault_value(), usdc(800));
+    assert_eq!(vault.balance(&s.client.address), usdc(800)); // pool holds the vault shares
+    // Total liquidity + pool valuation are unchanged by where the USDC sits.
+    assert_eq!(s.client.cash(), usdc(1_000));
+    assert_eq!(s.client.total_assets(), usdc(1_000));
+}
+
+#[test]
+fn vault_yield_lifts_every_lender_share() {
+    let s = setup();
+    let (vault, ysrc) = attach_vault(&s);
+    let shares = s.client.deposit(&s.lender, &usdc(1_000));
+    let before = s.client.convert_to_assets(&shares);
+    // 100 USDC of yield lands in the vault (on the 800 parked there).
+    vault.add_yield(&ysrc, &usdc(100));
+    let after = s.client.convert_to_assets(&shares);
+    assert_eq!(s.client.vault_value(), usdc(900)); // 800 parked + 100 yield
+    assert_eq!(s.client.cash(), usdc(1_100)); // 200 idle + 900 vault
+    assert!(after > before, "lender shares must appreciate with vault yield");
+    // The lender can withdraw the whole amount, yield included (vault is unwound as needed).
+    // (integer share math can shave a stroop of dust — allow a tiny tolerance)
+    let got = s.client.withdraw(&s.lender, &shares);
+    assert!(close(got, usdc(1_100)), "got {}", got);
+    assert!(close(s.usdc_tok.balance(&s.lender), usdc(10_000) + usdc(100)));
+}
+
+#[test]
+fn borrow_unwinds_from_vault_when_buffer_is_short() {
+    let s = setup();
+    let (_vault, _) = attach_vault(&s);
+    s.client.deposit(&s.lender, &usdc(100)); // idle 20, vault 80
+    s.client.set_line(&s.borrower, &71, &usdc(100), &href(&s.env)); // score-71 cap is 100
+    // Drawing 100 needs far more than the 20 idle buffer -> the pool unwinds from the vault.
+    s.client.borrow(&s.borrower, &usdc(100));
+    assert_eq!(s.usdc_tok.balance(&s.borrower), usdc(1_000) + usdc(100));
+    assert_eq!(s.client.total_principal_view(), usdc(100));
+    assert!(close(s.client.cash(), 0)); // all lent out, nothing left idle or in the vault
+}
+
+#[test]
+fn withdraw_unwinds_from_vault() {
+    let s = setup();
+    let (_vault, _) = attach_vault(&s);
+    let shares = s.client.deposit(&s.lender, &usdc(1_000)); // idle 200, vault 800
+    let got = s.client.withdraw(&s.lender, &shares); // needs to pull ~800 back from the vault
+    assert!(close(got, usdc(1_000)), "got {}", got);
+    assert!(close(s.usdc_tok.balance(&s.lender), usdc(10_000)));
+    assert!(close(s.client.vault_value(), 0));
+}
+
+#[test]
+fn clear_vault_pulls_everything_back() {
+    let s = setup();
+    let (_vault, ysrc) = attach_vault(&s);
+    s.client.deposit(&s.lender, &usdc(1_000));
+    mock_vault::MockVaultClient::new(&s.env, &s.client.vault_address().unwrap())
+        .add_yield(&ysrc, &usdc(50));
+    s.client.clear_vault();
+    assert_eq!(s.client.vault_address(), None);
+    assert_eq!(s.client.vault_value(), 0);
+    // Everything (principal parked + yield) is back as raw USDC.
+    assert!(close(s.client.idle_cash(), usdc(1_050)));
+    assert!(close(s.client.total_assets(), usdc(1_050)));
+}
+
+#[test]
+fn rebalance_idle_sweeps_to_target_buffer() {
+    let s = setup();
+    let (_vault, _) = attach_vault(&s);
+    // Deposit before a vault would normally invest; here simulate idle by depositing then checking sweep.
+    s.client.deposit(&s.lender, &usdc(1_000)); // auto-invested to 200/800 already
+    // A repayment-like inflow lands as raw USDC; rebalance should re-park the excess.
+    s.usdc_admin.mint(&s.client.address, &usdc(300)); // 300 extra idle (now 500 idle, 800 vault)
+    s.client.rebalance_idle();
+    // target buffer = 20% of 1300 = 260; so idle should drop to ~260, vault ~1040.
+    assert_eq!(s.client.idle_cash(), usdc(260));
+    assert_eq!(s.client.vault_value(), usdc(1_040));
 }
