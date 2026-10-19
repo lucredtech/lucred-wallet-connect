@@ -13,13 +13,14 @@
     .kpi .v{font-family:var(--font-d);font-weight:800;font-size:28px;letter-spacing:-.02em;margin-top:2px;}
     .g2{display:grid;gap:14px;} @media(min-width:560px){.g2{grid-template-columns:repeat(2,1fr)}}
   </style>
+  <link rel="stylesheet" href="/src/ui.css" />
 </head>
 <body>
   <header>
     <div class="wrap bar">
-      <a class="logo" href="/home.html" style="color:inherit"><span class="dot"></span>LCRD</a>
+      <a class="logo" href="/home.html" style="color:inherit"><svg class="brandmark" viewBox="0 0 24 24" aria-hidden="true"><rect class="mk" width="24" height="24" rx="7"/><path d="M6.5 15.5 A6 6 0 0 1 17.5 9.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="17.5" cy="9.5" r="2" fill="#fff"/></svg>LCRD</a>
       <div class="grow"></div>
-      <span class="net"><span class="d"></span>Testnet</span>
+      <span class="netchip"><span class="d"></span>Testnet</span>
       <button class="pill-addr" id="walletBtn"><span class="avatar"></span><span id="walletLbl">Connect</span></button>
     </div>
   </header>

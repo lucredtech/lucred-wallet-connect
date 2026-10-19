@@ -27,17 +27,20 @@ function toast(msg: string, opts: { tx?: string; err?: boolean } = {}) {
   toastT = window.setTimeout(() => el.classList.remove("show"), 3200);
 }
 
-function renderGauge(score: number) {
-  const pct = Math.max(0, Math.min(1, score / 100));
+function renderGauge(score: number | null) {
+  const pct = score == null ? 0 : Math.max(0, Math.min(1, score / 100));
   const cx = 110, cy = 110, r = 86;
   const pt = (a: number): [number, number] => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
   const [sx, sy] = pt(Math.PI), [ex, ey] = pt(2 * Math.PI), [px, py] = pt(Math.PI * (1 + pct));
+  // the colored arc is only drawn once we have a score; pre-connect we show just the track + a muted dash
+  const fill = score == null ? "" :
+    `<path d="M${sx} ${sy} A${r} ${r} 0 0 1 ${px} ${py}" fill="none" stroke="var(--brand)" stroke-width="14" stroke-linecap="round"/>`;
   $("gauge").innerHTML =
     `<svg viewBox="0 0 220 128" width="220" style="max-width:100%">
       <path d="M${sx} ${sy} A${r} ${r} 0 0 1 ${ex} ${ey}" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>
-      <path d="M${sx} ${sy} A${r} ${r} 0 0 1 ${px} ${py}" fill="none" stroke="var(--brand)" stroke-width="14" stroke-linecap="round"/>
+      ${fill}
     </svg>` +
-    `<div style="font-family:var(--font-d);font-weight:800;font-size:52px;line-height:1;margin-top:-26px;">${score}</div>`;
+    `<div style="font-family:var(--font-d);font-weight:800;font-size:52px;line-height:1;margin-top:-26px;color:${score == null ? "var(--faint)" : "var(--ink)"};">${score == null ? "—" : score}</div>`;
 }
 
 async function fetchScore(): Promise<{ score: number; tier: string } | null> {
@@ -172,4 +175,5 @@ function wire() {
   $("btn-repay").addEventListener("click", () => act("repay"));
 }
 
+renderGauge(null); // placeholder so the score card keeps its shape before a wallet connects
 wire();
