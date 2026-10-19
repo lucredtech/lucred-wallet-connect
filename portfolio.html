@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>LCRD — Portfolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+  <style>
+    .kpis{display:grid;gap:14px;} @media(min-width:560px){.kpis{grid-template-columns:repeat(3,1fr)}}
+    .kpi .k{font-size:12.5px;color:var(--muted);font-weight:600;}
+    .kpi .v{font-family:var(--font-d);font-weight:800;font-size:28px;letter-spacing:-.02em;margin-top:2px;}
+    .g2{display:grid;gap:14px;} @media(min-width:560px){.g2{grid-template-columns:repeat(2,1fr)}}
+  </style>
+  <link rel="stylesheet" href="/src/ui.css" />
+</head>
+<body>
+  <header>
+    <div class="wrap bar">
+      <a class="logo" href="home.html" style="color:inherit"><svg class="brandmark" viewBox="0 0 24 24" aria-hidden="true"><rect class="mk" width="24" height="24" rx="7"/><path d="M6.5 15.5 A6 6 0 0 1 17.5 9.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="17.5" cy="9.5" r="2" fill="#fff"/></svg>LCRD</a>
+      <div class="grow"></div>
+      <span class="netchip"><span class="d"></span>Testnet</span>
+      <button class="pill-addr" id="walletBtn"><span class="avatar"></span><span id="walletLbl">Connect</span></button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="view">
+      <div><div class="eyebrow">Portfolio</div><h2 style="font-size:26px;">Your position</h2></div>
+
+      <div class="card" id="summary">
+        <div class="kpis">
+          <div class="kpi"><div class="k">Net worth</div><div class="v" id="net">—</div></div>
+          <div class="kpi"><div class="k">Net APY</div><div class="v" id="napy" style="color:var(--good)">—</div></div>
+          <div class="kpi"><div class="k">Credit health</div><div class="v" id="health">—</div></div>
+        </div>
+        <p class="sm muted" id="connect-hint" style="margin-top:12px;">Connect your wallet to see your portfolio.</p>
+      </div>
+
+      <div class="g2">
+        <div class="card">
+          <div class="eyebrow" style="color:var(--muted)">You supplied</div>
+          <div class="lv" style="border-top:0;"><span class="muted">USDC → pool</span><span class="v" id="sup-pool">—</span></div>
+          <div class="lv"><span class="muted">Pool shares</span><span class="v mono" id="sup-shares">—</span></div>
+          <a class="sm" href="earn.html" style="display:inline-block;margin-top:10px;">Deposit more →</a>
+        </div>
+        <div class="card">
+          <div class="eyebrow" style="color:var(--muted)">You borrowed</div>
+          <div class="lv" style="border-top:0;"><span class="muted">Credit line</span><span class="v" id="bor-line">—</span></div>
+          <div class="lv"><span class="muted">Available to draw</span><span class="v mono" id="bor-avail">—</span></div>
+          <a class="sm" href="score.html" style="display:inline-block;margin-top:10px;">Manage line →</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow" style="color:var(--muted)">On-chain</div>
+        <p class="sm muted" style="margin-top:8px;">Collateral loans (DeFindex / LP) are shown on the <a href="collateral.html">Borrow on collateral</a> page.</p>
+        <a class="sm" id="lnk-pool" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;">View pool on explorer ↗</a>
+      </div>
+
+      <p class="foot">LCRD · portfolio · testnet</p>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+  <script type="module" src="/src/portfolioPage.ts"></script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>LCRD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+  <style>
+    nav.pages{display:flex;gap:4px;overflow-x:auto;padding-block:8px;scrollbar-width:none;}
+    nav.pages::-webkit-scrollbar{display:none}
+    nav.pages a{white-space:nowrap;color:var(--muted);font-weight:600;font-size:14px;padding:8px 13px;border-radius:999px;}
+    nav.pages a[aria-current="page"]{background:var(--ink);color:var(--paper);}
+    .entry{display:flex;flex-direction:column;gap:12px;text-align:left;width:100%;align-items:stretch;}
+    .entry .ico{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:var(--brand-tint);color:var(--brand);font-size:18px;}
+    .entry h3{font-size:19px;}
+    .entry .metric{font-family:var(--font-d);font-weight:800;font-size:28px;letter-spacing:-.02em;}
+    .entry:hover{border-color:var(--brand);}
+    .g3{display:grid;gap:14px;} @media(min-width:680px){.g3{grid-template-columns:repeat(3,1fr)}}
+    .arrow{color:var(--brand);font-weight:700;}
+  </style>
+  <link rel="stylesheet" href="/src/ui.css" />
+</head>
+<body>
+  <header>
+    <div class="wrap bar">
+      <a class="logo" href="home.html" style="color:inherit"><svg class="brandmark" viewBox="0 0 24 24" aria-hidden="true"><rect class="mk" width="24" height="24" rx="7"/><path d="M6.5 15.5 A6 6 0 0 1 17.5 9.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="17.5" cy="9.5" r="2" fill="#fff"/></svg>LCRD</a>
+      <div class="grow"></div>
+      <span class="netchip"><span class="d"></span>Testnet</span>
+      <button class="pill-addr" id="walletBtn"><span class="avatar"></span><span id="walletLbl">Connect</span></button>
+    </div>
+    <div class="wrap"><nav class="pages">
+      <a href="home.html" aria-current="page">Home</a>
+      <a href="earn.html">Earn</a>
+      <a href="score.html">Borrow on score</a>
+      <a href="collateral.html">Borrow on collateral</a>
+      <a href="portfolio.html">Portfolio</a>
+      <a href="activity.html">Activity</a>
+      <a href="faucet.html">Faucet</a>
+    </nav></div>
+  </header>
+
+  <main class="wrap">
+    <div class="view">
+      <div style="margin-top:4px;">
+        <div class="eyebrow">On-chain credit, built on Stellar</div>
+        <h1 style="font-size:clamp(30px,6vw,44px);">Borrow on your reputation.<br>Earn on your idle cash.</h1>
+        <p class="lede" style="margin-top:8px;">Three ways in, one pool. Your credit is scored from public chain activity and recorded on-chain — no bureau, no paperwork. Browse the rates below; connect a wallet when you want to act.</p>
+      </div>
+
+      <div class="g3">
+        <a class="card entry" href="score.html">
+          <div class="ico">◎</div>
+          <div><div class="eyebrow" style="color:var(--muted)">Priced from your score</div><div class="metric">Credit line</div></div>
+          <h3>Borrow on your credit score</h3>
+          <p class="sm muted">An unsecured line priced from your on-chain score. Repay on time and it grows, automatically.</p>
+          <span class="arrow">Check eligibility →</span>
+        </a>
+        <a class="card entry" href="collateral.html">
+          <div class="ico">⛁</div>
+          <div><div class="eyebrow" style="color:var(--muted)">Against DeFindex / LP tokens</div><div class="metric">up to 75%</div></div>
+          <h3>Borrow on collateral</h3>
+          <p class="sm muted">Pledge DeFindex vault or LP tokens, draw USDC — and your collateral keeps earning yield while it's locked.</p>
+          <span class="arrow">See your terms →</span>
+        </a>
+        <a class="card entry" href="earn.html">
+          <div class="ico">↑</div>
+          <div><div class="eyebrow" style="color:var(--muted)">Pool APY now</div><div class="metric" id="home-apy" style="color:var(--brand)">—</div></div>
+          <h3>Lend USDC to earn</h3>
+          <p class="sm muted">Deposit USDC to earn loan interest plus DeFindex vault yield — and your deposit doubles as collateral for a secured line.</p>
+          <span class="arrow">Start earning →</span>
+        </a>
+      </div>
+
+      <div class="card">
+        <div class="between" style="margin-bottom:6px;"><h3 style="font-size:16px;">Markets</h3><span class="tiny faint">live testnet · no wallet needed to browse</span></div>
+        <div class="lv"><span class="muted">Lend USDC → pool</span><span class="v" id="m-earn">—</span></div>
+        <div class="lv"><span class="muted">Collateral line (DeFindex USDC vault)</span><span class="v">up to 75% advance</span></div>
+        <div class="lv"><span class="muted">Pool liquidity</span><span class="v mono" id="m-liq">—</span></div>
+        <div class="lv"><span class="muted">Idle invested in DeFindex vault</span><span class="v mono" id="m-vault">—</span></div>
+      </div>
+
+      <p class="foot">LCRD · testnet</p>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+  <script type="module" src="/src/home.ts"></script>
+</body>
+</html>

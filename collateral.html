@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>LCRD — Borrow on collateral</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="/src/ui.css" />
+</head>
+<body>
+  <header>
+    <div class="wrap bar">
+      <a class="logo" href="home.html" style="color:inherit"><svg class="brandmark" viewBox="0 0 24 24" aria-hidden="true"><rect class="mk" width="24" height="24" rx="7"/><path d="M6.5 15.5 A6 6 0 0 1 17.5 9.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="17.5" cy="9.5" r="2" fill="#fff"/></svg>LCRD</a>
+      <div class="grow"></div>
+      <span class="netchip"><span class="d"></span>Testnet</span>
+      <button class="pill-addr" id="walletBtn"><span class="avatar"></span><span id="walletLbl">Connect</span></button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="view">
+      <div><div class="eyebrow">Borrow on collateral</div><h2 style="font-size:26px;">Borrow against your DeFindex &amp; LP tokens</h2>
+        <p class="lede" style="margin-top:6px;">Pledge a DeFindex vault position or an LP/vault token, draw USDC against it, and keep earning yield on the collateral while it's locked.</p></div>
+
+      <div class="card">
+        <div class="between" style="margin-bottom:12px;"><h3 style="font-size:16px;">Choose collateral</h3><span class="tiny faint" id="src-note">advance rate set by asset risk</span></div>
+        <div id="collatList"><p class="sm muted">Loading supported collateral…</p></div>
+        <p class="tiny faint" style="margin-top:4px;">The accepted list comes from the on-chain collateral registry; more vault &amp; LP tokens are added over time.</p>
+      </div>
+
+      <div class="card" id="panel" hidden>
+        <div class="between" style="margin-bottom:10px;">
+          <h3 style="font-size:16px;">How much to borrow</h3>
+          <span class="chip" id="selChip">—</span>
+        </div>
+        <div class="sm muted" id="selSummary" style="margin-bottom:14px;">—</div>
+        <input type="range" id="borrowRange" min="0" max="100" value="60" step="1" />
+        <div class="between" style="margin-top:8px;">
+          <span class="sm muted">Borrow</span>
+          <span class="num" style="font-family:var(--font-d);font-weight:800;font-size:24px;" id="borrowVal">$0</span>
+        </div>
+
+        <div style="margin-top:18px;">
+          <div class="between" style="margin-bottom:6px;"><span class="sm" style="font-weight:600;">Borrowing power used</span><span class="sm num" id="powerPct" style="font-weight:700;">0%</span></div>
+          <div class="meter"><span id="powerBar" style="width:0%;background:var(--good);"></span><i class="mk" style="left:87%;"></i></div>
+          <div class="between tiny faint" style="margin-top:5px;"><span>margin call · 87%</span><span>liquidation · 100%</span></div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div class="lv"><span class="muted">Health factor</span><span class="v" id="hf" style="color:var(--good)">—</span></div>
+          <div class="lv"><span class="muted">Liquidation if position value falls below</span><span class="v mono" id="liqPrice">—</span></div>
+          <div class="lv"><span class="muted">Borrow APR (est.)</span><span class="v" id="aprLine">—</span></div>
+          <div class="lv"><span class="muted">Collateral locked — keeps earning</span><span class="v mono" id="lockLine">—</span></div>
+        </div>
+        <div id="riskMsg" class="note" style="margin-top:14px;">Your collateral keeps earning its vault/LP yield the whole time it's pledged.</div>
+        <label class="row" id="ackRow" style="margin-top:12px;display:none;gap:8px;align-items:flex-start;"><input type="checkbox" id="ack" style="margin-top:3px;"><span class="sm muted">I understand that if my collateral's value falls near the liquidation line, part of it can be sold to repay the loan.</span></label>
+        <button class="btn btn-primary" id="borrowBtn" style="width:100%;justify-content:center;margin-top:16px;" disabled>Connect wallet</button>
+        <p class="explain" id="borrowNote" style="margin-top:14px;">Your pledged tokens are held in the on-chain collateral escrow and returned when you repay.</p>
+      </div>
+
+      <p class="foot">LCRD · borrow on collateral · testnet</p>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+  <script type="module" src="/src/collateral.ts"></script>
+</body>
+</html>

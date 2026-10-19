@@ -39,7 +39,7 @@ const REGISTRIES = {
     CDCW5LKOFURA3H2FN7UQNVDLHO6NGUWDZKJRKAITHFLRYG2KBSJCM6UI: {
       protocol: "defindex",
       kind: "vault",
-      label: "Mock dfToken (escrow test)",
+      label: "Test dfToken",
       symbol: "dfTEST",
       underlyingClass: "stable",
       advanceBps: 7000,

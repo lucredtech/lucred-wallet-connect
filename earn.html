@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>LCRD — Earn</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="/src/ui.css" />
+</head>
+<body>
+  <header>
+    <div class="wrap bar">
+      <a class="logo" href="home.html" style="color:inherit"><svg class="brandmark" viewBox="0 0 24 24" aria-hidden="true"><rect class="mk" width="24" height="24" rx="7"/><path d="M6.5 15.5 A6 6 0 0 1 17.5 9.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="17.5" cy="9.5" r="2" fill="#fff"/></svg>LCRD</a>
+      <div class="grow"></div>
+      <span class="netchip"><span class="d"></span>Testnet</span>
+      <button class="pill-addr" id="walletBtn"><span class="avatar"></span><span id="walletLbl">Connect</span></button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="view">
+      <div><div class="eyebrow">Earn</div><h2 style="font-size:26px;">Put your USDC to work</h2></div>
+
+      <div class="card" style="text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center;">
+        <div class="sm muted">Estimated pool yield</div>
+        <div style="font-family:var(--font-d);font-weight:800;font-size:clamp(48px,13vw,72px);line-height:1;letter-spacing:-.03em;color:var(--brand);" id="apy">—</div>
+        <div class="row" style="justify-content:center;gap:8px;">
+          <span class="chip" id="chip-loan">loan interest</span><span class="chip good" id="chip-vault">+ DeFindex vault</span>
+        </div>
+        <p class="sm muted" style="max-width:48ch;margin-top:4px;">Variable estimate. Withdraw anytime — no lock-up; fees apply only on profit. Idle USDC is parked in a DeFindex vault so your un-borrowed capital still earns.</p>
+      </div>
+
+      <div class="card">
+        <div class="between" style="margin-bottom:12px;"><h3 style="font-size:16px;">Deposit USDC</h3><span class="sm muted">Wallet: <span class="mono" id="usdc-bal">—</span></span></div>
+        <div style="display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;background:var(--surface-2);">
+          <input id="dep-amt" inputmode="decimal" value="100" aria-label="Deposit amount" style="border:0;background:transparent;font-family:var(--font-d);font-weight:700;font-size:26px;width:100%;color:var(--ink);outline:none;min-width:0;" />
+          <span style="font-weight:600;color:var(--muted);font-size:15px;">USDC</span>
+          <button class="btn" id="dep-max" style="padding:5px 9px;font-size:12px;">MAX</button>
+        </div>
+        <div style="margin-top:14px;">
+          <div class="lv"><span class="muted">Projected earnings · 1 year (est.)</span><span class="v" id="proj" style="color:var(--good)">—</span></div>
+          <div class="lv"><span class="muted">You receive</span><span class="v mono" id="shares-out">—</span></div>
+          <div class="lv"><span class="muted">Routed to vault (keeps ~20% buffer liquid)</span><span class="v mono" id="routed">—</span></div>
+        </div>
+        <button class="btn btn-primary" id="btn-deposit" style="width:100%;justify-content:center;margin-top:16px;" disabled>Connect wallet to deposit</button>
+        <p class="explain" style="margin-top:14px;">Your deposit also unlocks a <b>secured credit line</b> against your pool position — no score needed.</p>
+      </div>
+
+      <div class="card">
+        <div class="between"><h3 style="font-size:16px;">Your position</h3><span class="chip good" id="pos-chip" hidden>Earning</span></div>
+        <div class="row" style="margin-top:12px;gap:28px;">
+          <div><div class="sm muted" style="font-weight:600;">Balance</div><div class="num" style="font-family:var(--font-d);font-weight:800;font-size:26px;" id="pos-bal">—</div></div>
+          <div><div class="sm muted" style="font-weight:600;">Pool shares</div><div class="num mono" style="font-size:15px;margin-top:8px;" id="pos-shares">—</div></div>
+        </div>
+        <div id="earned-wrap" hidden style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line);">
+          <div class="sm muted" style="font-weight:600;">Yield earned <span class="tiny faint" id="earned-since"></span></div>
+          <div class="num mono" style="font-family:var(--font-d);font-weight:800;font-size:22px;color:var(--good);line-height:1.1;margin-top:4px;" id="pos-earned">+$0.000000</div>
+          <div class="tiny faint" id="earned-rate" style="margin-top:3px;"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+          <input id="wd-amt" inputmode="decimal" placeholder="Amount to withdraw" aria-label="Withdraw amount" style="flex:1;min-width:140px;border:1.5px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;background:var(--surface-2);color:var(--ink);font-family:var(--font-m);outline:none;" />
+          <button class="btn" id="btn-withdraw" disabled>Withdraw</button>
+          <button class="btn" id="btn-withdraw-all" disabled>All</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow" style="color:var(--muted)">Pool</div>
+        <div class="lv" style="border-top:0;"><span class="muted">Total assets</span><span class="v mono" id="pool-assets">—</span></div>
+        <div class="lv"><span class="muted">Idle (liquid buffer)</span><span class="v mono" id="pool-idle">—</span></div>
+        <div class="lv"><span class="muted">Invested in DeFindex vault</span><span class="v mono" id="pool-invested">—</span></div>
+        <a class="btn-link sm" id="lnk-pool" target="_blank" rel="noopener" style="display:inline-block;margin-top:10px;">View pool on explorer ↗</a>
+      </div>
+
+      <p class="foot">LCRD · earn · testnet · figures are on-chain, APY is an estimate</p>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+  <script type="module" src="/src/earn.ts"></script>
+</body>
+</html>
