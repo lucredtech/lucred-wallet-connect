@@ -204,11 +204,15 @@ fn qualifying_cycle_lowers_apr_and_grows_limit() {
     let h = s.client.get_history(&s.borrower);
     assert_eq!(h.cycles_completed, 1);
     assert_eq!(h.repayments, 1);
+    let line = s.client.get_line(&s.borrower);
     // APR dropped 50 bps automatically.
-    assert_eq!(s.client.get_line(&s.borrower).apr_bps, 1843);
-    // Next line may now reach a higher limit.
-    let (_, _, max) = s.client.quote(&71, &h.cycles_completed);
-    assert_eq!(max, usdc(200));
+    assert_eq!(line.apr_bps, 1843);
+    // Ladder: the active limit auto-raised to the new tier max (100 -> 200), no re-issue needed.
+    assert_eq!(line.limit, usdc(200));
+    assert_eq!(s.client.quote(&71, &h.cycles_completed).2, usdc(200));
+    // And the borrower can immediately draw against the higher limit.
+    s.client.borrow(&s.borrower, &usdc(150));
+    assert_eq!(s.client.get_line(&s.borrower).principal, usdc(150));
 }
 
 #[test]

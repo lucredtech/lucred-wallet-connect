@@ -563,13 +563,18 @@ impl CreditLine {
             h.cycle_peak = 0;
             if qualifies {
                 h.cycles_completed += 1;
-                let apr = if l.secured {
-                    Self::secured_quote(env.clone(), l.score, h.cycles_completed)
+                if l.secured {
+                    // Secured lines are sized by collateral, so only the rate improves.
+                    l.apr_bps = Self::secured_quote(env.clone(), l.score, h.cycles_completed);
                 } else {
-                    Self::quote(env.clone(), l.score, h.cycles_completed).1
-                };
-                l.apr_bps = apr;
-                env.events().publish((CYCLE, borrower.clone()), (h.cycles_completed, apr));
+                    // Unsecured ladder: a completed cycle lowers the APR AND raises the active limit to
+                    // the new tier maximum (starter × (1 + cycles), capped at the ceiling) — so the line
+                    // grows automatically with every on-time cycle, no re-issue needed.
+                    let (_, apr, max_limit) = Self::quote(env.clone(), l.score, h.cycles_completed);
+                    l.apr_bps = apr;
+                    l.limit = max_limit;
+                }
+                env.events().publish((CYCLE, borrower.clone()), (h.cycles_completed, l.apr_bps, l.limit));
             }
         }
         // Refund overpayment (contract-authorized; a value that varies from simulation is fine here).
