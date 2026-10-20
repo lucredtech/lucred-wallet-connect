@@ -1696,3 +1696,36 @@ details.pool-advanced[open] > summary { margin-bottom: 10px; }
 /* numeric columns (Limit, APR, Principal, Interest, Repays·Cycles) line up on the right */
 .pool-table th:nth-child(n + 4),
 .pool-table td:nth-child(n + 4) { text-align: right; }
+
+/* ---- Homepage CTA to the embedded credit app at /credit (banner + footer link) ---- */
+.credit-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  text-align: center;
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-text-primary);
+  background: var(--color-accent-subtle-bg);
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-decoration: none;
+  transition: filter var(--duration-fast) var(--ease-out);
+}
+.credit-banner:hover { filter: brightness(1.15); }
+.credit-banner-tag {
+  font-size: var(--text-label);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--gradient-accent);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+.credit-banner-cta { font-weight: 700; color: var(--color-accent-text); white-space: nowrap; }
+.footer-link-credit { font-weight: 600; color: var(--color-accent-text); text-decoration: none; }
+.footer-link-credit:hover { color: var(--color-text-primary); }
