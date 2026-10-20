@@ -9,6 +9,7 @@ import {
   findLatestRawFolder
 } from './gcs';
 import { parseLedgerCloseMetaBatch } from './xdrParser';
+import { parseEscrowBountyBatch } from './escrowBountyBatch';
 import { PROTOCOL_REGISTRY } from './registry';
 import { discoverAllDynamicPools } from './poolDiscovery';
 
@@ -47,6 +48,11 @@ const LIVE_TIP_DYNAMIC_PREFIX = (process.env.LIVE_TIP_DYNAMIC_PREFIX ?? 'false')
 const LIVE_TIP_FOLDER_CHECK_MS = Number(process.env.LIVE_TIP_FOLDER_CHECK_MS ?? 2 * 60 * 1000);
 const OUTPUT_BUCKET = process.env.OUTPUT_BUCKET_NAME ?? RAW_BUCKET;
 const OUTPUT_PREFIX = process.env.OUTPUT_PREFIX ?? 'extracted_logs/';
+// Added 2026-10: a SECOND, opt-in output stream for OSS-contributor bounty income (Trustless Work /
+// GrantFox escrow milestone releases -> credit_bureau.oss_bounty_events via the loader). Unset => the
+// feature is OFF and the credit-events path is completely unaffected; set e.g. 'oss_bounty_logs/' to turn
+// it on. Deliberately separate from OUTPUT_PREFIX so the loader points a different table at it.
+const OSS_BOUNTY_PREFIX = process.env.OSS_BOUNTY_PREFIX?.trim() || undefined;
 const CHECKPOINT_PATH = process.env.CHECKPOINT_PATH ?? '_indexer_checkpoint.json';
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS ?? 15_000);
 const DELETE_RAW_AFTER_PROCESSING = (process.env.DELETE_RAW_AFTER_PROCESSING ?? 'true') === 'true';
@@ -113,6 +119,19 @@ async function processOnce(
         await writeJsonlToGCS(OUTPUT_BUCKET, OUTPUT_PREFIX, objectBaseName, jsonlPayload);
         console.log(`☁️  Wrote ${events.length} credit events from ${file.name} to gs://${OUTPUT_BUCKET}/${OUTPUT_PREFIX}${objectBaseName}.jsonl`);
         totalEvents += events.length;
+      }
+
+      // Opt-in second stream: OSS-bounty income events (off unless OSS_BOUNTY_PREFIX is set). Computed
+      // from the same in-memory rawXdr, written to a separate prefix/table — never touches the credit
+      // events above, and its own failures are caught by the outer try so they can't stall the indexer.
+      if (OSS_BOUNTY_PREFIX) {
+        const bounties = parseEscrowBountyBatch(rawXdr);
+        if (bounties.length > 0) {
+          const objectBaseName = file.name.replace(/\.xdr\.zst$/, '').replace(/\//g, '_');
+          const bountyPayload = bounties.map((e) => JSON.stringify(e)).join('\n') + '\n';
+          await writeJsonlToGCS(OUTPUT_BUCKET, OSS_BOUNTY_PREFIX, objectBaseName, bountyPayload);
+          console.log(`💧 Wrote ${bounties.length} OSS-bounty income events from ${file.name} to gs://${OUTPUT_BUCKET}/${OSS_BOUNTY_PREFIX}${objectBaseName}.jsonl`);
+        }
       }
 
       if (DELETE_RAW_AFTER_PROCESSING) {
