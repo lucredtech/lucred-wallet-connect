@@ -48,6 +48,40 @@ const SOURCES = [
     weight: 0.9, enabled: false,
     async fetch(_subject) { return { available: false, score: 0, confidence: 0 }; },
   },
+  // On-chain OSS-contributor income via Trustless Work escrows (the rail GrantFox pays bounties on).
+  // Not a single contract: every bounty is its own escrow contract, so the indexer DISCOVERS them by
+  // approved escrow WASM hash (Trustless Work's own indexer does the same) — mainnet hashes seen live:
+  //   2ddb5ef1f8f029ea93313ed7a6886f763eda7287d8a08bacc0a427ab0aa1dc1f (multi-release / milestones)
+  //   e11805e412966610124c69ab10bfa0a45a4276c82863d6406f2481e8284068ac (single-release)
+  // then reads these contract events: tw_release / tw_ms_approve (payout), tw_fund, tw_init/tw_update.
+  // Each event carries the Escrow struct: roles.receiver + roles.service_provider (the paid contributor),
+  // amount, trustline.address (USDC), milestones[].evidence (PR link) and engagement_id (GitHub issue/
+  // campaign = the IDENTITY link). GrantFox-only payouts are the subset where roles.platform == GrantFox's
+  // platform account. The indexer emits a per-wallet `ossContribution` feature that this source scores;
+  // it stays disabled until that feature is populated. Confirmed live on mainnet (low volume, early stage).
+  {
+    id: "oss_contribution", label: "OSS-contributor bounty income (Trustless Work / GrantFox)", kind: "income",
+    weight: 0.7, enabled: false,
+    async fetch(subject) {
+      const f = subject && subject.ossContribution;
+      // Need at least one real bounty payout in the trailing window to count.
+      if (!f || !(Number(f.payouts12mo) >= 1)) return { available: false, score: 0, confidence: 0 };
+      const usd = Math.max(0, Number(f.bountyUsd12mo) || 0);
+      // Log-scaled on annualized bounty USD: ~$200 -> ~40, ~$2k -> ~70, >=$10k -> ~90.
+      const base = usd <= 0 ? 0 : Math.min(90, Math.round(26 * Math.log10(1 + usd / 20)));
+      // Decay if the last payout is stale (>180d => heavy discount); boost sustained tenure.
+      const lastDays = Number(f.lastPaidDaysAgo);
+      const recency = Number.isFinite(lastDays) ? Math.max(0.3, 1 - lastDays / 365) : 0.6;
+      const tenure = Math.min(1, (Number(f.tenureDays) || 0) / 180);
+      const score = Math.max(0, Math.min(100, Math.round(base * recency * (0.7 + 0.3 * tenure))));
+      // GitHub-linked engagement_id makes this hard to self-fund -> higher confidence.
+      const confidence = Math.min(1, (f.githubEngagementVerified ? 0.9 : 0.5) * Math.min(1, Number(f.payouts12mo) / 3));
+      return {
+        available: true, score, confidence,
+        signals: { bountyUsd12mo: usd, payouts12mo: Number(f.payouts12mo), tenureDays: Number(f.tenureDays) || 0, githubEngagementVerified: !!f.githubEngagementVerified },
+      };
+    },
+  },
   {
     id: "open_banking", label: "Open banking (cash-flow underwriting)", kind: "cashflow",
     weight: 1.0, enabled: false,
