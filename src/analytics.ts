@@ -1,3 +1,4 @@
+import "./siteChrome"; // shared /credit banner + waitlist footer on every legacy page
 import { inject } from "@vercel/analytics";
 
 // Vercel Web Analytics: page views only (no cookies). A no-op outside Vercel,

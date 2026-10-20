@@ -1,3 +1,4 @@
+import "./siteChrome"; // shared /credit banner + waitlist footer on every legacy page
 import "./style.css";
 import { connect, invoke, readCall, sAddr, sI128, explorerTx, getContractEvents, TESTNET_RPC } from "./soroban";
 import type { ActivityEvent } from "./soroban";

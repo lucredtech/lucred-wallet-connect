@@ -1,3 +1,4 @@
+import "./siteChrome"; // shared /credit banner + waitlist footer on every legacy page
 import "./style.css";
 import "./analytics"; // Vercel Web Analytics (page views)
 
