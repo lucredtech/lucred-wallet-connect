@@ -1,6 +1,7 @@
 // LCRD Earn — deposit USDC to the pool to earn (loan interest + DeFindex vault yield), withdraw anytime.
 // Wired to the deployed testnet credit-line pool.
 import "./ui.css";
+import "./creditWaitlist"; // shared footer + waitlist on every /credit page
 import { connect, restoreSession, invoke, readCall, sAddr, sI128 } from "./soroban";
 
 const POOL = "CDW4G2YMN5RIXFTS6CW6XVNKPHJI4WZNAMUNHVKQZBD3G7QT45HELX63";

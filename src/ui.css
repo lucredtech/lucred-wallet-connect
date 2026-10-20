@@ -127,3 +127,16 @@ input[type=range]{width:100%; accent-color:var(--brand);}
 .evrow .evsub{font-size:12.5px; color:var(--faint); font-family:var(--font-m);}
 .evrow .evamt{flex:none; text-align:right; font-family:var(--font-m); font-weight:600; font-size:14px; white-space:nowrap;}
 .evrow .evamt a{color:var(--faint); font-size:12px;}
+
+/* ---- Shared site footer + waitlist (injected on every /credit page via creditWaitlist.ts) ---- */
+.sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
+.cl-hp{position:absolute; left:-9999px; width:1px; height:1px; opacity:0; pointer-events:none;}
+.site-footer{margin-top:48px; border-top:1px solid var(--line); background:var(--surface-2); padding:32px 0 calc(28px + env(safe-area-inset-bottom,0px));}
+.site-footer .foot-wl h3{font-family:var(--font-d); font-size:18px; margin:0 0 4px;}
+.site-footer .foot-wl[data-joined="true"] .foot-wl-row{opacity:.6;}
+.foot-wl-row{display:flex; gap:8px; margin:12px 0 8px; flex-wrap:wrap;}
+.foot-wl-row input[type="email"]{flex:1 1 220px; min-width:0; font-family:inherit; font-size:14px; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm); padding:10px 13px;}
+.foot-wl-row input[type="email"]:focus{outline:none; border-color:var(--brand);}
+.foot-wl-row input[type="email"]:disabled{opacity:.6;}
+.foot-wl-row .btn{flex:none;}
+.foot-legal{margin:18px 0 0;}

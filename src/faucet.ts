@@ -2,6 +2,7 @@
 // Wired to the live testnet faucet contracts. Our USDC/dfTEST are Soroban contract tokens, so there
 // are no trustlines to establish — a claim is just one `drip` signature.
 import "./ui.css";
+import "./creditWaitlist"; // shared footer + waitlist on every /credit page
 import { connect, restoreSession, invoke, readCall, sAddr } from "./soroban";
 
 // --- deployed testnet contracts ---

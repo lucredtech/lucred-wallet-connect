@@ -3,6 +3,7 @@
 // line, and open it by depositing the collateral into the Stage-B escrow (the auto-disburser then
 // sends the USDC). Tokens the escrow doesn't yet accept show a quote only.
 import "./ui.css";
+import "./creditWaitlist"; // shared footer + waitlist on every /credit page
 import { connect, restoreSession, invoke, readCall, sAddr, sI128, sU32, sBytes32, sEnum, getContractEvents } from "./soroban";
 
 const ESCROW = "CCM4QHKGCEAE3FKNB3SGJ74ZHPHLWNAAB5BBVMDECXISB26MXAPHNFZG";

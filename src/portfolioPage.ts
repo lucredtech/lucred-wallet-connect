@@ -1,6 +1,7 @@
 // LCRD portfolio — the three-number header (net worth / net APY / credit health) + supplied/borrowed,
 // aggregated from the credit-line pool for the connected wallet.
 import "./ui.css";
+import "./creditWaitlist"; // shared footer + waitlist on every /credit page
 import { connect, restoreSession, invoke, readCall, sAddr, sI128, sBytes32, getContractEvents } from "./soroban";
 
 const POOL = "CDW4G2YMN5RIXFTS6CW6XVNKPHJI4WZNAMUNHVKQZBD3G7QT45HELX63";

@@ -1,5 +1,6 @@
 // LCRD home — landing + live market stats (read from the pool before any wallet connect).
 import "./ui.css";
+import "./creditWaitlist"; // shared footer + waitlist on every /credit page
 import { connect, restoreSession, readCall } from "./soroban";
 
 const POOL = "CDW4G2YMN5RIXFTS6CW6XVNKPHJI4WZNAMUNHVKQZBD3G7QT45HELX63";

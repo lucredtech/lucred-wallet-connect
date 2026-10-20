@@ -1,6 +1,7 @@
 // LCRD Activity — a live, human-readable feed of the pool's on-chain events (deposits, withdrawals,
 // borrows, repayments, cycles, vault moves). Toggle between the whole pool and just your wallet.
 import "./ui.css";
+import "./creditWaitlist"; // shared footer + waitlist on every /credit page
 import { connect, restoreSession, getContractEvents, latestLedgerSeq, explorerTx } from "./soroban";
 import type { ActivityEvent } from "./soroban";
 

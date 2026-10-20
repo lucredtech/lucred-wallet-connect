@@ -1,6 +1,7 @@
 // LCRD Borrow-on-score — show the wallet's credit score (score-api), the on-chain repayment ladder
 // and line (credit-line pool), and draw/repay against an active unsecured line.
 import "./ui.css";
+import "./creditWaitlist"; // shared footer + waitlist on every /credit page
 import { connect, restoreSession, invoke, readCall, sAddr, sI128, sU32 } from "./soroban";
 
 const POOL = "CDW4G2YMN5RIXFTS6CW6XVNKPHJI4WZNAMUNHVKQZBD3G7QT45HELX63";
