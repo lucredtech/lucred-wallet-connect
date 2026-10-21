@@ -98,9 +98,10 @@ function createAnalytics(bq) {
         "SELECT COUNT(*) n, IFNULL(SUM(principalUsd), 0) principalUsd FROM `credit_bureau.df_credit_acceptances`",
         [{ n: 0, principalUsd: 0 }]);
 
-      // Off-chain income indexed from Trustless Work escrows (OSS-contributor bounties + payroll) — the
-      // verifiable-income layer that lets thin-file wallets be scored. Empty until the backfill/indexer
-      // populates credit_bureau.oss_bounty_events.
+      // On-chain earned income indexed across all income sources — Trustless Work escrows (GrantFox OSS
+      // bounties + payroll) and Drips Wave grants (classic USDC) — the verifiable-income layer that lets
+      // thin-file wallets be scored. Counts every row in credit_bureau.oss_bounty_events, so new sources
+      // (and backfills like Drips) roll into this tile automatically.
       const income = await qSafe(
         "SELECT COUNT(DISTINCT receiver) wallets, ROUND(IFNULL(SUM(amount * (1 - platformFeeBps / 10000 - 0.003)), 0)) netUsd, COUNT(*) payouts FROM `credit_bureau.oss_bounty_events`",
         [{ wallets: 0, netUsd: 0, payouts: 0 }]);

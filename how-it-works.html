@@ -331,10 +331,15 @@
         <p>
           Income is a <strong>complement</strong> to the on-chain score, never a
           substitute: it can only <strong>raise</strong> a score, never lower a real
-          one. A no-history wallet with income is scored on that income; a wallet
-          that already has a strong on-chain score keeps it. Trade escrows, currency
-          swaps and asset sales (which share the same escrow infrastructure) are
-          deliberately excluded — they aren't personal income.
+          one. And it <strong>compounds</strong> — a wallet with both a DeFi track
+          record <em>and</em> verified income scores higher than either signal alone
+          (income adds a bounded uplift on top of the on-chain score, with diminishing
+          returns, and never pulls it down). On its own, though, income is
+          <strong>capped at tier&nbsp;B</strong>: a wallet needs real on-chain
+          repayment history to reach the top tier, so a pure-income wallet can be
+          scored but is never treated as prime. Trade escrows, currency swaps and asset
+          sales (which share the same escrow infrastructure) are deliberately
+          excluded — they aren't personal income.
         </p>
         <table>
           <tr>
