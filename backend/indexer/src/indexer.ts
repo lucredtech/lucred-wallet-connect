@@ -122,15 +122,20 @@ async function processOnce(
       }
 
       // Opt-in second stream: OSS-bounty income events (off unless OSS_BOUNTY_PREFIX is set). Computed
-      // from the same in-memory rawXdr, written to a separate prefix/table — never touches the credit
-      // events above, and its own failures are caught by the outer try so they can't stall the indexer.
+      // from the same in-memory rawXdr, written to a separate prefix/table. Wrapped in its OWN try/catch
+      // so it can NEVER affect credit-events processing or this file's completion — the credit events are
+      // already written and checkpointed above; an OSS failure here must not re-queue or stall the file.
       if (OSS_BOUNTY_PREFIX) {
-        const bounties = parseEscrowBountyBatch(rawXdr);
-        if (bounties.length > 0) {
-          const objectBaseName = file.name.replace(/\.xdr\.zst$/, '').replace(/\//g, '_');
-          const bountyPayload = bounties.map((e) => JSON.stringify(e)).join('\n') + '\n';
-          await writeJsonlToGCS(OUTPUT_BUCKET, OSS_BOUNTY_PREFIX, objectBaseName, bountyPayload);
-          console.log(`💧 Wrote ${bounties.length} OSS-bounty income events from ${file.name} to gs://${OUTPUT_BUCKET}/${OSS_BOUNTY_PREFIX}${objectBaseName}.jsonl`);
+        try {
+          const bounties = parseEscrowBountyBatch(rawXdr);
+          if (bounties.length > 0) {
+            const bountyBaseName = file.name.replace(/\.xdr\.zst$/, '').replace(/\//g, '_');
+            const bountyPayload = bounties.map((e) => JSON.stringify(e)).join('\n') + '\n';
+            await writeJsonlToGCS(OUTPUT_BUCKET, OSS_BOUNTY_PREFIX, bountyBaseName, bountyPayload);
+            console.log(`💧 Wrote ${bounties.length} OSS-bounty income events from ${file.name} to gs://${OUTPUT_BUCKET}/${OSS_BOUNTY_PREFIX}${bountyBaseName}.jsonl`);
+          }
+        } catch (ossErr) {
+          console.error(`OSS-bounty stream failed for ${file.name} (credit events unaffected):`, ossErr);
         }
       }
 
