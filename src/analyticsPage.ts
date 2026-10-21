@@ -38,15 +38,22 @@ function tile(label: string, value: string, sub?: string, hero = false): string 
   return `<div class="an-tile${hero ? " an-hero" : ""}"><div class="an-tile-val">${value}</div><div class="an-tile-label">${label}</div>${sub ? `<div class="an-tile-sub">${sub}</div>` : ""}</div>`;
 }
 
-function renderKpis(k: Kpis) {
-  $("an-kpis").innerHTML = [
+function renderKpis(k: Kpis, p: Analytics["product"]) {
+  const tiles = [
     tile("Credit events indexed", compact.format(k.totalEvents), full.format(k.totalEvents) + " on-chain events", true),
     tile("Wallets scored", compact.format(k.totalWallets)),
     tile("Protocols covered", String(k.totalProtocols)),
     tile("Events · last 24h", compact.format(k.events24h)),
     tile("Events · last 7d", compact.format(k.events7d)),
     tile("Max ledger indexed", compact.format(k.maxLedger)),
-  ].join("");
+  ];
+  // Verified earned-income layer (OSS-contributor + payroll income via Trustless Work escrows) is a
+  // data-coverage stat alongside events/wallets/protocols — not a lending-product figure. It is on-chain
+  // income (USDC through Stellar escrows); only the contributor identity is off-chain. Shown once populated.
+  if (p.incomeWallets && p.incomeWallets > 0) {
+    tiles.push(tile("Verified income indexed", usd(p.incomeUsd || 0), full.format(p.incomeWallets) + " wallets · on-chain"));
+  }
+  $("an-kpis").innerHTML = tiles.join("");
 }
 
 function renderProduct(p: Analytics["product"]) {
@@ -65,11 +72,6 @@ function renderProduct(p: Analytics["product"]) {
         tile("Credit acceptances", full.format(p.acceptances)),
         tile("Waitlist signups", full.format(p.waitlist)),
       ];
-  // Off-chain income layer: verifiable OSS-contributor + payroll income (Trustless Work escrows) that
-  // lets thin-file wallets be scored. Only shown once the backfill/indexer has populated it.
-  if (p.incomeWallets && p.incomeWallets > 0) {
-    tiles.push(tile("Verified income indexed", usd(p.incomeUsd || 0), full.format(p.incomeWallets) + " wallets · off-chain"));
-  }
   $("an-product").innerHTML = tiles.join("");
 }
 
@@ -228,7 +230,7 @@ async function load() {
     if (!res.ok) throw new Error("HTTP " + res.status);
     const d = (await res.json()) as Analytics;
 
-    renderKpis(d.kpis);
+    renderKpis(d.kpis, d.product);
     renderProduct(d.product);
     renderBars("an-protocol-bars", d.byProtocol.map((p) => ({ label: titleCase(p.name), value: p.events })));
     renderBars("an-category-bars", d.byCategory.map((c) => ({ label: titleCase(c.name), value: c.events })));
