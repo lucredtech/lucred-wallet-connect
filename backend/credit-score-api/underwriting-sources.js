@@ -61,7 +61,9 @@ const SOURCES = [
   // it stays disabled until that feature is populated. Confirmed live on mainnet (low volume, early stage).
   {
     id: "oss_contribution", label: "OSS-contributor bounty income (Trustless Work / GrantFox)", kind: "income",
-    weight: 0.7, enabled: false,
+    // Live: oss-contribution.js reads credit_bureau.oss_bounty_events (backfilled 2026-10-21 with ~1,057
+    // GrantFox contributor wallets, ~$105k). Only contributes for wallets that actually have bounty income.
+    weight: 0.7, enabled: true,
     async fetch(subject) {
       const f = subject && subject.ossContribution;
       // Need at least one real bounty payout in the trailing window to count.

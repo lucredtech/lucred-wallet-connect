@@ -10,6 +10,8 @@ const cors = require("cors");
 const { BigQuery } = require("@google-cloud/bigquery");
 const { createPortfolioService, resolveVaultTicker } = require("./portfolio");
 const { computeOffers, POLICY } = require("./credit-line");
+const { fetchOssContribution } = require("./oss-contribution");
+const { compositeScore } = require("./underwriting-sources");
 const collateralEngine = require("./collateral-engine");
 const { getCollateralRegistry, supportedCollateral, activeNetwork } = require("./collateral-registry");
 const { getClassicActivity, classicPoints } = require("./classic-activity");
@@ -813,6 +815,31 @@ async function computeWalletScore(wallet) {
       result.reasons.push("Includes activity merged from linked G-address " + linkedGAddress + " (self-deployed smart wallet).");
     }
     result.eventCount = events.length;
+
+    // Off-chain income blend: a thin-file wallet with verified recurring income (e.g. OSS-contributor
+    // bounties from GrantFox, read from credit_bureau.oss_bounty_events) shouldn't be stuck at a
+    // no-history 0. Blend through compositeScore, but income can only RAISE the score, never lower a
+    // real on-chain one — for a no-history wallet the on-chain sub-score is omitted so it isn't diluted
+    // by a 0. Entirely optional: any failure or absence of income leaves the on-chain score untouched.
+    try {
+      const oss = await fetchOssContribution(wallet).catch(() => null);
+      if (oss) {
+        const hasHistory = result.eventCount > 0 && result.path !== "no-history";
+        const subject = { ossContribution: oss, ...(hasHistory ? { onchainScore: result.score, onchainSignals: {} } : {}) };
+        const composite = await compositeScore(subject);
+        if (composite && composite.score > result.score) {
+          const newScore = composite.score;
+          result.incomeAdjusted = { fromScore: result.score, fromTier: result.tier, sources: composite.sources };
+          result.score = newScore;
+          result.tier = newScore >= TIER_A_MIN_SCORE ? "A" : newScore >= TIER_B_MIN_SCORE ? "B" : "C";
+          result.reasons.push(
+            "Includes verified off-chain income: " + oss.payouts12mo + " OSS-contributor payout" +
+            (oss.payouts12mo === 1 ? "" : "s") + " (~$" + Math.round(oss.bountyUsd12mo) + " over the last year" +
+            (oss.githubEngagementVerified ? ", GitHub-verified" : "") + ")."
+          );
+        }
+      }
+    } catch (e) { /* income is a bonus signal; it must never block or fail on-chain scoring */ }
 
     return result;
 }
