@@ -22,7 +22,10 @@ function ensureTable() {
           "engagementId STRING, title STRING, ledgerSequence INT64, transactionHash STRING, blockCloseTime TIMESTAMP)"
       )
       .then(() => true)
-      .catch((e) => { tableReady = null; throw e; });
+      // Best-effort: the Cloud Run service account can query BigQuery but may lack table-CREATE perms.
+      // The table is provisioned by the backfill/loader anyway, so a CREATE failure must NOT block reads —
+      // the SELECT below surfaces a real "table not found" only if it genuinely doesn't exist.
+      .catch(() => true);
   }
   return tableReady;
 }
