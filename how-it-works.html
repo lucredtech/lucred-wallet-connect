@@ -296,23 +296,35 @@
       <section class="info-card">
         <h2>Verified earned income (new)</h2>
         <p>
-          A wallet can also be scored from <strong>verified income it earns through
-          on-chain escrows</strong> — even if it has no DeFi activity at all. This is
-          still <strong>on-chain</strong> income (USDC moving through
-          <a href="https://www.trustlesswork.com" target="_blank" rel="noopener">Trustless Work</a>
-          escrow contracts on Stellar) — just a different kind of on-chain activity
-          than the swaps/lending/yield above, which is why the scorer otherwise misses
-          it. Today it covers <strong>OSS-contributor bounties</strong> (e.g. GrantFox)
-          and <strong>escrow payroll</strong>. When an escrow milestone is approved and
-          paid, that payout is indexed as income for the wallet that received it.
+          A wallet can also be scored from <strong>verified income it earns
+          on-chain</strong> — even if it has no DeFi activity at all. This is real USDC
+          arriving on Stellar from income platforms — just a different kind of on-chain
+          activity than the swaps/lending/yield above, which is why the scorer otherwise
+          misses it. It covers two rails today:
         </p>
+        <ul>
+          <li>
+            <strong>Escrow income</strong> — OSS-contributor bounties and escrow payroll
+            paid through
+            <a href="https://www.trustlesswork.com" target="_blank" rel="noopener">Trustless Work</a>
+            escrow contracts (e.g. GrantFox). When a milestone is approved and paid, that
+            payout is indexed as income for the wallet that received it.
+          </li>
+          <li>
+            <strong>Grant income</strong> — OSS-contributor grants paid directly in USDC
+            by <a href="https://www.drips.network/wave" target="_blank" rel="noopener">Drips Wave</a>,
+            which funds contributors to open-source projects. Each grant payment to a
+            contributor's wallet is indexed as income.
+          </li>
+        </ul>
         <p>
           This matters because a freelancer or open-source contributor who gets paid
           regularly but has never touched a DeFi protocol would otherwise score
           <strong>zero</strong> — no history to read. Their income makes them
           scoreable. The payout itself is on-chain; the only <em>off-chain</em> part is
-          the <strong>identity</strong> — each payout is tied to a GitHub handle (via
-          the escrow's engagement reference), which makes it hard to fake. Only money
+          the <strong>identity</strong> — escrow payouts are tied to a GitHub handle via
+          the escrow's engagement reference, and grant platforms verify the contributor
+          (GitHub, and KYC) before they pay — which makes it hard to fake. Only money
           <strong>actually received</strong> is counted — the trailing-12-month
           <em>sum</em> of real payouts, never an annualized projection.
         </p>
@@ -331,7 +343,7 @@
           </tr>
           <tr>
             <td class="term">payouts (12mo)</td>
-            <td>How many separate escrow milestones paid the wallet in the last 12 months — recurring income reads stronger than a single one-off.</td>
+            <td>How many separate payouts — escrow milestones or grant payments — the wallet received in the last 12 months. Recurring income reads stronger than a single one-off.</td>
           </tr>
           <tr>
             <td class="term">$X received (12mo)</td>
