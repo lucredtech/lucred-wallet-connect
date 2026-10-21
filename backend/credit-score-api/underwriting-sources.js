@@ -30,6 +30,11 @@ const SOURCES = [
     enabled: true,
     // Wraps the existing scorer. `subject.onchainScore` is the 0–100 the current pipeline computes,
     // so this stays a thin adapter rather than a re-implementation.
+    // On-chain is the risk base and the protected floor: the blend can never score BELOW it (see
+    // compositeScore). `upliftFactor` is how much it may add when it is the *secondary* signal (i.e. a
+    // wallet whose capped income sub-score outranks a weak on-chain score) — DeFi history is strong
+    // evidence, so it adds more than income does.
+    upliftFactor: 0.6,
     async fetch(subject) {
       const s = Number(subject && subject.onchainScore);
       if (!Number.isFinite(s)) return { available: false, score: 0, confidence: 0 };
@@ -60,10 +65,13 @@ const SOURCES = [
   // platform account. The indexer emits a per-wallet `ossContribution` feature that this source scores;
   // it stays disabled until that feature is populated. Confirmed live on mainnet (low volume, early stage).
   {
-    id: "oss_contribution", label: "OSS-contributor bounty income (Trustless Work / GrantFox)", kind: "income",
-    // Live: oss-contribution.js reads credit_bureau.oss_bounty_events (backfilled 2026-10-21 with ~1,057
-    // GrantFox contributor wallets, ~$105k). Only contributes for wallets that actually have bounty income.
-    weight: 0.7, enabled: true,
+    id: "oss_contribution", label: "OSS-contributor bounty income (Trustless Work / GrantFox / Drips)", kind: "income",
+    // Live: oss-contribution.js reads credit_bureau.oss_bounty_events (GrantFox + Drips Wave + payroll).
+    // Only contributes for wallets that actually have income.
+    // POLICY: income alone is capped at 50 — a wallet with no on-chain repayment history can reach tier B
+    // at most, never tier A, on earned income alone. `upliftFactor` is how much income may add on TOP of a
+    // DeFi score (it compounds, but with diminishing returns and never lowers the DeFi score).
+    weight: 0.7, enabled: true, scoreCap: 50, upliftFactor: 0.5,
     async fetch(subject) {
       const f = subject && subject.ossContribution;
       // Need at least one real bounty payout in the trailing window to count.
@@ -96,8 +104,18 @@ const SOURCES = [
   },
 ];
 
-// Confidence- and weight-weighted blend of whatever sources returned data. Returns the final 0–100
-// score plus provenance (which sources contributed, and how much) for the on-chain `score_ref` report.
+// Compounding blend of whatever sources returned data. Two independent positive signals should score
+// HIGHER than either alone — a plain weighted average can't do that (it sits between its inputs), so a
+// lower income sub-score would drag a good DeFi score down. Instead:
+//   1. cap each source's sub-score at its `scoreCap` (income is capped at 50 → income alone can't exceed
+//      tier B; a wallet needs on-chain repayment history to reach tier A),
+//   2. take the STRONGEST capped sub-score as the base (keeps today's "pick the higher one"),
+//   3. let each remaining source add a bounded, diminishing-returns uplift on the leftover headroom
+//      (100 − running) × upliftFactor × (sub-score/100) × confidence,
+//   4. floor the result at the on-chain sub-score — income/off-chain signals can only RAISE a real
+//      on-chain score, never lower it.
+// Monotonic in every input, bounded to [0,100], and final ≥ max(inputs) ≥ on-chain. Returns the final
+// score plus provenance (raw + capped sub-scores) for the on-chain `score_ref` report.
 async function compositeScore(subject) {
   const results = await Promise.all(
     SOURCES.filter((s) => s.enabled).map(async (s) => ({ source: s, res: await s.fetch(subject).catch(() => ({ available: false })) })),
@@ -105,15 +123,28 @@ async function compositeScore(subject) {
   const contributing = results.filter((r) => r.res && r.res.available);
   if (!contributing.length) return { score: 0, sources: [], note: "no underwriting data" };
 
-  let num = 0, den = 0;
-  const provenance = [];
-  for (const { source, res } of contributing) {
-    const w = source.weight * (res.confidence == null ? 1 : res.confidence);
-    num += w * res.score;
-    den += w;
-    provenance.push({ id: source.id, label: source.label, kind: source.kind, weight: source.weight, confidence: res.confidence, score: res.score });
+  const items = contributing.map(({ source, res }) => ({
+    source, res,
+    conf: res.confidence == null ? 1 : Math.max(0, Math.min(1, res.confidence)),
+    eff: Math.max(0, Math.min(source.scoreCap == null ? 100 : source.scoreCap, Number(res.score) || 0)),
+  }));
+  items.sort((a, b) => b.eff - a.eff); // strongest capped signal first
+
+  let score = items[0].eff; // base
+  for (let i = 1; i < items.length; i++) {
+    const it = items[i];
+    const k = it.source.upliftFactor == null ? 0.5 : it.source.upliftFactor;
+    score += (100 - score) * k * (it.eff / 100) * it.conf; // bounded, diminishing uplift
   }
-  const score = Math.round(den > 0 ? num / den : 0);
+  // Floor: never below the on-chain (risk) sub-score.
+  const onchain = items.find((it) => it.source.kind === "onchain");
+  if (onchain) score = Math.max(score, onchain.eff);
+  score = Math.round(Math.max(0, Math.min(100, score)));
+
+  const provenance = items.map((it) => ({
+    id: it.source.id, label: it.source.label, kind: it.source.kind, weight: it.source.weight,
+    confidence: it.res.confidence, score: it.res.score, cappedScore: it.eff,
+  }));
   return { score, sources: provenance };
 }
 

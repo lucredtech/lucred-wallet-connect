@@ -836,7 +836,9 @@ async function applyIncomeBlend(result, wallet) {
     const subject = { ossContribution: oss, ...(hasHistory ? { onchainScore: result.score, onchainSignals: {} } : {}) };
     const composite = await compositeScore(subject);
     const ossSrc = (composite && composite.sources || []).find((s) => s.id === "oss_contribution");
-    const ossScore = ossSrc ? Math.round(ossSrc.score) : 0;
+    // Show the income's policy-capped sub-score (income is capped at 50), so the pill reflects how much
+    // income can actually contribute, not an uncapped raw figure.
+    const ossScore = ossSrc ? Math.round(ossSrc.cappedScore != null ? ossSrc.cappedScore : ossSrc.score) : 0;
 
     // Always surface the earned income as a breakdown pill, even when it doesn't change the score (so a
     // wallet that earns bounties but scores higher on DeFi activity still SHOWS the income). The pill's
