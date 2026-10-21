@@ -172,8 +172,13 @@ export function extractBountyIncome(ev: DecodedEvent, opts: ExtractOptions = {})
   const out: OssBountyEvent[] = [];
   const milestones = Array.isArray(escrow.milestones) ? escrow.milestones : [];
   milestones.forEach((m, i) => {
-    const released = m.flags?.released === true || m.status === "released";
-    if (!released) return;
+    // A milestone is income once its funds are committed to the contributor. Platforms differ on which
+    // flag they flip: KutanaPay sets status/flags "released"; GrantFox pays on APPROVAL
+    // (release_milestone_funds) and never sets the released flag (confirmed on real mainnet escrows —
+    // statuses stay pending/approved/REJECTED). So count approved OR released, excluding rejected/disputed.
+    const rejected = m.status === "REJECTED" || m.flags?.disputed === true;
+    const earned = !rejected && (m.flags?.released === true || m.status === "released" || m.flags?.approved === true);
+    if (!earned) return;
     const receiver = m.receiver || escrow.roles?.receiver || escrow.roles?.service_provider;
     if (receiver) out.push(base(receiver, i, toUnits(m.amount)));
   });
