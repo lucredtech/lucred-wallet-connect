@@ -23,8 +23,11 @@ let latest = 0;
 let toastT: number | undefined;
 function toast(msg: string, err = false) {
   const el = $("toast"); el.className = err ? "err" : ""; el.textContent = msg;
-  el.classList.add("show"); window.clearTimeout(toastT);
-  toastT = window.setTimeout(() => el.classList.remove("show"), 3000);
+  el.classList.add("show");
+  const arm = () => { window.clearTimeout(toastT); toastT = window.setTimeout(() => el.classList.remove("show"), 5000); };
+  arm();
+  el.onmouseenter = () => window.clearTimeout(toastT); // pause while hovered
+  el.onmouseleave = arm;
 }
 
 function ageOf(ledger: number): string {

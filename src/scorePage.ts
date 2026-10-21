@@ -24,8 +24,13 @@ function toast(msg: string, opts: { tx?: string; err?: boolean } = {}) {
   el.className = opts.err ? "err" : "";
   el.innerHTML = msg + (opts.tx ? ` <a href="${EXPLORER}/tx/${opts.tx}" target="_blank" rel="noopener">view ↗</a>` : "");
   el.classList.add("show");
-  window.clearTimeout(toastT);
-  toastT = window.setTimeout(() => el.classList.remove("show"), 3200);
+  // Actionable toasts (with a "view" link) linger longer; pause the dismiss while hovered so the link
+  // stays clickable.
+  const ms = opts.tx ? 9000 : 5000;
+  const arm = () => { window.clearTimeout(toastT); toastT = window.setTimeout(() => el.classList.remove("show"), ms); };
+  arm();
+  el.onmouseenter = () => window.clearTimeout(toastT);
+  el.onmouseleave = arm;
 }
 
 function renderGauge(score: number | null) {
