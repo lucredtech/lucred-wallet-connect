@@ -256,6 +256,45 @@ fn dust_loan_does_not_complete_a_cycle() {
     assert_eq!(s.client.get_history(&s.borrower).cycles_completed, 0);
 }
 
+// End-to-end lifecycle for a score-55 wallet — newly eligible under the 50 gate (it got $0 before).
+// Walks the whole journey: graded line → draw → accrue → repay → a qualifying cycle grows the line and
+// cuts the APR. 55 is tier B: starter $11.25 ($5 + $20 × (55-50)/16), APR 5975 bps (800+1065+300+3810).
+#[test]
+fn score_55_full_lifecycle() {
+    let s = setup();
+    s.client.deposit(&s.lender, &usdc(1_000)); // pool liquidity
+    let cap = 112_500_000i128; // $11.25 — the on-chain quote cap for score 55
+    assert_eq!(s.client.quote(&55, &0), (2, 5975, cap));
+
+    s.client.set_line(&s.borrower, &55, &cap, &href(&s.env));
+    let line = s.client.get_line(&s.borrower);
+    assert_eq!(line.tier, 2);
+    assert_eq!(line.apr_bps, 5975);
+    assert_eq!(line.limit, cap);
+
+    // Can't draw over the $11.25 line.
+    assert!(s.client.try_borrow(&s.borrower, &(cap + 1)).is_err());
+
+    // Draw $6 (≥ 50% of the line → counts toward a cycle), hold 22 days, repay in full.
+    s.client.borrow(&s.borrower, &usdc(6));
+    assert_eq!(s.client.get_line(&s.borrower).principal, usdc(6));
+    advance(&s.env, 22 * DAY);
+    let (p, i) = s.client.owed(&s.borrower);
+    assert_eq!(p, usdc(6));
+    assert!(i > 0);
+    s.client.repay(&s.borrower, &s.borrower, &(p + i));
+    assert_eq!(s.client.owed(&s.borrower), (0, 0));
+
+    // One cycle: APR drops (−50 bps discount − 250 bps default-premium relief → 5675) and the line
+    // grows to $22.50 (starter × (1 + 1)), still under the $250 tier-B ceiling.
+    let h = s.client.get_history(&s.borrower);
+    assert_eq!(h.cycles_completed, 1);
+    let line2 = s.client.get_line(&s.borrower);
+    assert_eq!(line2.apr_bps, 5675);
+    assert_eq!(line2.limit, cap * 2);
+    assert_eq!(s.client.quote(&55, &1), (2, 5675, cap * 2));
+}
+
 // ---------------------------------------------------------------- secured --
 
 #[test]
