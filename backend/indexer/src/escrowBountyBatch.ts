@@ -9,6 +9,9 @@
 import { xdr, Address, scValToNative } from '@stellar/stellar-sdk';
 import { extractBountyIncome, TW_TOPICS, type OssBountyEvent, type DecodedEvent } from './escrowBounty';
 
+// Platforms already logged as unregistered this process — log each only once to avoid spamming.
+const loggedUnknownPlatforms = new Set<string>();
+
 function extractContractEvents(txMeta: xdr.TransactionMeta): xdr.ContractEvent[] {
   if (txMeta.type === 'v3') return txMeta.v3.sorobanMeta?.events ?? [];
   if (txMeta.type === 'v4') {
@@ -70,8 +73,21 @@ export function parseEscrowBountyBatch(rawXdr: Buffer): OssBountyEvent[] {
           continue;
         }
         const decoded: DecodedEvent = { contractId, topic, value, ledgerSequence, transactionHash: txHash, blockCloseTime };
-        // Default registry (TRUSTLESS_WORK_PLATFORMS) decides include/incomeType per platform.
-        out.push(...extractBountyIncome(decoded));
+        // Default registry (TRUSTLESS_WORK_PLATFORMS) decides include/incomeType per platform. The
+        // onUnknownPlatform hook logs any platform not in the registry (once per platform per process) so
+        // new Trustless Work platforms surface in the indexer logs for review — see also the scheduled
+        // unregistered-platform report (ops/tw-platform-monitor).
+        out.push(...extractBountyIncome(decoded, {
+          onUnknownPlatform: (platform, ctx) => {
+            if (loggedUnknownPlatforms.has(platform)) return;
+            loggedUnknownPlatforms.add(platform);
+            console.warn(
+              `🆕 Unregistered Trustless Work platform ${platform} — engagement "${ctx.engagementId ?? ''}", ` +
+              `title "${ctx.title ?? ''}", contract ${ctx.contract}. Income NOT indexed until it's classified ` +
+              `in TRUSTLESS_WORK_PLATFORMS (include/exclude + incomeType).`
+            );
+          },
+        }));
       }
     }
   }

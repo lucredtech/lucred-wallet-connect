@@ -98,6 +98,10 @@ export interface ExtractOptions {
   /** Emit escrows from platforms NOT in the registry, tagged incomeType "unclassified" (for discovery).
    *  Off by default so unknown platforms are never scored as income. */
   includeUnclassified?: boolean;
+  /** Discovery hook: called for every escrow whose roles.platform is NOT in the registry, so new
+   *  Trustless Work platforms get surfaced for a human to classify (include/exclude + income type)
+   *  instead of being silently skipped. Does not affect what gets emitted. */
+  onUnknownPlatform?: (platform: string, ctx: { engagementId?: string; title?: string; contract: string }) => void;
 }
 
 interface Milestone {
@@ -151,6 +155,12 @@ export function extractBountyIncome(ev: DecodedEvent, opts: ExtractOptions = {})
   if (!escrow) return [];
   const platform = escrow.roles?.platform;
   if (!platform) return [];
+
+  // Discovery: surface any platform not in the registry so new Trustless Work platforms get reviewed
+  // instead of silently skipped. (platformFilter is the legacy single-platform path — no registry there.)
+  if (opts.onUnknownPlatform && !opts.platformFilter && !(opts.registry ?? TRUSTLESS_WORK_PLATFORMS)[platform]) {
+    opts.onUnknownPlatform(platform, { engagementId: escrow.engagement_id, title: escrow.title, contract: ev.contractId });
+  }
 
   const policy = resolvePolicy(platform, opts);
   if (!policy) return [];
