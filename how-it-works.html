@@ -294,22 +294,25 @@
       </section>
 
       <section class="info-card">
-        <h2>Verified off-chain income (new)</h2>
+        <h2>Verified earned income (new)</h2>
         <p>
           A wallet can also be scored from <strong>verified income it earns through
-          on-chain escrows</strong> — even if it has no DeFi activity at all. Today
-          this covers <strong>OSS-contributor bounties</strong> (e.g. GrantFox) and
-          <strong>escrow payroll</strong>, both paid through
+          on-chain escrows</strong> — even if it has no DeFi activity at all. This is
+          still <strong>on-chain</strong> income (USDC moving through
           <a href="https://www.trustlesswork.com" target="_blank" rel="noopener">Trustless Work</a>
-          escrows on Stellar. When an escrow milestone is approved and paid in USDC,
-          that payout is indexed as income for the wallet that received it.
+          escrow contracts on Stellar) — just a different kind of on-chain activity
+          than the swaps/lending/yield above, which is why the scorer otherwise misses
+          it. Today it covers <strong>OSS-contributor bounties</strong> (e.g. GrantFox)
+          and <strong>escrow payroll</strong>. When an escrow milestone is approved and
+          paid, that payout is indexed as income for the wallet that received it.
         </p>
         <p>
           This matters because a freelancer or open-source contributor who gets paid
           regularly but has never touched a DeFi protocol would otherwise score
           <strong>zero</strong> — no history to read. Their income makes them
-          scoreable. Each payout is tied to a GitHub identity (via the escrow's
-          engagement reference), so it's hard to fake, and only money
+          scoreable. The payout itself is on-chain; the only <em>off-chain</em> part is
+          the <strong>identity</strong> — each payout is tied to a GitHub handle (via
+          the escrow's engagement reference), which makes it hard to fake. Only money
           <strong>actually received</strong> is counted — the trailing-12-month
           <em>sum</em> of real payouts, never an annualized projection.
         </p>
