@@ -52,7 +52,7 @@ function renderKpis(k: Kpis, p: Analytics["product"]) {
   // income (USDC through Stellar escrows); only the contributor identity is off-chain. Shown once populated.
   if (p.incomeWallets && p.incomeWallets > 0) {
     // ‑ = non-breaking hyphen so "on-chain" never splits across lines ("on-" / "chain").
-    tiles.push(tile("Verified income indexed", usd(p.incomeUsd || 0), full.format(p.incomeWallets) + " wallets · GrantFox + Drips"));
+    tiles.push(tile("Verified income indexed", usd(p.incomeUsd || 0), full.format(p.incomeWallets) + " wallets"));
   }
   $("an-kpis").innerHTML = tiles.join("");
 }
