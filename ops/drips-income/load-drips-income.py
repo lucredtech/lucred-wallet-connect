@@ -17,9 +17,11 @@ backfill and the daily incremental run are both safe to re-run.
   Backfill (whole history):   ./load-drips-income.py --full
   Daily incremental (cron):   ./load-drips-income.py          # pages newest-first, stops once caught up
 
-Brand note: the treasury was identified behaviorally (666 recipients overlap our known OSS contributors;
-the documented Drips $1-test->grant flow; Circle USDC; numeric grant-id memos; account created
-~2026-01-30). Attribution to "Drips Wave" is inferential pending a ground-truth payout tx.
+Brand: CONFIRMED as the Drips Wave treasury (2026-10-21). A Drips Wave grantee confirmed that the
+payments from this account to GAE6BEVEA6IH4HLTGU3AEGZZWSLNCCWLKD4GLN2XHLXFFNFB24COWUJY (e.g. tx
+8e46c623752c992bbf0f58ad16eb0614879cec7325f5fee1be21e662d1a99d45, verified on-chain as sent by this
+treasury) are genuine Drips Wave withdrawals. Corroborated by Drips' own open-source app
+(drips-network/app src/lib/utils/wave/stellar.ts): Wave pays Circle USDC on Stellar mainnet.
 """
 import json, os, subprocess, sys, tempfile, time, urllib.request
 

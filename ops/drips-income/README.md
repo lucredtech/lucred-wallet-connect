@@ -16,9 +16,10 @@ that for this window costs ~$28).
 - Treasury account: `GC2SFZ2EQ4XIPBQIXYJMQSLVG7NQSHAIGB4PVTBIVTOTJDMNS4NJD4EU` (created ~2026-01-30)
 - Asset: Circle USDC (`GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`, SAC `CCW67TSZ…SJMI75`)
 - We keep grants `> $1` (the `$1` payments are withdrawal tests, not earnings).
-- **Brand attribution is behavioral/inferred**: 666 recipients overlap our known OSS contributors; the
-  documented Drips `$1`-test→grant flow; numeric grant-id memos; recent account. Confirm with a
-  ground-truth Drips payout tx if certainty is needed.
+- **Brand: CONFIRMED** (2026-10-21). A Drips Wave grantee confirmed the treasury's payments to
+  `GAE6BEVEA6IH4HLTGU3AEGZZWSLNCCWLKD4GLN2XHLXFFNFB24COWUJY` (e.g. tx `8e46c623…`, verified on-chain as
+  sent by this treasury) are genuine Drips Wave withdrawals. Also corroborated by Drips' own open-source
+  app (`drips-network/app` → `src/lib/utils/wave/stellar.ts`): Wave pays Circle USDC on Stellar mainnet.
 
 ## Run
 ```bash
