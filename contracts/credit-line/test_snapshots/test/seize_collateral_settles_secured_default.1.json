@@ -719,10 +719,26 @@
                     },
                     {
                       "key": {
+                        "symbol": "last_laddered_at"
+                      },
+                      "val": {
+                        "u64": 0
+                      }
+                    },
+                    {
+                      "key": {
                         "symbol": "last_repaid_at"
                       },
                       "val": {
                         "u64": 0
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "last_writeoff_at"
+                      },
+                      "val": {
+                        "u64": 1000000
                       }
                     },
                     {
@@ -827,6 +843,14 @@
                     },
                     {
                       "key": {
+                        "symbol": "due_at"
+                      },
+                      "val": {
+                        "u64": 0
+                      }
+                    },
+                    {
+                      "key": {
                         "symbol": "interest"
                       },
                       "val": {
@@ -888,6 +912,14 @@
                       },
                       "val": {
                         "bool": true
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "term_days"
+                      },
+                      "val": {
+                        "u32": 0
                       }
                     },
                     {

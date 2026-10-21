@@ -14,9 +14,11 @@
 //! repaid, and on default the underwriter settles the debt from them.
 //!
 //! Pricing (LCRD policy 2026-10), in basis points:
-//!   unsecured APR = 800 cost of funds + score premium (2000 at score 0 → 300 at 100) + 300 surcharge,
-//!   clamped to [600, 3600]; secured APR = 800 + 35% of the score premium; both − 50 bps per completed
-//!   cycle (max 200). Tiers: A = 67-100, B = 34-66, C = 0-33. Unsecured needs score ≥ 60.
+//!   unsecured APR = 800 cost of funds + score premium (2000 at score 0 → 300 at 100) + 300 surcharge
+//!   + default/expected-loss premium (4100 at score 50 → 1200 at 100), − 50 bps per completed cycle
+//!   (max 200), clamped to [600, 7000]; secured APR = 800 + 35% of the score premium − cycle discount.
+//!   Tiers: A = 67-100, B = 34-66, C = 0-33. Unsecured needs score ≥ 50; the starter line is graded by
+//!   score within the eligible band — tier B (50-66) $5→$25, tier A (67-100) $26→$50.
 //!
 //! Amounts are in USDC base units at **7 decimals** (Stellar USDC), as `i128`. Identity is the
 //! borrower's own Stellar address — there is no cross-chain proof step (unlike the Arc/EVM original).
@@ -44,7 +46,10 @@ const MAX_APR_BPS: i128 = 7_000; // raised to let the default premium be priced 
 // rates seen on comparable unsecured crypto credit (e.g. Divine Research); priced highest for new,
 // low-score borrowers and decaying as they prove repayment. This is what makes the pool solvent and
 // the yield substantial: interest from the performing book covers the cohort that defaults.
-const DEFAULT_PD_AT_MIN_BPS: i128 = 3_500; // 35% PD at the minimum eligible score (60)
+// 41% PD at the minimum eligible score (50). Keeps the same ~57.5 bps/score-point risk slope as the
+// old 35%@60 anchor, just extended down to the new floor: a score-50 borrower is riskier than the old
+// score-60 floor and is priced for it, while the 60-100 cohort stays ~unchanged (PD@60 ≈ 35% still).
+const DEFAULT_PD_AT_MIN_BPS: i128 = 4_100;
 const DEFAULT_PD_AT_MAX_BPS: i128 = 1_200; // 12% PD at score 100
 const DEFAULT_PD_CYCLE_RELIEF_BPS: i128 = 250; // each proven cycle cuts PD 2.5%
 const DEFAULT_PD_FLOOR_BPS: i128 = 500; // 5% residual PD even for long-proven borrowers
@@ -52,12 +57,17 @@ const LATE_PENALTY_BPS: i128 = 1_200; // extra APR charged while a fixed-term li
 const DAY_SECONDS: u64 = 24 * 60 * 60;
 const TIER_A_MIN_SCORE: u32 = 67;
 const TIER_B_MIN_SCORE: u32 = 34;
-const UNSECURED_MIN_SCORE: u32 = 60; // minimum score for any unsecured line
+const UNSECURED_MIN_SCORE: u32 = 50; // minimum score for any unsecured line
 
 // 7-decimal USDC base units.
 const USDC_ONE: i128 = 10_000_000;
-const TIER_A_MAX_LIMIT: i128 = 50 * USDC_ONE; // starter line, tier A
-const TIER_B_MAX_LIMIT: i128 = 25 * USDC_ONE; // starter line, tier B
+// Starter line, graded by score (not a flat per-tier amount): the eligible band is split at the tier
+// boundary so a higher score always earns a larger first line. Tier B (score 50-66) runs $5 -> $25;
+// tier A (score 67-100) runs $26 -> $50. See `starter_limit`.
+const STARTER_B_MIN_LIMIT: i128 = 5 * USDC_ONE; // tier B, at UNSECURED_MIN_SCORE (50)
+const STARTER_B_MAX_LIMIT: i128 = 25 * USDC_ONE; // tier B, at the top of tier B (66)
+const STARTER_A_MIN_LIMIT: i128 = 26 * USDC_ONE; // tier A, at TIER_A_MIN_SCORE (67)
+const STARTER_A_MAX_LIMIT: i128 = 50 * USDC_ONE; // tier A, at score 100
 const TIER_A_CEILING: i128 = 2_500 * USDC_ONE; // reachable through repayments
 const TIER_B_CEILING: i128 = 250 * USDC_ONE;
 
@@ -414,20 +424,22 @@ impl CreditLine {
     // --------------------------------------------------------- underwriting --
 
     /// LCRD's price for a score and a repayment record: the risk tier, the APR and the largest
-    /// unsecured line. Tier C (and any score below 55) gets no unsecured line (max_limit 0). Pure.
+    /// unsecured line. Any score below UNSECURED_MIN_SCORE (50) gets no unsecured line (max_limit 0).
+    /// The starter line is graded by score within the eligible band ($5 at 50 up to $50 at 100), not a
+    /// flat per-tier amount. Pure.
     pub fn quote(env: Env, score: u32, cycles_completed: u32) -> (u32, u32, i128) {
         if score > 100 {
             panic_with_error!(&env, Error::BadScore);
         }
-        let (tier, starter, ceiling): (u32, i128, i128) = if score >= TIER_A_MIN_SCORE {
-            (1, TIER_A_MAX_LIMIT, TIER_A_CEILING)
+        let (tier, ceiling): (u32, i128) = if score >= TIER_A_MIN_SCORE {
+            (1, TIER_A_CEILING)
         } else if score >= TIER_B_MIN_SCORE {
-            (2, TIER_B_MAX_LIMIT, TIER_B_CEILING)
+            (2, TIER_B_CEILING)
         } else {
-            (3, 0, 0)
+            (3, 0)
         };
         let mut max_limit = if score >= UNSECURED_MIN_SCORE {
-            starter * (1 + cycles_completed as i128)
+            Self::starter_limit(score) * (1 + cycles_completed as i128)
         } else {
             0
         };
@@ -436,6 +448,22 @@ impl CreditLine {
         }
         let apr = Self::unsecured_apr(score, cycles_completed);
         (tier, apr, max_limit)
+    }
+
+    /// Starter (0-cycle) unsecured line in USDC base units, graded by score. Only meaningful for an
+    /// eligible score (>= UNSECURED_MIN_SCORE); `quote` guards the gate. Piecewise so the amount steps
+    /// up across the tier boundary: tier B (50-66) runs $5 -> $25, tier A (67-100) runs $26 -> $50.
+    fn starter_limit(score: u32) -> i128 {
+        let s = if score > 100 { 100 } else { score } as i128;
+        if s >= TIER_A_MIN_SCORE as i128 {
+            let span = 100 - TIER_A_MIN_SCORE as i128; // 33
+            STARTER_A_MIN_LIMIT
+                + (STARTER_A_MAX_LIMIT - STARTER_A_MIN_LIMIT) * (s - TIER_A_MIN_SCORE as i128) / span
+        } else {
+            let span = TIER_A_MIN_SCORE as i128 - 1 - UNSECURED_MIN_SCORE as i128; // 16 (50..=66)
+            STARTER_B_MIN_LIMIT
+                + (STARTER_B_MAX_LIMIT - STARTER_B_MIN_LIMIT) * (s - UNSECURED_MIN_SCORE as i128) / span
+        }
     }
 
     /// LCRD's secured price: 8% + 35% of the score premium, less the cycle discount. Pure.

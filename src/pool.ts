@@ -46,7 +46,7 @@ const CONTRACT_ERRORS: Record<string, string> = {
   "4": "Only the underwriter can open an unsecured line — use “Request unsecured line”.",
   "6": "Enter an amount greater than zero.",
   "8": "That credit score isn’t valid.",
-  "9": "This wallet isn’t eligible for an unsecured line yet (needs tier A, or tier B with a score of 55+). You can borrow with a secured line instead.",
+  "9": "This wallet isn’t eligible for an unsecured line yet (needs a credit score of 50 or higher). You can borrow with a secured line instead.",
   "10": "This credit line is frozen, so you can’t draw on it right now.",
   "11": "That’s more than your limit. Lower the amount, or complete a repayment cycle to grow your line.",
   "12": "The pool doesn’t have enough available USDC right now — try a smaller amount.",

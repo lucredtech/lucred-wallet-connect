@@ -69,32 +69,52 @@ fn href(env: &Env) -> BytesN<32> {
 #[test]
 fn quote_matches_policy() {
     let s = setup();
-    // Site example: score 71 → 8% + 7.93% + 3% = 18.93% = 1893 bps, tier A, 100 USDC starter.
-    let (tier, apr, max) = s.client.quote(&71, &0);
-    assert_eq!(tier, 1);
-    assert_eq!(apr, 1893);
-    assert_eq!(max, usdc(100));
+    // APR = 800 base + score premium (2000@0→300@100) + 300 surcharge + default premium (4100@50→1200@100).
+    // Starter line is graded by score: tier B (50-66) $5→$25, tier A (67-100) $26→$50.
 
-    // Tier B lower half (score 40): eligible for no unsecured line (needs 55+).
-    let (tier_b, _, max_b) = s.client.quote(&40, &0);
+    // Top score (100): premium 300, default premium 1200 → 800+300+300+1200 = 2600 bps; starter $50 (tier A max).
+    let (tier, apr, max) = s.client.quote(&100, &0);
+    assert_eq!(tier, 1);
+    assert_eq!(apr, 2600);
+    assert_eq!(max, usdc(50));
+
+    // Tier A floor (67): $26 starter (not an instant $50).
+    let (tier_a0, _, max_a0) = s.client.quote(&67, &0);
+    assert_eq!(tier_a0, 1);
+    assert_eq!(max_a0, usdc(26));
+
+    // Tier B top (66): $25 starter.
+    let (tier_b_top, _, max_b_top) = s.client.quote(&66, &0);
+    assert_eq!(tier_b_top, 2);
+    assert_eq!(max_b_top, usdc(25));
+
+    // Minimum eligible score (50): premium 1150, default premium 4100 → 800+1150+300+4100 = 6350 bps; $5 starter.
+    let (tier_min, apr_min, max_min) = s.client.quote(&50, &0);
+    assert_eq!(tier_min, 2);
+    assert_eq!(apr_min, 6350);
+    assert_eq!(max_min, usdc(5));
+
+    // Just below the gate (49): tier B but no unsecured line.
+    let (tier_b, _, max_b) = s.client.quote(&49, &0);
     assert_eq!(tier_b, 2);
     assert_eq!(max_b, 0);
-
-    // Tier B upper half (score 60): 75 USDC starter.
-    let (_, _, max_b2) = s.client.quote(&60, &0);
-    assert_eq!(max_b2, usdc(75));
 
     // Tier C: never an unsecured line.
     let (tier_c, _, max_c) = s.client.quote(&10, &0);
     assert_eq!(tier_c, 3);
     assert_eq!(max_c, 0);
 
-    // Cycle discount lowers APR and raises the limit; clamped at the ceiling / 200 bps.
-    let (_, apr1, max1) = s.client.quote(&71, &1);
-    assert_eq!(apr1, 1843); // −50 bps
-    assert_eq!(max1, usdc(200)); // starter × (1 + cycles)
-    let (_, apr9, _) = s.client.quote(&71, &9);
-    assert_eq!(apr9, 1693); // discount capped at 200 bps
+    // APR strictly decreases as score rises across the eligible band.
+    assert!(s.client.quote(&50, &0).1 > s.client.quote(&75, &0).1);
+    assert!(s.client.quote(&75, &0).1 > s.client.quote(&100, &0).1);
+
+    // Cycle discount lowers APR (−50 bps/cycle, capped 200) and grows the limit (× (1 + cycles), capped at ceiling).
+    let (_, apr1, max1) = s.client.quote(&100, &1);
+    assert_eq!(apr1, 2300); // 2600 − 50 bps discount − 250 bps cycle PD relief
+    assert_eq!(max1, usdc(100)); // $50 starter × (1 + 1)
+    let (_, apr9, max9) = s.client.quote(&100, &9);
+    assert_eq!(apr9, 1700); // default premium at its 500-bp floor, discount capped at 200 bps
+    assert_eq!(max9, usdc(500)); // $50 × 10, still under the $2,500 ceiling
 }
 
 #[test]
@@ -137,23 +157,24 @@ fn deposit_then_withdraw_restores_balance() {
 fn unsecured_borrow_accrues_interest_and_repays() {
     let s = setup();
     s.client.deposit(&s.lender, &usdc(1_000)); // pool liquidity
-    s.client.set_line(&s.borrower, &71, &usdc(100), &href(&s.env));
+    // Score 100: APR 26% (2600 bps), $50 starter line.
+    s.client.set_line(&s.borrower, &100, &usdc(50), &href(&s.env));
 
     let line = s.client.get_line(&s.borrower);
     assert_eq!(line.tier, 1);
-    assert_eq!(line.apr_bps, 1893);
-    assert_eq!(line.limit, usdc(100));
+    assert_eq!(line.apr_bps, 2600);
+    assert_eq!(line.limit, usdc(50));
     assert!(!line.secured && line.active);
 
-    s.client.borrow(&s.borrower, &usdc(50));
-    assert_eq!(s.client.get_line(&s.borrower).principal, usdc(50));
-    assert_eq!(s.client.total_principal_view(), usdc(50));
+    s.client.borrow(&s.borrower, &usdc(25));
+    assert_eq!(s.client.get_line(&s.borrower).principal, usdc(25));
+    assert_eq!(s.client.total_principal_view(), usdc(25));
 
     advance(&s.env, YEAR_SECS);
-    // 18.93% of 50 USDC = 9.465 USDC.
+    // 26% of 25 USDC = 6.5 USDC.
     let (principal, interest) = s.client.owed(&s.borrower);
-    assert_eq!(principal, usdc(50));
-    assert_eq!(interest, 94_650_000);
+    assert_eq!(principal, usdc(25));
+    assert_eq!(interest, 65_000_000);
 
     let payoff = principal + interest;
     let paid = s.client.repay(&s.borrower, &s.borrower, &payoff);
@@ -161,23 +182,23 @@ fn unsecured_borrow_accrues_interest_and_repays() {
     let (p2, i2) = s.client.owed(&s.borrower);
     assert_eq!((p2, i2), (0, 0));
     // Repaid interest accrues to the pool (share value rises).
-    assert_eq!(s.client.total_repaid_interest(), 94_650_000);
-    assert_eq!(s.client.total_assets(), usdc(1_000) + 94_650_000);
+    assert_eq!(s.client.total_repaid_interest(), 65_000_000);
+    assert_eq!(s.client.total_assets(), usdc(1_000) + 65_000_000);
 }
 
 #[test]
 fn borrow_over_limit_rejected() {
     let s = setup();
     s.client.deposit(&s.lender, &usdc(1_000));
-    s.client.set_line(&s.borrower, &71, &usdc(100), &href(&s.env));
-    assert!(s.client.try_borrow(&s.borrower, &usdc(101)).is_err());
+    s.client.set_line(&s.borrower, &100, &usdc(50), &href(&s.env));
+    assert!(s.client.try_borrow(&s.borrower, &usdc(51)).is_err());
 }
 
 #[test]
 fn set_line_over_tier_max_rejected() {
     let s = setup();
-    // Tier A starter max is 100 USDC at 0 cycles.
-    assert!(s.client.try_set_line(&s.borrower, &71, &usdc(101), &href(&s.env)).is_err());
+    // Score 100's starter max is $50 at 0 cycles.
+    assert!(s.client.try_set_line(&s.borrower, &100, &usdc(51), &href(&s.env)).is_err());
 }
 
 #[test]
@@ -190,7 +211,7 @@ fn tier_c_not_eligible() {
 fn borrow_beyond_liquidity_rejected() {
     let s = setup();
     s.client.deposit(&s.lender, &usdc(30)); // only 30 USDC in the pool
-    s.client.set_line(&s.borrower, &71, &usdc(100), &href(&s.env));
+    s.client.set_line(&s.borrower, &100, &usdc(50), &href(&s.env));
     assert!(s.client.try_borrow(&s.borrower, &usdc(50)).is_err());
 }
 
@@ -200,10 +221,11 @@ fn borrow_beyond_liquidity_rejected() {
 fn qualifying_cycle_lowers_apr_and_grows_limit() {
     let s = setup();
     s.client.deposit(&s.lender, &usdc(1_000));
-    s.client.set_line(&s.borrower, &71, &usdc(100), &href(&s.env));
+    // Score 100: $50 starter line at 0 cycles.
+    s.client.set_line(&s.borrower, &100, &usdc(50), &href(&s.env));
 
-    s.client.borrow(&s.borrower, &usdc(25)); // ≥ 25% of the 100 limit
-    advance(&s.env, 8 * DAY); // ≥ 7 days
+    s.client.borrow(&s.borrower, &usdc(25)); // ≥ 50% of the $50 limit (peak-use requirement)
+    advance(&s.env, 22 * DAY); // ≥ the 21-day minimum hold for a cycle to count
     let (p, i) = s.client.owed(&s.borrower);
     s.client.repay(&s.borrower, &s.borrower, &(p + i));
 
@@ -211,24 +233,24 @@ fn qualifying_cycle_lowers_apr_and_grows_limit() {
     assert_eq!(h.cycles_completed, 1);
     assert_eq!(h.repayments, 1);
     let line = s.client.get_line(&s.borrower);
-    // APR dropped 50 bps automatically.
-    assert_eq!(line.apr_bps, 1843);
-    // Ladder: the active limit auto-raised to the new tier max (100 -> 200), no re-issue needed.
-    assert_eq!(line.limit, usdc(200));
-    assert_eq!(s.client.quote(&71, &h.cycles_completed).2, usdc(200));
+    // APR dropped automatically after the cycle (−50 bps discount and −250 bps default-premium relief).
+    assert_eq!(line.apr_bps, 2300);
+    // Ladder: the active limit auto-raised with the cycle ($50 → $100 = starter × (1 + cycles)).
+    assert_eq!(line.limit, usdc(100));
+    assert_eq!(s.client.quote(&100, &h.cycles_completed).2, usdc(100));
     // And the borrower can immediately draw against the higher limit.
-    s.client.borrow(&s.borrower, &usdc(150));
-    assert_eq!(s.client.get_line(&s.borrower).principal, usdc(150));
+    s.client.borrow(&s.borrower, &usdc(75));
+    assert_eq!(s.client.get_line(&s.borrower).principal, usdc(75));
 }
 
 #[test]
 fn dust_loan_does_not_complete_a_cycle() {
     let s = setup();
     s.client.deposit(&s.lender, &usdc(1_000));
-    s.client.set_line(&s.borrower, &71, &usdc(100), &href(&s.env));
+    s.client.set_line(&s.borrower, &100, &usdc(50), &href(&s.env));
 
-    s.client.borrow(&s.borrower, &usdc(10)); // < 25% of the limit
-    advance(&s.env, 8 * DAY);
+    s.client.borrow(&s.borrower, &usdc(10)); // < 50% of the $50 limit (below peak-use requirement)
+    advance(&s.env, 22 * DAY); // held long enough; only the small draw stops the cycle counting
     let (p, i) = s.client.owed(&s.borrower);
     s.client.repay(&s.borrower, &s.borrower, &(p + i));
     assert_eq!(s.client.get_history(&s.borrower).cycles_completed, 0);
@@ -285,15 +307,15 @@ fn cannot_withdraw_collateral_backing_a_secured_loan() {
 fn write_off_lowers_pool_value() {
     let s = setup();
     s.client.deposit(&s.lender, &usdc(1_000));
-    s.client.set_line(&s.borrower, &71, &usdc(100), &href(&s.env));
-    s.client.borrow(&s.borrower, &usdc(50));
+    s.client.set_line(&s.borrower, &100, &usdc(50), &href(&s.env));
+    s.client.borrow(&s.borrower, &usdc(25));
     let assets_before = s.client.total_assets();
 
     s.client.write_off(&s.borrower);
-    assert_eq!(s.client.total_written_off(), usdc(50));
+    assert_eq!(s.client.total_written_off(), usdc(25));
     assert_eq!(s.client.total_principal_view(), 0);
     // Principal left the pool's assets, so lenders bear the loss.
-    assert_eq!(s.client.total_assets(), assets_before - usdc(50));
+    assert_eq!(s.client.total_assets(), assets_before - usdc(25));
     let h = s.client.get_history(&s.borrower);
     assert_eq!(h.write_offs, 1);
     assert_eq!(h.cycles_completed, 0);
@@ -323,13 +345,13 @@ fn seize_collateral_settles_secured_default() {
 fn repay_overpayment_is_refunded() {
     let s = setup();
     s.client.deposit(&s.lender, &usdc(1_000));
-    s.client.set_line(&s.borrower, &71, &usdc(100), &href(&s.env));
-    s.client.borrow(&s.borrower, &usdc(50));
-    let bal_before = s.usdc_tok.balance(&s.borrower); // seed + 50 borrowed
-    // No time advance → interest 0 → payoff = 50 USDC. Overpay 60; 10 should come back.
-    let paid = s.client.repay(&s.borrower, &s.borrower, &usdc(60));
-    assert_eq!(paid, usdc(50));
-    assert_eq!(s.usdc_tok.balance(&s.borrower), bal_before - usdc(50));
+    s.client.set_line(&s.borrower, &100, &usdc(50), &href(&s.env));
+    s.client.borrow(&s.borrower, &usdc(25));
+    let bal_before = s.usdc_tok.balance(&s.borrower); // seed + 25 borrowed
+    // No time advance → interest 0 → payoff = 25 USDC. Overpay 30; 5 should come back.
+    let paid = s.client.repay(&s.borrower, &s.borrower, &usdc(30));
+    assert_eq!(paid, usdc(25));
+    assert_eq!(s.usdc_tok.balance(&s.borrower), bal_before - usdc(25));
     let (p, i) = s.client.owed(&s.borrower);
     assert_eq!((p, i), (0, 0));
 }
@@ -338,7 +360,7 @@ fn repay_overpayment_is_refunded() {
 fn repay_nothing_owed_rejected() {
     let s = setup();
     s.client.deposit(&s.lender, &usdc(1_000));
-    s.client.set_line(&s.borrower, &71, &usdc(100), &href(&s.env));
+    s.client.set_line(&s.borrower, &100, &usdc(50), &href(&s.env));
     assert!(s.client.try_repay(&s.borrower, &s.borrower, &usdc(10)).is_err());
 }
 
@@ -507,12 +529,12 @@ fn vault_yield_lifts_every_lender_share() {
 fn borrow_unwinds_from_vault_when_buffer_is_short() {
     let s = setup();
     let (_vault, _) = attach_vault(&s);
-    s.client.deposit(&s.lender, &usdc(100)); // idle 20, vault 80
-    s.client.set_line(&s.borrower, &71, &usdc(100), &href(&s.env)); // score-71 cap is 100
-    // Drawing 100 needs far more than the 20 idle buffer -> the pool unwinds from the vault.
-    s.client.borrow(&s.borrower, &usdc(100));
-    assert_eq!(s.usdc_tok.balance(&s.borrower), usdc(1_000) + usdc(100));
-    assert_eq!(s.client.total_principal_view(), usdc(100));
+    s.client.deposit(&s.lender, &usdc(50)); // idle 10, vault 40
+    s.client.set_line(&s.borrower, &100, &usdc(50), &href(&s.env)); // score-100 cap is $50
+    // Drawing 50 needs far more than the 10 idle buffer -> the pool unwinds from the vault.
+    s.client.borrow(&s.borrower, &usdc(50));
+    assert_eq!(s.usdc_tok.balance(&s.borrower), usdc(1_000) + usdc(50));
+    assert_eq!(s.client.total_principal_view(), usdc(50));
     assert!(close(s.client.cash(), 0)); // all lent out, nothing left idle or in the vault
 }
 

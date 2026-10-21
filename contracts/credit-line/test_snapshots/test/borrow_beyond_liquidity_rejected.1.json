@@ -137,12 +137,12 @@
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
                 },
                 {
-                  "u32": 71
+                  "u32": 100
                 },
                 {
                   "i128": {
                     "hi": 0,
-                    "lo": 1000000000
+                    "lo": 500000000
                   }
                 },
                 {
@@ -453,7 +453,15 @@
                         "symbol": "apr_bps"
                       },
                       "val": {
-                        "u32": 1893
+                        "u32": 2600
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "due_at"
+                      },
+                      "val": {
+                        "u64": 0
                       }
                     },
                     {
@@ -482,7 +490,7 @@
                       "val": {
                         "i128": {
                           "hi": 0,
-                          "lo": 1000000000
+                          "lo": 500000000
                         }
                       }
                     },
@@ -502,7 +510,7 @@
                         "symbol": "score"
                       },
                       "val": {
-                        "u32": 71
+                        "u32": 100
                       }
                     },
                     {
@@ -519,6 +527,14 @@
                       },
                       "val": {
                         "bool": false
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "term_days"
+                      },
+                      "val": {
+                        "u32": 0
                       }
                     },
                     {

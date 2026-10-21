@@ -10,19 +10,24 @@ from an LCRD credit score, so anyone can verify a borrower's rate with `quote`.
   share value. `withdraw` any time there is cash.
 - **Unsecured lines** — the underwriter calls `set_line(borrower, score, limit, score_ref)`. The contract
   derives tier/APR/limit itself from the published policy; only the score-report **hash** is stored, never
-  personal data. Needs tier A (67-100) or tier B with score ≥ 55.
+  personal data. Needs a score ≥ 50; the starter line is graded by score, not a flat per-tier amount.
 - **Secured lines** — `open_secured_line` against your own pool shares, up to 71.25% of their value, no
   score needed. The backing shares are locked until repaid; on default the underwriter `seize_collateral`.
 - Interest accrues by the second (simple). `repay` pays interest first, then principal. A **completed
-  cycle** (loan using ≥ 25% of the line, held ≥ 7 days, repaid in full) cuts the APR 0.5%/cycle (max 2%)
-  and grows the limit by a starter amount, automatically.
+  cycle** (loan using ≥ 50% of the line, held ≥ 21 days, repaid in full) cuts the APR 0.5%/cycle (max 2%)
+  and grows the limit (starter × (1 + cycles), capped at the tier ceiling), automatically.
 
 ## Pricing (policy `lcrd-unsecured-2026-10`, bps)
 ```
-unsecured APR = 800 + score_premium + 300,  score_premium: 2000 at score 0 → 300 at 100
+unsecured APR = 800 + score_premium + 300 + default_premium
+  score_premium:   2000 at score 0  → 300 at 100
+  default_premium: 4100 at score 50 → 1200 at 100  (− 250/cycle, floor 500)
 secured APR   = 800 + 35% of score_premium   (1500 = 15% with no score)
-both: − 50 per completed cycle (max 200), clamped to [600, 3600]
-tiers: A 67-100, B 34-66, C 0-33   starter: A 100 / B 75 USDC   ceiling: A 2500 / B 250 USDC
+both: − 50 per completed cycle (max 200), clamped to [600, 7000]
+tiers: A 67-100, B 34-66, C 0-33
+unsecured min score: 50
+starter (graded by score): tier B (50-66) $5 → $25,  tier A (67-100) $26 → $50
+ceiling: A 2500 / B 250 USDC
 ```
 
 ## Units & identity
