@@ -51,7 +51,8 @@ function renderKpis(k: Kpis, p: Analytics["product"]) {
   // data-coverage stat alongside events/wallets/protocols — not a lending-product figure. It is on-chain
   // income (USDC through Stellar escrows); only the contributor identity is off-chain. Shown once populated.
   if (p.incomeWallets && p.incomeWallets > 0) {
-    tiles.push(tile("Verified income indexed", usd(p.incomeUsd || 0), full.format(p.incomeWallets) + " wallets · on-chain"));
+    // ‑ = non-breaking hyphen so "on-chain" never splits across lines ("on-" / "chain").
+    tiles.push(tile("Verified income indexed", usd(p.incomeUsd || 0), full.format(p.incomeWallets) + " wallets · on‑chain"));
   }
   $("an-kpis").innerHTML = tiles.join("");
 }

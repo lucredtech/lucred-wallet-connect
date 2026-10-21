@@ -1556,7 +1556,7 @@ h2 { letter-spacing: -0.01em; }
 .an-section-title::before { content:""; width:4px; height:1.1em; border-radius:999px; background:var(--gradient-accent); box-shadow:0 0 12px color-mix(in srgb, var(--indigo-600) 60%, transparent); }
 .an-note { margin-top:-8px; margin-bottom:16px; }
 
-.an-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; }
+.an-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(176px,1fr)); gap:14px; }
 .an-tile { position:relative; overflow:hidden; padding:20px 22px; border-radius:20px;
   border:1px solid var(--color-border-subtle); background:var(--color-bg-surface);
   backdrop-filter:blur(14px) saturate(160%); -webkit-backdrop-filter:blur(14px) saturate(160%);
@@ -1566,7 +1566,7 @@ h2 { letter-spacing: -0.01em; }
   background:radial-gradient(circle, color-mix(in srgb, var(--indigo-300) 28%, transparent), transparent 70%); pointer-events:none; }
 .an-tile:hover { transform:translateY(-4px); border-color:var(--color-border-strong);
   box-shadow:0 6px 14px rgba(0,0,0,0.22), 0 20px 44px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.12); }
-.an-tile-val { font-size:1.9rem; font-weight:700; color:var(--color-text-primary); line-height:1.05; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; }
+.an-tile-val { font-size:1.7rem; font-weight:700; color:var(--color-text-primary); line-height:1.05; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .an-tile-label { font-size:var(--text-caption); color:var(--color-text-secondary); margin-top:8px; text-transform:uppercase; letter-spacing:0.04em; }
 .an-tile-sub { font-size:var(--text-caption); color:var(--color-text-disabled); margin-top:3px; font-variant-numeric:tabular-nums; }
 .an-tile:nth-child(2){animation-delay:.05s} .an-tile:nth-child(3){animation-delay:.1s} .an-tile:nth-child(4){animation-delay:.15s} .an-tile:nth-child(5){animation-delay:.2s} .an-tile:nth-child(6){animation-delay:.25s}
@@ -1622,7 +1622,10 @@ h2 { letter-spacing: -0.01em; }
 .an-bar-fill { display:block; height:100%; border-radius:999px; background:var(--gradient-accent);
   box-shadow:0 0 14px color-mix(in srgb, var(--indigo-600) 55%, transparent); transform-origin:left center; animation:an-grow 1s cubic-bezier(.2,.8,.2,1) both; }
 .an-bar-val { font-size:var(--text-body-sm); font-weight:600; color:var(--color-text-primary); font-variant-numeric:tabular-nums; }
-@media (max-width:560px) { .an-bar-row { grid-template-columns:92px 1fr auto; gap:10px; } .an-tile-val{font-size:1.6rem;} }
+@media (max-width:560px) { .an-bar-row { grid-template-columns:92px 1fr auto; gap:10px; }
+  /* Even 2-up tiles on phones (the hero spans both). auto-fit + the span-2 hero otherwise yields an
+     uneven narrow 2nd column where long values (e.g. $112.45K) overflow; smaller value font fits the cell. */
+  .an-kpis { grid-template-columns:1fr 1fr; } .an-tile-val{font-size:1.4rem;} }
 @media (prefers-reduced-motion: reduce) { .an-tile, .an-card, .an-bar-fill, .an-freshness::before { animation:none; } }
 
 /* ---- Credit pool page (pool.html) ---- */
