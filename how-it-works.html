@@ -294,6 +294,58 @@
       </section>
 
       <section class="info-card">
+        <h2>Verified off-chain income (new)</h2>
+        <p>
+          A wallet can also be scored from <strong>verified income it earns through
+          on-chain escrows</strong> — even if it has no DeFi activity at all. Today
+          this covers <strong>OSS-contributor bounties</strong> (e.g. GrantFox) and
+          <strong>escrow payroll</strong>, both paid through
+          <a href="https://www.trustlesswork.com" target="_blank" rel="noopener">Trustless Work</a>
+          escrows on Stellar. When an escrow milestone is approved and paid in USDC,
+          that payout is indexed as income for the wallet that received it.
+        </p>
+        <p>
+          This matters because a freelancer or open-source contributor who gets paid
+          regularly but has never touched a DeFi protocol would otherwise score
+          <strong>zero</strong> — no history to read. Their income makes them
+          scoreable. Each payout is tied to a GitHub identity (via the escrow's
+          engagement reference), so it's hard to fake, and only money
+          <strong>actually received</strong> is counted — the trailing-12-month
+          <em>sum</em> of real payouts, never an annualized projection.
+        </p>
+        <p>
+          Income is a <strong>complement</strong> to the on-chain score, never a
+          substitute: it can only <strong>raise</strong> a score, never lower a real
+          one. A no-history wallet with income is scored on that income; a wallet
+          that already has a strong on-chain score keeps it. Trade escrows, currency
+          swaps and asset sales (which share the same escrow infrastructure) are
+          deliberately excluded — they aren't personal income.
+        </p>
+        <table>
+          <tr>
+            <th scope="col">Term</th>
+            <th scope="col">What it means</th>
+          </tr>
+          <tr>
+            <td class="term">payouts (12mo)</td>
+            <td>How many separate escrow milestones paid the wallet in the last 12 months — recurring income reads stronger than a single one-off.</td>
+          </tr>
+          <tr>
+            <td class="term">$X received (12mo)</td>
+            <td>Total USD actually received over the trailing year, net of the platform and escrow fees. A backward-looking sum of real payouts, not a forecast.</td>
+          </tr>
+          <tr>
+            <td class="term">tenure</td>
+            <td>How long the wallet has been earning — a longer track record of payouts scores higher than the same amount earned all at once.</td>
+          </tr>
+          <tr>
+            <td class="term">GitHub-verified</td>
+            <td>Whether the income is tied to a resolvable contributor identity, which raises the confidence placed on it.</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="info-card">
         <h2>Incentive rewards</h2>
         <p>
           Protocols also pay out reward tokens: <strong>AQUA</strong> to Aquarius
