@@ -405,6 +405,7 @@ const COMPONENT_INFO = {
   income:      { label: "Yield income", group: "income", explain: "Real yield from vaults and savings products: what you withdrew above what you deposited. Paper gains on a balance you haven't withdrawn don't count." },
   distribution:{ label: "Payroll / distributions", group: "income", explain: "Recurring claims from payroll or mass-distribution contracts. Claiming every month counts for more than one big claim." },
   rewards:     { label: "Protocol rewards", group: "income", explain: "Incentive rewards you have claimed (AQUA, BLND, Phoenix, gauge rewards). The smallest income signal, since rewards are incentives rather than organic income." },
+  earned_income:{ label: "OSS / escrow income", group: "income", explain: "Verified income earned through on-chain escrows — OSS-contributor bounties and escrow payroll (e.g. GrantFox via Trustless Work). Scored from real payouts actually received in the last 12 months, tied to a verifiable identity. It can only raise your score, never lower it." },
   classic:     { label: "Account age", group: "bonus", explain: "A small bonus for how long the account has existed and its classic Stellar history. Only added alongside DeFi activity." },
   floor:       { label: "Limited activity", group: "core", explain: "Not enough DeFi activity yet to score on breadth, volume and consistency, so the score is capped in tier C." }
 };
@@ -834,13 +835,26 @@ async function applyIncomeBlend(result, wallet) {
     const hasHistory = result.eventCount > 0 && result.path !== "no-history";
     const subject = { ossContribution: oss, ...(hasHistory ? { onchainScore: result.score, onchainSignals: {} } : {}) };
     const composite = await compositeScore(subject);
+    const ossSrc = (composite && composite.sources || []).find((s) => s.id === "oss_contribution");
+    const ossScore = ossSrc ? Math.round(ossSrc.score) : 0;
+
+    // Always surface the earned income as a breakdown pill, even when it doesn't change the score (so a
+    // wallet that earns bounties but scores higher on DeFi activity still SHOWS the income). The pill's
+    // value is the income's standalone sub-score; the detail carries the real dollars received.
+    result.components = result.components || [];
+    result.components.push(component("earned_income", ossScore, 100,
+      oss.payouts12mo + " payout" + (oss.payouts12mo === 1 ? "" : "s") + ", $" + Math.round(oss.bountyUsd12mo) +
+      " received (12mo)" + (oss.githubEngagementVerified ? ", GitHub-verified" : ""),
+      { amountUsd: oss.bountyUsd12mo, amountLabel: "earned (12mo)" }));
+
+    // Apply the lift only if income raises the score — it can never lower a real on-chain one.
     if (composite && composite.score > result.score) {
       result.incomeAdjusted = { fromScore: result.score, fromTier: result.tier, sources: composite.sources };
       result.score = composite.score;
       result.tier = composite.score >= TIER_A_MIN_SCORE ? "A" : composite.score >= TIER_B_MIN_SCORE ? "B" : "C";
       if (result.path === "no-history") result.path = "income";
       result.reasons.push(
-        "Includes verified off-chain income: " + oss.payouts12mo + " OSS-contributor payout" +
+        "Scored from verified on-chain earned income: " + oss.payouts12mo + " OSS-contributor payout" +
         (oss.payouts12mo === 1 ? "" : "s") + " (~$" + Math.round(oss.bountyUsd12mo) + " received in the last 12 months" +
         (oss.githubEngagementVerified ? ", GitHub-verified" : "") + ")."
       );
