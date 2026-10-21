@@ -26,7 +26,7 @@ function toast(msg: string, opts: { tx?: string; err?: boolean } = {}) {
   el.classList.add("show");
   // Actionable toasts (with a "view" link) linger longer; pause the dismiss while hovered so the link
   // stays clickable.
-  const ms = opts.tx ? 9000 : 5000;
+  const ms = opts.tx ? 6000 : 5000;
   const arm = () => { window.clearTimeout(toastT); toastT = window.setTimeout(() => el.classList.remove("show"), ms); };
   arm();
   el.onmouseenter = () => window.clearTimeout(toastT);
