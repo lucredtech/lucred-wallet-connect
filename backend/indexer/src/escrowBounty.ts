@@ -180,13 +180,14 @@ export function extractBountyIncome(ev: DecodedEvent, opts: ExtractOptions = {})
     const earned = !rejected && (m.flags?.released === true || m.status === "released" || m.flags?.approved === true);
     if (!earned) return;
     const receiver = m.receiver || escrow.roles?.receiver || escrow.roles?.service_provider;
-    if (receiver) out.push(base(receiver, i, toUnits(m.amount)));
+    // Skip self-payments: the platform paying its own account is not contributor income.
+    if (receiver && receiver !== platform) out.push(base(receiver, i, toUnits(m.amount)));
   });
 
   if (!milestones.length) {
     const flagsReleased = (escrow as unknown as { flags?: { released?: boolean } }).flags?.released === true;
     const receiver = escrow.roles?.receiver || escrow.roles?.service_provider;
-    if (flagsReleased && receiver) out.push(base(receiver, 0, toUnits(escrow.amount)));
+    if (flagsReleased && receiver && receiver !== platform) out.push(base(receiver, 0, toUnits(escrow.amount)));
   }
   return out;
 }

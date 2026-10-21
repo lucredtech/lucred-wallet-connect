@@ -19,6 +19,7 @@ type Analytics = {
   walletsByMonth: { month: string; newWallets: number; cumulativeWallets: number }[];
   product: {
     waitlist: number; acceptances: number; principalUsd: number;
+    incomeWallets?: number; incomeUsd?: number; incomePayouts?: number;
     onchain?: boolean; suppliedUsd?: number; vaultUsd?: number; advancedUsd?: number; activeBorrowers?: number;
   };
   scoreHistogram: { lo: number; hi: number; count: number }[];
@@ -64,6 +65,11 @@ function renderProduct(p: Analytics["product"]) {
         tile("Credit acceptances", full.format(p.acceptances)),
         tile("Waitlist signups", full.format(p.waitlist)),
       ];
+  // Off-chain income layer: verifiable OSS-contributor + payroll income (Trustless Work escrows) that
+  // lets thin-file wallets be scored. Only shown once the backfill/indexer has populated it.
+  if (p.incomeWallets && p.incomeWallets > 0) {
+    tiles.push(tile("Verified income indexed", usd(p.incomeUsd || 0), full.format(p.incomeWallets) + " wallets · off-chain"));
+  }
   $("an-product").innerHTML = tiles.join("");
 }
 

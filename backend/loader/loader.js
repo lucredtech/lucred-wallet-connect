@@ -41,12 +41,22 @@ const bq = new BigQuery();
 const bucket = storage.bucket(BUCKET);
 const log = (m) => console.log("[bq-loader-v2] " + m);
 
-const EVENT_COLUMNS = [
+const CREDIT_EVENT_COLUMNS = [
   ["ledgerSequence", "INTEGER"], ["transactionHash", "STRING"], ["blockCloseTime", "TIMESTAMP"], ["protocolName", "STRING"],
   ["category", "STRING"], ["contractId", "STRING"], ["userAddress", "STRING"], ["eventType", "STRING"], ["amount", "FLOAT"],
   ["assetContractId", "STRING"], ["assetCode", "STRING"], ["assetOutContractId", "STRING"], ["assetOutCode", "STRING"],
   ["amountOut", "FLOAT"], ["counterpartyAddress", "STRING"], ["poolShareTokensAfter", "FLOAT"], ["collateralRatioAfter", "FLOAT"]
 ];
+// OSS-contributor bounty income stream (Trustless Work / GrantFox escrows -> oss_bounty_events). Same
+// idempotent loader, different columns/table — run a second instance with:
+//   SCHEMA=oss_bounty PREFIX=oss_bounty_logs/ EVENTS_TABLE=oss_bounty_events LEDGER_TABLE=oss_bounty_loaded_files
+const OSS_BOUNTY_COLUMNS = [
+  ["escrowContract", "STRING"], ["milestoneIndex", "INTEGER"], ["receiver", "STRING"], ["platform", "STRING"],
+  ["platformName", "STRING"], ["incomeType", "STRING"], ["weight", "FLOAT"], ["amount", "FLOAT"],
+  ["platformFeeBps", "INTEGER"], ["assetCode", "STRING"], ["assetContractId", "STRING"], ["engagementId", "STRING"],
+  ["title", "STRING"], ["ledgerSequence", "INTEGER"], ["transactionHash", "STRING"], ["blockCloseTime", "TIMESTAMP"]
+];
+const EVENT_COLUMNS = process.env.SCHEMA === "oss_bounty" ? OSS_BOUNTY_COLUMNS : CREDIT_EVENT_COLUMNS;
 const NAME_OF_FILE = 'REGEXP_EXTRACT(_FILE_NAME, r"' + PREFIX + '(.*)$")';
 
 // ---------- state (scan hint only) ----------

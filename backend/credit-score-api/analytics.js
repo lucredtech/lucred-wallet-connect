@@ -98,6 +98,13 @@ function createAnalytics(bq) {
         "SELECT COUNT(*) n, IFNULL(SUM(principalUsd), 0) principalUsd FROM `credit_bureau.df_credit_acceptances`",
         [{ n: 0, principalUsd: 0 }]);
 
+      // Off-chain income indexed from Trustless Work escrows (OSS-contributor bounties + payroll) — the
+      // verifiable-income layer that lets thin-file wallets be scored. Empty until the backfill/indexer
+      // populates credit_bureau.oss_bounty_events.
+      const income = await qSafe(
+        "SELECT COUNT(DISTINCT receiver) wallets, ROUND(IFNULL(SUM(amount * (1 - platformFeeBps / 10000 - 0.003)), 0)) netUsd, COUNT(*) payouts FROM `credit_bureau.oss_bounty_events`",
+        [{ wallets: 0, netUsd: 0, payouts: 0 }]);
+
       // Live on-chain testnet pool aggregates for the product section.
       const onchain = await onchainProduct();
 
@@ -147,6 +154,9 @@ function createAnalytics(bq) {
           waitlist: num(waitlist[0] && waitlist[0].n),
           acceptances: num(accept[0] && accept[0].n),
           principalUsd: num(accept[0] && accept[0].principalUsd),
+          incomeWallets: num(income[0] && income[0].wallets),
+          incomeUsd: num(income[0] && income[0].netUsd),
+          incomePayouts: num(income[0] && income[0].payouts),
           ...onchain, // onchain, suppliedUsd, vaultUsd, advancedUsd, activeBorrowers (testnet pool)
         },
         scoreHistogram: (scoreHist || []).map((r) => ({ lo: num(r.lo), hi: num(r.hi), count: num(r.count) })),
