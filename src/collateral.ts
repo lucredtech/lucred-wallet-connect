@@ -17,6 +17,26 @@ const ESCROW_ACCEPTS = new Set([DFTEST]);
 // The LCRD Earn pool — SAME contract the Earn page deposits into (src/earn.ts). A deposit there gives you
 // pool shares (not a token), which back a secured line via open_secured_line — surfaced in the pool card.
 const POOL = "CDW4G2YMN5RIXFTS6CW6XVNKPHJI4WZNAMUNHVKQZBD3G7QT45HELX63";
+const POOL_USDC = "CDXDVJLAYLFR2BRDHVUHM5NSVEN5EJVC5QPKW5I7LWNFKMQFX35V35ZJ"; // same USDC the pool/Earn use
+
+// Pool-contract error → one plain sentence (the escrow's `friendly()` doesn't know these codes).
+const POOL_ERRORS: Record<string, string> = {
+  "10": "This line is frozen right now.",
+  "11": "That's more than your limit.",
+  "12": "The pool doesn't have enough available USDC right now — try a smaller amount.",
+  "14": "There's nothing owed on this line.",
+  "16": "Deposit in the Earn pool first, then open a secured line.",
+  "18": "You can't withdraw the deposit backing an open loan — repay it first.",
+};
+function poolErr(msg = ""): string {
+  const m = msg.toLowerCase();
+  if (/reject|denied|cancel|declin/.test(m)) return "You cancelled the signature.";
+  const cm = /error\(contract,\s*#(\d+)\)/i.exec(msg);
+  if (cm && POOL_ERRORS[cm[1]]) return POOL_ERRORS[cm[1]];
+  if (/insufficient balance|unreachablecodereached/.test(m)) return "Not enough USDC in your wallet — get more from the Faucet tab, then try again.";
+  if (/getaccount|not.*found|404/.test(m)) return "Fund XLM for fees first (use the faucet).";
+  return "That didn't go through. Check your amount and balance, then try again.";
+}
 // Indicative borrow APR by underlying risk class (the real rate comes from the engine at quote time).
 const APR_BY_CLASS: Record<string, number> = { stable: 0.14, stableFx: 0.145, rwa: 0.16, major: 0.165, incentive: 0.175, curated: 0.185 };
 
@@ -400,7 +420,7 @@ async function poolOpenLine() {
     const tx = await invoke(POOL, "open_secured_line", [sAddr(address)], address);
     toast("Secured line opened against your pool position.", { tx });
     await renderPoolCard();
-  } catch (e) { toast(friendly((e as Error)?.message), { err: true }); btn.disabled = false; btn.textContent = "Open secured line"; }
+  } catch (e) { toast(poolErr((e as Error)?.message), { err: true }); btn.disabled = false; btn.textContent = "Open secured line"; }
 }
 
 async function poolBorrow() {
@@ -412,22 +432,32 @@ async function poolBorrow() {
     const tx = await invoke(POOL, "borrow", [sAddr(address), sI128(BigInt(Math.round(v * ONE)))], address);
     toast("Borrowed! USDC is in your wallet.", { tx });
     await renderPoolCard();
-  } catch (e) { toast(friendly((e as Error)?.message), { err: true }); btn.disabled = false; btn.textContent = "Borrow"; }
+  } catch (e) { toast(poolErr((e as Error)?.message), { err: true }); btn.disabled = false; btn.textContent = "Borrow"; }
 }
 
 async function poolRepay() {
   if (!address) return;
   const btn = $<HTMLButtonElement>("poolRepay"); btn.disabled = true; btn.textContent = "Repaying…";
   try {
-    const owedArr = await readCall<[bigint, bigint]>(POOL, "owed", [sAddr(address)], address);
+    // repay() pulls the full `amount` from the wallet up front (then refunds any surplus), so never ask
+    // for more USDC than the wallet actually holds — otherwise the token transfer traps.
+    const [owedArr, balRaw] = await Promise.all([
+      readCall<[bigint, bigint]>(POOL, "owed", [sAddr(address)], address),
+      readCall<bigint>(POOL_USDC, "balance", [sAddr(address)], address),
+    ]);
     const payoff = BigInt(owedArr[0]) + BigInt(owedArr[1]);
-    // Overpay by a small buffer; interest accrues between this read and the tx, and the contract caps the
-    // pull at the true debt, so overpaying never overcharges.
-    const amount = payoff + payoff / 100n + 100000n;
+    const bal = BigInt(balRaw);
+    if (payoff <= 0n) { toast("Nothing owed on this line.", {}); await renderPoolCard(); return; }
+    if (bal <= 0n) { toast("You have no USDC to repay with — grab some from the Faucet tab, then try again.", { err: true }); btn.disabled = false; btn.textContent = `Repay $${usd2(Number(payoff) / ONE)}`; return; }
+    const target = payoff + payoff / 1000n + 10000n; // tiny buffer for interest drift; contract refunds surplus
+    const amount = bal < target ? bal : target;       // cap at what the wallet holds (partial repay if short)
+    if (amount < payoff) {
+      toast(`Partial repay — you hold $${usd2(Number(bal) / ONE)} but owe $${usd2(Number(payoff) / ONE)} (incl. interest). Top up from the Faucet to clear it.`, {});
+    }
     const tx = await invoke(POOL, "repay", [sAddr(address), sAddr(address), sI128(amount)], address);
-    toast("Secured line repaid.", { tx });
+    toast(amount >= payoff ? "Secured line repaid." : "Partial payment made.", { tx });
     await renderPoolCard();
-  } catch (e) { toast(friendly((e as Error)?.message), { err: true }); await renderPoolCard(); }
+  } catch (e) { toast(poolErr((e as Error)?.message), { err: true }); await renderPoolCard(); }
 }
 
 function wire() {
