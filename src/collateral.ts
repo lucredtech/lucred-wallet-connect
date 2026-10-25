@@ -14,6 +14,9 @@ const API = import.meta.env.VITE_CREDIT_SCORE_API_URL as string | undefined;
 const ONE = 10_000_000;
 // Which collateral the Stage-B escrow currently accepts on-chain (its set_asset allowlist).
 const ESCROW_ACCEPTS = new Set([DFTEST]);
+// The LCRD Earn pool — SAME contract the Earn page deposits into (src/earn.ts). A deposit there gives you
+// pool shares (not a token), which back a secured line via open_secured_line — surfaced in the pool card.
+const POOL = "CDW4G2YMN5RIXFTS6CW6XVNKPHJI4WZNAMUNHVKQZBD3G7QT45HELX63";
 // Indicative borrow APR by underlying risk class (the real rate comes from the engine at quote time).
 const APR_BY_CLASS: Record<string, number> = { stable: 0.14, stableFx: 0.145, rwa: 0.16, major: 0.165, incentive: 0.175, curated: 0.185 };
 
@@ -336,12 +339,104 @@ async function closeLoan(id: string, btn: HTMLButtonElement) {
   }
 }
 
+// ---------- Your LCRD pool position (secured line via open_secured_line) ----------
+// A deposit in the Earn pool mints internal pool SHARES (not a token the escrow above can see), so it
+// can't appear in the dfToken list. Instead it backs a SECURED line on the pool itself — opened here.
+async function renderPoolCard() {
+  const body = $("poolBody");
+  if (!address) { $("poolCard").hidden = true; return; }
+  $("poolCard").hidden = false;
+  body.innerHTML = `<p class="sm muted">Loading your pool position…</p>`;
+  try {
+    const shares = BigInt(await readCall<bigint>(POOL, "shares_of", [sAddr(address)], address));
+    if (shares <= 0n) {
+      body.innerHTML = `<p class="sm muted">You haven't deposited in the Earn pool yet. Deposit USDC to earn yield and unlock a <b>secured credit line</b> against it — no score needed.</p>
+        <a class="btn btn-primary" href="earn.html" style="margin-top:12px;display:inline-flex;justify-content:center;">Go to Earn →</a>`;
+      return;
+    }
+    const [valueRaw, capRaw, line, owedArr, availRaw] = await Promise.all([
+      readCall<bigint>(POOL, "collateral_value", [sAddr(address)], address),
+      readCall<bigint>(POOL, "secured_capacity", [sAddr(address)], address),
+      readCall<Record<string, unknown>>(POOL, "get_line", [sAddr(address)], address),
+      readCall<[bigint, bigint]>(POOL, "owed", [sAddr(address)], address),
+      readCall<bigint>(POOL, "available", [sAddr(address)], address),
+    ]);
+    const value = Number(valueRaw) / ONE;
+    const cap = Number(capRaw) / ONE;
+    const owed = (Number(owedArr[0]) + Number(owedArr[1])) / ONE;
+    const avail = Number(availRaw) / ONE;
+    const active = (line.active as boolean) && (line.secured as boolean);
+    const apr = Number(line.apr_bps) / 100;
+
+    if (!active) {
+      body.innerHTML =
+        `<div class="lv"><span class="muted">Earn pool position</span><span class="mono" style="font-weight:700">$${usd2(value)}</span></div>
+         <div class="lv"><span class="muted">Borrow up to (71.25%)</span><span class="mono" style="font-weight:700">$${fmt(cap)}</span></div>
+         <p class="sm muted" style="margin:10px 0 14px">Open a secured line against your pool deposit — no score needed. Your deposit keeps earning yield while it backs the line.</p>
+         <button class="btn btn-primary" id="poolOpen" style="width:100%;justify-content:center">Open secured line</button>`;
+      $("poolOpen").addEventListener("click", poolOpenLine);
+      return;
+    }
+    body.innerHTML =
+      `<div class="lv"><span class="muted">Secured line</span><span class="mono" style="font-weight:700">$${fmt(Number(line.limit) / ONE)} @ ${apr.toFixed(1)}%</span></div>
+       <div class="lv"><span class="muted">Owed</span><span class="mono" style="font-weight:700">$${usd2(owed)}</span></div>
+       <div class="lv"><span class="muted">Available to draw</span><span class="mono" style="font-weight:700">$${fmt(avail)}</span></div>
+       <div class="row" style="gap:8px;margin-top:14px">
+         <input id="poolAmt" class="field" type="number" min="0" placeholder="Amount USDC" style="flex:1;min-width:0" />
+         <button class="btn btn-primary" id="poolBorrow">Borrow</button>
+       </div>
+       <button class="btn" id="poolRepay" style="width:100%;justify-content:center;margin-top:8px" ${owed <= 0 ? "disabled" : ""}>${owed <= 0 ? "Nothing owed" : `Repay $${usd2(owed)}`}</button>`;
+    $("poolBorrow").addEventListener("click", poolBorrow);
+    $("poolRepay").addEventListener("click", poolRepay);
+  } catch (e) {
+    body.innerHTML = `<p class="sm muted">Couldn't read your pool position — ${friendly((e as Error)?.message)}</p>`;
+  }
+}
+
+async function poolOpenLine() {
+  if (!address) return;
+  const btn = $<HTMLButtonElement>("poolOpen"); btn.disabled = true; btn.textContent = "Opening…";
+  try {
+    const tx = await invoke(POOL, "open_secured_line", [sAddr(address)], address);
+    toast("Secured line opened against your pool position.", { tx });
+    await renderPoolCard();
+  } catch (e) { toast(friendly((e as Error)?.message), { err: true }); btn.disabled = false; btn.textContent = "Open secured line"; }
+}
+
+async function poolBorrow() {
+  if (!address) return;
+  const v = Number($<HTMLInputElement>("poolAmt").value) || 0;
+  if (v <= 0) { toast("Enter an amount to borrow.", { err: true }); return; }
+  const btn = $<HTMLButtonElement>("poolBorrow"); btn.disabled = true; btn.textContent = "Borrowing…";
+  try {
+    const tx = await invoke(POOL, "borrow", [sAddr(address), sI128(BigInt(Math.round(v * ONE)))], address);
+    toast("Borrowed! USDC is in your wallet.", { tx });
+    await renderPoolCard();
+  } catch (e) { toast(friendly((e as Error)?.message), { err: true }); btn.disabled = false; btn.textContent = "Borrow"; }
+}
+
+async function poolRepay() {
+  if (!address) return;
+  const btn = $<HTMLButtonElement>("poolRepay"); btn.disabled = true; btn.textContent = "Repaying…";
+  try {
+    const owedArr = await readCall<[bigint, bigint]>(POOL, "owed", [sAddr(address)], address);
+    const payoff = BigInt(owedArr[0]) + BigInt(owedArr[1]);
+    // Overpay by a small buffer; interest accrues between this read and the tx, and the contract caps the
+    // pull at the true debt, so overpaying never overcharges.
+    const amount = payoff + payoff / 100n + 100000n;
+    const tx = await invoke(POOL, "repay", [sAddr(address), sAddr(address), sI128(amount)], address);
+    toast("Secured line repaid.", { tx });
+    await renderPoolCard();
+  } catch (e) { toast(friendly((e as Error)?.message), { err: true }); await renderPoolCard(); }
+}
+
 function wire() {
   $("walletBtn").addEventListener("click", async () => {
     try {
       address = await connect();
       $("walletLbl").textContent = short(address);
       renderList();
+      await renderPoolCard();
       if (sel) await select(list.indexOf(sel));
       await loadLoans();
     } catch { toast("Wallet connection cancelled", { err: true }); }
@@ -351,7 +446,7 @@ function wire() {
   $("borrowBtn").addEventListener("click", borrow);
   loadList().then(() => {
     renderList();
-    restoreSession().then((a) => { if (a) { address = a; $("walletLbl").textContent = short(a); renderList(); loadLoans(); } });
+    restoreSession().then((a) => { if (a) { address = a; $("walletLbl").textContent = short(a); renderList(); renderPoolCard(); loadLoans(); } });
   });
 }
 
