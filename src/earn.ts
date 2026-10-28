@@ -62,9 +62,8 @@ function toast(msg: string, opts: { tx?: string; err?: boolean } = {}) {
 async function refresh() {
   try {
     const src = address || READ_SOURCE;
-    const [assets, cash, vaultVal, idle] = await Promise.all([
+    const [assets, vaultVal, idle] = await Promise.all([
       readCall<bigint>(POOL, "total_assets", [], src),
-      readCall<bigint>(POOL, "cash", [], src),
       readCall<bigint>(POOL, "vault_value", [], src),
       readCall<bigint>(POOL, "idle_cash", [], src),
     ]);
@@ -74,8 +73,9 @@ async function refresh() {
 
     // Estimated APY: vault strategy rate × invested fraction (the vault component), plus borrower
     // interest (variable — labelled separately). Derived from live on-chain composition.
-    const liquid = Number(cash);
-    const investedFrac = liquid > 0 ? Number(vaultVal) / liquid : 0;
+    // Vault-yield component: vault rate × share of NAV parked in the vault (of total_assets, never >1).
+    const total = Number(assets);
+    const investedFrac = total > 0 ? Number(vaultVal) / total : 0;
     const estVault = VAULT_APR * investedFrac;
     $("apy").textContent = `~${(estVault * 100).toFixed(1)}%`;
     $("chip-vault").textContent = `+ ${(estVault * 100).toFixed(1)}% DeFindex vault`;

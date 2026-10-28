@@ -21,9 +21,9 @@ let address: string | null = null;
 async function load() {
   if (!address) return;
   try {
-    const [shares, cash, vaultVal, line, avail, owed] = await Promise.all([
+    const [shares, assets, vaultVal, line, avail, owed] = await Promise.all([
       readCall<bigint>(POOL, "shares_of", [sAddr(address)], address),
-      readCall<bigint>(POOL, "cash", [], address),
+      readCall<bigint>(POOL, "total_assets", [], address),
       readCall<bigint>(POOL, "vault_value", [], address),
       readCall<Record<string, unknown>>(POOL, "get_line", [sAddr(address)], address),
       readCall<bigint>(POOL, "available", [sAddr(address)], address).catch(() => 0n),
@@ -33,8 +33,9 @@ async function load() {
     const debt = fromBase(owed[0] + owed[1]);
     const limit = fromBase(line.limit as bigint);
     const net = supplied - debt;
-    const liquid = Number(cash);
-    const estApy = liquid > 0 ? VAULT_APR * (Number(vaultVal) / liquid) : 0;
+    // Vault-yield component: vault rate × share of NAV parked in the vault (of total_assets, never >1).
+    const denom = Number(assets);
+    const estApy = denom > 0 ? VAULT_APR * (Number(vaultVal) / denom) : 0;
 
     $("net").textContent = "$" + usd(net);
     $("napy").textContent = supplied > 0 ? `~${(estApy * 100).toFixed(1)}%` : "—";
