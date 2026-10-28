@@ -90,7 +90,6 @@ async function refresh() {
       $("usdc-bal").textContent = usd(fromBase(bal));
       shares = BigInt(sh);
       const worth = shares > 0n ? await readCall<bigint>(POOL, "convert_to_assets", [sI128(shares)], address) : 0n;
-      $("pos-shares").textContent = shares.toString();
       ($("pos-chip") as HTMLElement).hidden = shares === 0n;
       syncCounter(fromBase(worth));
     }
@@ -135,8 +134,7 @@ function renderProjection(apy: number) {
   estApy = apy;
   const amt = Number($<HTMLInputElement>("dep-amt").value) || 0;
   $("proj").textContent = "+$" + usd(amt * apy);
-  $("shares-out").textContent = "≈ " + amt.toLocaleString("en-US", { maximumFractionDigits: 0 }) + " pool shares";
-  $("routed").textContent = "$" + usd(amt * 0.8) + " → vault";
+  $("routed").textContent = "$" + usd(amt * 0.9) + " → vault";
 }
 
 async function deposit() {

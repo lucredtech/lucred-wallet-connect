@@ -51,7 +51,6 @@ async function load() {
     }
 
     $("sup-pool").textContent = "$" + usd(supplied);
-    $("sup-shares").textContent = shares.toString();
     $("bor-line").textContent = (line.active as boolean) && limit > 0
       ? `$${usd(debt)} owed · $${usd(limit)} limit`
       : "No active line";
