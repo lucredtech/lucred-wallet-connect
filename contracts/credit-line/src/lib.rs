@@ -90,7 +90,7 @@ const VIRTUAL_ASSETS: i128 = 1;
 // withdrawals; only the excess is invested, and the pool pulls back from the vault when the buffer
 // runs short. The vault's share value carries the yield, so counting the pool's vault position in
 // `cash` makes every lender share appreciate with it — no extra bookkeeping.
-const DEFAULT_BUFFER_BPS: u32 = 2_000; // keep 20% of liquidity liquid; invest the other 80%
+const DEFAULT_BUFFER_BPS: u32 = 1_000; // keep 10% of liquidity liquid; invest the other 90%
 const BPS_DENOM: i128 = 10_000;
 
 #[contracterror]
