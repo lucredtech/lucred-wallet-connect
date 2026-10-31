@@ -69,6 +69,10 @@ const KNOWN_ASSET_CONTRACTS: Record<string, string> = {
   CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA: 'XLM',
   CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75: 'USDC',
   CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV: 'EURC',
+  // USDT0 (Tether omnichain USDT via LayerZero): SAC for USDT0-GATISXX6…S6KXJHN6Q, verified on
+  // stellar.expert (issuer home_domain usdt0.to); XOXNO lending's #2 reserve by TVL, so it shows up
+  // in real events — tag it so it resolves in the analytics asset breakdown instead of a raw C… id.
+  CBSJZEIO5C7KC2SF3MKSNXXJSW5G3VTNBX4ATMKUI3B2MR4JKM4R26YF: 'USDT0',
   CAUIKL3IYGMERDRUN6YSCLWVAKIFG5Q4YJHUKM4S4NJZQIA3BAS6OJPK: 'AQUA',
   // Added 2026-09-23: real assetCode resolution was only 27.6% on a large
   // sample of completed-segment data, with `swap` (39% of all events)
