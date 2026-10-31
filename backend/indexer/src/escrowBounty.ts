@@ -18,6 +18,7 @@
 const KNOWN_ASSET_CONTRACTS: Record<string, string> = {
   CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75: "USDC",
   CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV: "EURC",
+  CBSJZEIO5C7KC2SF3MKSNXXJSW5G3VTNBX4ATMKUI3B2MR4JKM4R26YF: "USDT0", // Tether omnichain USDT (usdt0.to), stablecoin payout asset
 };
 
 // Approved escrow WASM hashes seen live on mainnet (discovery/verification allowlist). Empty = accept
