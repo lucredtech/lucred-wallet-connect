@@ -1551,6 +1551,13 @@ h2 { letter-spacing: -0.01em; }
 .an-freshness::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--emerald-400);
   box-shadow:0 0 8px var(--emerald-400); animation:an-pulse 2.4s ease-in-out infinite; }
 .an-status { color:var(--color-text-secondary); padding:60px 0; text-align:center; }
+.an-status-inner { display:flex; flex-direction:column; align-items:center; gap:14px; }
+.an-status-msg { margin:0; max-width:34ch; line-height:1.5; }
+.an-status-sub { margin:0; font-size:var(--text-caption); color:var(--color-text-secondary); opacity:0.68; }
+.an-spinner { width:30px; height:30px; border-radius:50%; border:2.5px solid var(--color-border-subtle);
+  border-top-color:var(--emerald-400); animation:an-spin 0.8s linear infinite; }
+@keyframes an-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .an-spinner { animation-duration:2s; } }
 
 .an-section-title { display:flex; align-items:center; gap:12px; font-size:var(--text-h3); color:var(--color-text-primary); margin:40px 0 18px; }
 .an-section-title::before { content:""; width:4px; height:1.1em; border-radius:999px; background:var(--gradient-accent); box-shadow:0 0 12px color-mix(in srgb, var(--indigo-600) 60%, transparent); }

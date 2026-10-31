@@ -219,12 +219,28 @@ function renderEventsFilter(d: Analytics) {
   });
 }
 
+// Render the status panel: an optional spinner, a main message, and an optional sub-line.
+function setStatus(msg: string, opts: { spinner?: boolean; sub?: string } = {}) {
+  const el = $("an-status");
+  if (!el) return;
+  el.hidden = false;
+  el.innerHTML =
+    `<div class="an-status-inner">` +
+    (opts.spinner ? `<div class="an-spinner" role="status" aria-label="Loading"></div>` : "") +
+    `<p class="an-status-msg">${msg}</p>` +
+    (opts.sub ? `<p class="an-status-sub">${opts.sub}</p>` : "") +
+    `</div>`;
+}
+
 async function load() {
-  if (!API_URL) { $("an-status").textContent = "Analytics API is not configured."; return; }
+  if (!API_URL) { setStatus("Analytics API is not configured."); return; }
   try {
     const res = await fetch(`${API_URL}/analytics`, { headers: { accept: "application/json" } });
     if (res.status === 503) { // still warming the cache on a cold start
-      $("an-status").textContent = "Analytics are warming up — retrying…";
+      setStatus("Getting the latest analytics ready.", {
+        spinner: true,
+        sub: "This can take a few seconds on the first visit — loading automatically, no need to refresh.",
+      });
       setTimeout(load, 4000);
       return;
     }
@@ -247,7 +263,7 @@ async function load() {
     $("an-status").hidden = true;
     $("an-content").hidden = false;
   } catch (e) {
-    $("an-status").textContent = "Couldn't load analytics right now. " + (e as Error).message;
+    setStatus("Couldn't load analytics right now.", { sub: (e as Error).message });
   }
 }
 
