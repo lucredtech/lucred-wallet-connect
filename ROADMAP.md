@@ -53,12 +53,13 @@ code before treating any line as live state.
       an open loan (err #18), so add a lock/escrow-on-pledge.
 - [~] **[in flight] dfToken collateral credit — USDC against DeFindex positions.** A borrower
       pledges DeFindex vault shares (dfTokens) and draws 50–75% as USDC at the indicative secured
-      APR. **Stage A (off-chain, demoable) partly shipped** — `collateral-engine.js`
-      (`defindexCollateral`/`quote`), `dfCredit` policy block (`df-credit-2026-10-draft1`), and
-      `GET /df-credit/quote` exist. **Remaining:** finish Stage A (`/df-credit/accept` + UI
-      section), then **Stage B** testnet end-to-end (Soroban escrow + engine attestation +
-      treasury disbursement), then **Stage C** embeddable widget for fintechs. See the staged
-      plan in session notes.
+      APR. **Stage A (off-chain, demoable) done** — `collateral-engine.js`
+      (`defindexCollateral`/`quote`), `dfCredit` policy (`df-credit-2026-10-draft1`), both
+      `GET /df-credit/quote` and `POST /df-credit/accept` live on Cloud Run (verified 2026-11-01),
+      and frontend UI (`src/dfCredit.ts`, `src/dfCreditView.ts`, `borrow.html`). **Remaining:**
+      **Stage B** testnet end-to-end (Soroban escrow + engine attestation + treasury
+      disbursement), then **Stage C** embeddable widget for fintechs. See the staged plan in
+      session notes.
 
 ## Scoring & data expansion
 
