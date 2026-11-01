@@ -1,60 +1,141 @@
 # LCRD Roadmap
 
-Forward-looking work for the credit-score API, indexer, and developer surface.
-LCRD's core is **reputation-based credit** (scoring + on-chain credit lines); the items
-below extend the data and developer layers that feed it. They do not change the shipped
-product's direction — they make the position/data layer we already run reusable by others.
+Forward-looking work for the LCRD credit product — scoring, on-chain credit lines,
+the indexer, and the developer surface that feeds them.
+
+LCRD's core is **reputation-based credit**: an on-chain score built from a wallet's
+Stellar footprint, turned into borrow-on-score and borrow-on-collateral credit lines.
+This file is the single plan of record. It consolidates the product/data items we've
+been tracking plus the developer-surface work prompted by a review of SCF #41 "Orion".
+Items are marked **[done]**, **[in flight]**, or **[planned]**; verify against current
+code before treating any line as live state.
 
 ## What already exists (build on, don't rebuild)
 
 - **Multi-protocol indexer** — 21+ Stellar DeFi protocols into `credit_bureau.credit_events`
-  (Blend, Aquarius, Soroswap, DeFindex, XOXNO, Ondo, Huma, Slender, Phoenix, Sushi, etc.).
+  (Blend, Aquarius, Soroswap, DeFindex, XOXNO, Ondo, Huma, Slender, Phoenix, Sushi, etc.);
+  galexie → BigQuery, P30-ready (`@stellar/stellar-sdk` 17.4.0) on GCP VM `lcrd-indexer`.
 - **Live position reads** — `backend/credit-score-api/portfolio.js` `getPortfolio(wallet)`:
-  token + DeFi positions, USD valuation, transferability.
-  - **LP / vault decomposition already implemented** for Aquarius (`get_reserves` /
-    `get_total_shares`) and DeFindex (`get_asset_amounts_per_shares`).
-  - Blend positions read via `get_positions`.
-- **Credit layer** — `/score`, `/credit-line`, `/df-credit/*`, on-chain pool with
-  per-second interest, `quote()`-bounded tiers/limits/APR, LTV + liquidation thresholds.
-- **`simulateTransaction` is healthy** on current pubnet incl. Soroswap (verified
-  2026-11-01) — no `getLedgerEntries` fallback needed. (Optional tidy-up: align the API's
-  stellar-sdk 17.2.1 with the indexer's 17.4.0.)
+  token + DeFi positions, USD valuation, transferability. LP/vault decomposition already
+  implemented for Aquarius and DeFindex; Blend via `get_positions`.
+- **Scoring + credit layer** — `/score`, `/credit-line`, on-chain Soroban credit-line pool
+  (`contracts/credit-line/src/lib.rs`) with per-second interest, `quote()`-bounded
+  tiers/limits/APR, graded starter line (gate score ≥ 50), secured lines, LTV/liquidation.
+- **Borrow-on-collateral** — `src/collateral.ts` + `contracts/collateral-escrow/` on testnet.
+- **`simulateTransaction` is healthy** on current pubnet incl. Soroswap (verified 2026-11-01).
 
-## Near-term — developer surface (cheap, serves the embeddable-SDK goal)
+---
 
-These make the existing API adoptable by partners (the embeddable underwriting SDK in the
-SCF proposal) and cost days, not weeks.
+## Credit-product depth
 
-- [ ] **OpenAPI spec** for the existing endpoints (`/score`, `/portfolio`, `/credit-line`,
-      `/df-credit/*`, `/collateral/supported`, `/analytics`). Single source of truth for
-      docs + client generation.
-- [ ] **Generated client SDKs** (TypeScript, Go, Python) from the OpenAPI spec via
+- [ ] **[planned] Granular credit-amount underwriting.** Size the line from *all* the
+      datapoints that make up the wallet score (tenure, protocol breadth, volume, repayment
+      cycles, income), not score alone. The contract already separates the underwriter-chosen
+      `limit` (capped by on-chain `quote`) from the cap, so richer per-datapoint sizing can be
+      computed off-chain in the score-api and passed as `limit` — or the on-chain cap formula
+      itself takes more inputs.
+- [ ] **[planned] Score-variable APR for collateral lines (mainnet).** Today `src/collateral.ts`
+      prices flat by asset class (`APR_BY_CLASS`, stable 14% → curated 18.5%), ignoring score,
+      and passes that `aprBps` straight into the on-chain open call. Secured lines are *already*
+      score-variable (`secured_quote`). Fix: `collateralApr = base + classRiskPremium +
+      0.35×scorePremium(score) − cycleDiscount`, floored — keep the score weight light
+      (collateral is the protection). Phase 1: compute in `collateral.ts`. Phase 2 (durable):
+      derive APR in the collateral contract from an attested score like `secured_quote` does —
+      also removes the soft spot where the contract trusts a frontend-passed `aprBps`. Reconcile
+      why collateral rates (14–18.5%) sit above secured-line rates (9–15%).
+- [ ] **[planned] Tokenize the pool share → SEP-41 "LCRD LP token."** The pool share is an
+      internal balance today (`shares_of`/`set_shares`) — not transferable, invisible to other
+      platforms, usable only to back a secured line on LCRD's own pool. Make the pool contract
+      SEP-41 (or a wrapper) so shares become transferable + composable + usable as collateral on
+      other Stellar DeFi. Caveats: external platforms must whitelist + price it (expose a
+      share-price read); and a share pledged for an LCRD secured line must be locked so it can't
+      also be transferred (double-spend) — the contract already blocks withdrawing shares behind
+      an open loan (err #18), so add a lock/escrow-on-pledge.
+- [~] **[in flight] dfToken collateral credit — USDC against DeFindex positions.** A borrower
+      pledges DeFindex vault shares (dfTokens) and draws 50–75% as USDC at the indicative secured
+      APR. **Stage A (off-chain, demoable) partly shipped** — `collateral-engine.js`
+      (`defindexCollateral`/`quote`), `dfCredit` policy block (`df-credit-2026-10-draft1`), and
+      `GET /df-credit/quote` exist. **Remaining:** finish Stage A (`/df-credit/accept` + UI
+      section), then **Stage B** testnet end-to-end (Soroban escrow + engine attestation +
+      treasury disbursement), then **Stage C** embeddable widget for fintechs. See the staged
+      plan in session notes.
+
+## Scoring & data expansion
+
+- [ ] **[planned] Multi-chain scoring.** Expand scoring signal beyond Stellar. Scoring-signal
+      chains (deep lending history): **Ethereum, Base, Solana** — index for the score.
+      Lending/disbursement chains (clean USDC): **Arc, Base**. Scoring chain ≠ lending chain;
+      one identity spans chains via a **multi-wallet profile**. Cost-sensitive: evaluate data
+      providers (Dune / Allium / Goldsky / Covalent / Envio HyperSync / The Graph) vs self-index
+      per chain. **Decision taken:** index **Arc** light now — not for scoring signal (no history
+      yet) but operationally (LCRD already lends on Arc), as first-mover on Circle's chain, and to
+      accumulate Arc credit history from genesis.
+- [ ] **[planned] Off-chain underwriting + Basilic data partnership.** The "coming soon" off-chain
+      engine (`credit-data-analyser`: `services/pdf_reader` + `services/analysis`) adds a
+      cash-flow sub-score alongside the on-chain score. **Basilic** (warm lead) brings reconciled
+      **B2B payment history** (who pays on time, how much, how often) — maps directly onto the
+      off-chain engine. Next step: when off-chain underwriting is built, scope a pilot for how
+      Basilic's reconciled payment data feeds the cash-flow sub-score.
+
+## Developer surface (cheap, serves the embeddable-underwriting goal)
+
+These make the existing API adoptable by partners and cost days, not weeks.
+
+- [ ] **[planned] OpenAPI spec** for the existing endpoints (`/score`, `/portfolio`,
+      `/credit-line`, `/df-credit/*`, `/collateral/supported`, `/analytics`). Single source of
+      truth for docs + client generation.
+- [ ] **[planned] Generated client SDKs** (TypeScript, Go, Python) from the OpenAPI spec via
       openapi-generator; versioned with the spec.
-- [ ] **Parity / snapshot fixtures** — ledger-pinned JSON snapshots for a few sample
-      addresses, independently verifiable against the live endpoint. Trust artifact for the
-      scoring + portfolio outputs.
-- [ ] **Response metadata** — expose `last_indexed_ledger` / data-staleness on
+- [ ] **[planned] Parity / snapshot fixtures** — ledger-pinned JSON snapshots for a few sample
+      addresses, independently verifiable against the live endpoint. Trust artifact for scoring +
+      portfolio outputs.
+- [ ] **[planned] Response metadata** — expose `last_indexed_ledger` / data-staleness on
       portfolio/score responses so consumers can assess freshness programmatically.
+- [ ] **[planned] MCP-compatible agent skills** over the API so wallets/neobanks/AI agents can
+      call scoring and credit without building a bureau.
 
-## Later — positions-API depth (only if productizing positions)
+## Positions-API depth (only if productizing positions)
 
 This is the space SCF #41 "Orion" (DeFi Positions API, awarded $122.2K) is funded to build.
-LCRD's moat is the **credit/reputation layer on top**, not raw positions, so pursue these
-only to offer a public positions API — otherwise Orion is a candidate data source/partner.
+LCRD's moat is the **credit/reputation layer on top**, not raw positions — pursue these only to
+offer a public positions API; otherwise Orion is a candidate data source/partner.
 
-- [ ] **Cross-protocol health factor** — expose a per-wallet HF readout for third-party
-      lending protocols (Blend, FxDAO), reusing positions we already read. (We compute
-      LTV/liquidation for our own pool today.)
-- [ ] **CDP / FxDAO adapter** — enumerate vaults, read collateral vs minted-stablecoin
+- [ ] **[planned] Cross-protocol health factor** — per-wallet HF for third-party lending
+      protocols (Blend, FxDAO), reusing positions we already read. (We compute LTV/liquidation for
+      our own pool today.)
+- [ ] **[planned] CDP / FxDAO adapter** — enumerate vaults, read collateral vs minted-stablecoin
       debt, compute collateral ratio. New adapter (FxDAO not currently indexed).
-- [ ] **Soroswap LP decomposition per wallet** — the indexer already discovers pairs
-      (~216); add constant-product LP-share → underlying decomposition in `portfolio.js`,
-      matching the Aquarius/DeFindex pattern.
+- [ ] **[planned] Soroswap LP decomposition per wallet** — the indexer already discovers pairs
+      (~216); add constant-product LP-share → underlying decomposition in `portfolio.js`, matching
+      the Aquarius/DeFindex pattern.
+
+## Infrastructure & protocol
+
+- [ ] **[planned] Protocol 30 "Bell" — residual items.** SDK bump to 17.4.0 is **done** across
+      frontend + indexer (the required provisions; mainnet vote 2026-11-23). Left, all optional:
+      skim RPC v30 / Horizon v30 release notes; W-addresses (SEP-23 muxed contract addresses,
+      CAP-84) — switch user-facing params to `MuxedAddress` to accept both (needs rebuild+upgrade);
+      migrate to `SOROBAN_CREDENTIALS_ADDRESS_V2` at convenience.
+- [ ] **[planned] Home-page pool metrics fix.** Pool APY/liquidity/markets show "—" (empty testnet
+      pool + a catch in `src/home.ts` that dashes markets on read failure) → harden the UI and seed
+      the pool. (From Basilic feedback.)
+- [x] **[done] Pre-connect "what builds your score" surface.** `score.html` explainer in place and
+      now links to live cross-Stellar scores at `stellar.lcrd.fi/analytics.html`. (From Basilic
+      feedback.)
+- [ ] **[planned] SDK version tidy-up.** Align the score-api's stellar-sdk (17.2.1) with the
+      indexer's (17.4.0).
+
+## Related repos / parallel tracks
+
+- **`lcrd-arc-credit`** (separate repo, `lucredtech/lcrd-arc-credit`) — Lucred's Arc-chain (EVM L1,
+  chain 5042, USDC-native gas) implementation of the credit product. Shares the credit concept and
+  the LCRD score API with this repo but no on-chain code. Live on Arc mainnet; the Soroban replica
+  (`contracts/credit-line/`) already lives here. Tracked as the next-phase product expansion.
 
 ## Context
 
-Prompted by a review of SCF #41 "Orion — DeFi Positions API" (awarded $122.2K): narrower
-protocol coverage than LCRD (4 vs 21+) but deeper on lending-position semantics and a
-polished developer surface. The near-term items close the developer-surface gap for LCRD's
-own API; the later items are optional and only worth it if LCRD chooses to compete in the
-public positions-API space rather than treat it as a complementary data layer.
+Consolidated from internal planning notes and prompted in part by a review of SCF #41
+"Orion — DeFi Positions API" (awarded $122.2K): narrower protocol coverage than LCRD (4 vs 21+)
+but a more polished developer surface. The developer-surface items close that gap for LCRD's own
+API; the positions-API-depth items are optional and only worth it if LCRD competes in the public
+positions-API space rather than treating it as a complementary data layer.
