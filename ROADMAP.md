@@ -5,10 +5,11 @@ the indexer, and the developer surface that feeds them.
 
 LCRD's core is **reputation-based credit**: an on-chain score built from a wallet's
 Stellar footprint, turned into borrow-on-score and borrow-on-collateral credit lines.
-This file is the single plan of record. It consolidates the product/data items we've
-been tracking plus the developer-surface work prompted by a review of SCF #41 "Orion".
-Items are marked **[done]**, **[in flight]**, or **[planned]**; verify against current
-code before treating any line as live state.
+This file is the single plan of record. It consolidates (a) the **SCF funded
+commitments** — deadline-bound tranche deliverables we're paid to ship, (b) the
+product/data items we've been tracking internally, and (c) the developer-surface work
+prompted by a review of SCF #41 "Orion". Items are marked **[done]**, **[in flight]**,
+or **[planned]**; verify against current code before treating any line as live state.
 
 ## What already exists (build on, don't rebuild)
 
@@ -23,6 +24,48 @@ code before treating any line as live state.
   tiers/limits/APR, graded starter line (gate score ≥ 50), secured lines, LTV/liquidation.
 - **Borrow-on-collateral** — `src/collateral.ts` + `contracts/collateral-escrow/` on testnet.
 - **`simulateTransaction` is healthy** on current pubnet incl. Soroswap (verified 2026-11-01).
+
+---
+
+## SCF funded commitments (Open Track — $100,000)
+
+The binding deliverables from our SCF Build submission (Open Track, requesting $100k in
+XLM). Unlike the internal items below, these are **funded and deadline-bound** against
+SCF's fixed tranche schedule (10% on acceptance, then 20 / 30 / 40% against deliverables),
+with defined acceptance measures a reviewer can hold us to. Audit is excluded (covered by
+the SCF Audit Bank). Source of truth for wording: the SCF Build Proposal doc.
+
+**Tranche #0 — on acceptance · $10,000 (10%)** — no deliverable (per SCF).
+
+**Tranche #1 — MVP · $20,000 (20%)**
+
+| Deliverable | Acceptance measure | Maps to |
+|---|---|---|
+| [ ] Granular per-datapoint underwriting (limits from all score components, not tier) | score-api returns per-datapoint limit; unit tests green in public repo | = internal "granular credit-amount underwriting" below |
+| [ ] Score-based collateral pricing **on-chain** (APR from attested score) | cargo test; testnet demo: two scores → two APRs, hashes on Stellar Expert; score reproducible at a pinned ledger | = internal "score-variable collateral APR" (Phase 2) below |
+| [ ] Open-source the Soroban contracts (pool + escrow), Apache-2.0 | public repo + README + reproducible build | new |
+
+**Tranche #2 — Testnet · $30,000 (30%)**
+
+| Deliverable | Acceptance measure |
+|---|---|
+| [ ] Privy embedded-wallet onboarding (email/social → wallet, gasless) | video: non-crypto user onboards + draws a line on testnet |
+| [ ] STRIDE threat model + on-chain monitoring (extend live fraud monitor) | both docs in public repo per Stellar templates; alerts fire on simulated attack |
+| [ ] End-to-end test suite + CI | CI green + coverage report in public repo |
+| [ ] Outcome instrumentation (loan-performance pipeline by tier) | documented schema + dashboard queries |
+
+**Tranche #3 — Mainnet · $40,000 (40%)**
+
+| Deliverable | Acceptance measure |
+|---|---|
+| [ ] Audited mainnet deployment (pool + escrow; audit via Audit Bank) | contracts live on mainnet, addresses on Stellar Expert, audit report linked |
+| [ ] Mainnet product live (score/collateral/earn, real USDC, monitoring on) | real mainnet loans w/ hashes; 7-day log; **score-api p95 < 400ms under load, indexer < 15 min behind tip** |
+| [ ] Privy + DeFindex live on mainnet in production app | mainnet onboarding + loan via embedded wallet; vault yield verifiable |
+| [ ] Public SDK + docs + outcome dataset | SDK on npm, docs site, first external demo (overlaps "Developer surface" below) |
+
+*Not committed (Integration-Track variant only, not submitted): cross-chain collateral via
+LayerZero, Circle CCTP native USDC, NEAR Intents. Tracked under "Scoring & data expansion"
+as exploratory, not as a funded deliverable.*
 
 ---
 
