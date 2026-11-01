@@ -5,11 +5,12 @@ the indexer, and the developer surface that feeds them.
 
 LCRD's core is **reputation-based credit**: an on-chain score built from a wallet's
 Stellar footprint, turned into borrow-on-score and borrow-on-collateral credit lines.
-This file is the single plan of record. It consolidates (a) the **SCF funded
-commitments** — deadline-bound tranche deliverables we're paid to ship, (b) the
-product/data items we've been tracking internally, and (c) the developer-surface work
-prompted by a review of SCF #41 "Orion". Items are marked **[done]**, **[in flight]**,
-or **[planned]**; verify against current code before treating any line as live state.
+This file is the single plan of record. It consolidates the product/data items we've been
+tracking internally, the developer-surface work prompted by a review of SCF #41 "Orion",
+and the deadline-bound deliverables from our SCF Build submission (Open Track, $100k) —
+the latter tagged **(SCF T1/T2/T3)** for the tranche that funds them. Items are marked
+**[done]**, **[in flight]**, or **[planned]**; verify against current code before treating
+any line as live state.
 
 ## What already exists (build on, don't rebuild)
 
@@ -27,57 +28,19 @@ or **[planned]**; verify against current code before treating any line as live s
 
 ---
 
-## SCF funded commitments (Open Track — $100,000)
-
-The binding deliverables from our SCF Build submission (Open Track, requesting $100k in
-XLM). Unlike the internal items below, these are **funded and deadline-bound** against
-SCF's fixed tranche schedule (10% on acceptance, then 20 / 30 / 40% against deliverables),
-with defined acceptance measures a reviewer can hold us to. Audit is excluded (covered by
-the SCF Audit Bank). Source of truth for wording: the SCF Build Proposal doc.
-
-**Tranche #0 — on acceptance · $10,000 (10%)** — no deliverable (per SCF).
-
-**Tranche #1 — MVP · $20,000 (20%)**
-
-| Deliverable | Acceptance measure | Maps to |
-|---|---|---|
-| [ ] Granular per-datapoint underwriting (limits from all score components, not tier) | score-api returns per-datapoint limit; unit tests green in public repo | = internal "granular credit-amount underwriting" below |
-| [ ] Score-based collateral pricing **on-chain** (APR from attested score) | cargo test; testnet demo: two scores → two APRs, hashes on Stellar Expert; score reproducible at a pinned ledger | = internal "score-variable collateral APR" (Phase 2) below |
-| [ ] Open-source the Soroban contracts (pool + escrow), Apache-2.0 | public repo + README + reproducible build | new |
-
-**Tranche #2 — Testnet · $30,000 (30%)**
-
-| Deliverable | Acceptance measure |
-|---|---|
-| [ ] Privy embedded-wallet onboarding (email/social → wallet, gasless) | video: non-crypto user onboards + draws a line on testnet |
-| [ ] STRIDE threat model + on-chain monitoring (extend live fraud monitor) | both docs in public repo per Stellar templates; alerts fire on simulated attack |
-| [ ] End-to-end test suite + CI | CI green + coverage report in public repo |
-| [ ] Outcome instrumentation (loan-performance pipeline by tier) | documented schema + dashboard queries |
-
-**Tranche #3 — Mainnet · $40,000 (40%)**
-
-| Deliverable | Acceptance measure |
-|---|---|
-| [ ] Audited mainnet deployment (pool + escrow; audit via Audit Bank) | contracts live on mainnet, addresses on Stellar Expert, audit report linked |
-| [ ] Mainnet product live (score/collateral/earn, real USDC, monitoring on) | real mainnet loans w/ hashes; 7-day log; **score-api p95 < 400ms under load, indexer < 15 min behind tip** |
-| [ ] Privy + DeFindex live on mainnet in production app | mainnet onboarding + loan via embedded wallet; vault yield verifiable |
-| [ ] Public SDK + docs + outcome dataset | SDK on npm, docs site, first external demo (overlaps "Developer surface" below) |
-
-*Not committed (Integration-Track variant only, not submitted): cross-chain collateral via
-LayerZero, Circle CCTP native USDC, NEAR Intents. Tracked under "Scoring & data expansion"
-as exploratory, not as a funded deliverable.*
-
----
+> **SCF Build (Open Track, $100k)** funds specific items below, tagged **(SCF T1/T2/T3)**.
+> Fixed schedule: 10% on acceptance (no deliverable), then 20 / 30 / 40% against deliverables.
+> Audit excluded (SCF Audit Bank). Full wording: the SCF Build Proposal doc.
 
 ## Credit-product depth
 
-- [ ] **[planned] Granular credit-amount underwriting.** Size the line from *all* the
+- [ ] **[planned] Granular credit-amount underwriting. (SCF T1)** Size the line from *all* the
       datapoints that make up the wallet score (tenure, protocol breadth, volume, repayment
       cycles, income), not score alone. The contract already separates the underwriter-chosen
       `limit` (capped by on-chain `quote`) from the cap, so richer per-datapoint sizing can be
       computed off-chain in the score-api and passed as `limit` — or the on-chain cap formula
       itself takes more inputs.
-- [ ] **[planned] Score-variable APR for collateral lines (mainnet).** Today `src/collateral.ts`
+- [ ] **[planned] Score-variable APR for collateral lines (mainnet). (SCF T1 — on-chain, Phase 2)** Today `src/collateral.ts`
       prices flat by asset class (`APR_BY_CLASS`, stable 14% → curated 18.5%), ignoring score,
       and passes that `aprBps` straight into the on-chain open call. Secured lines are *already*
       score-variable (`secured_quote`). Fix: `collateralApr = base + classRiskPremium +
@@ -103,6 +66,10 @@ as exploratory, not as a funded deliverable.*
       **Stage B** testnet end-to-end (Soroban escrow + engine attestation + treasury
       disbursement), then **Stage C** embeddable widget for fintechs. See the staged plan in
       session notes.
+- [ ] **[planned] Privy embedded-wallet onboarding. (SCF T2; live on mainnet in T3)** Email/social-
+      login smart wallets (gasless) via Privy alongside Stellar Wallets Kit, so non-crypto-native
+      users onboard and draw a line without seed phrases. Acceptance: a non-crypto user onboards +
+      draws on testnet (T2); then live with DeFindex on mainnet (T3), vault yield verifiable.
 
 ## Scoring & data expansion
 
@@ -120,6 +87,13 @@ as exploratory, not as a funded deliverable.*
       **B2B payment history** (who pays on time, how much, how often) — maps directly onto the
       off-chain engine. Next step: when off-chain underwriting is built, scope a pilot for how
       Basilic's reconciled payment data feeds the cash-flow sub-score.
+- [ ] **[planned] Outcome instrumentation — loan performance by tier. (SCF T2)** A loan-performance
+      pipeline keyed by score tier (documented schema + dashboard queries), feeding repayment
+      outcomes back into scoring.
+- [ ] **[planned] Cross-chain collateral & USDC (exploratory, not funded).** From the Integration-
+      Track variant we did *not* submit: assets bridged via LayerZero as eligible collateral, Circle
+      CCTP for native cross-chain USDC (frontend notes: deferred to mainnet), NEAR Intents for
+      intent-based execution. Not an SCF deliverable; promote if prioritized.
 
 ## Developer surface (cheap, serves the embeddable-underwriting goal)
 
@@ -129,7 +103,8 @@ These make the existing API adoptable by partners and cost days, not weeks.
       `/credit-line`, `/df-credit/*`, `/collateral/supported`, `/analytics`). Single source of
       truth for docs + client generation.
 - [ ] **[planned] Generated client SDKs** (TypeScript, Go, Python) from the OpenAPI spec via
-      openapi-generator; versioned with the spec.
+      openapi-generator; versioned with the spec. **(SCF T3** ships the SDK on npm + a docs site +
+      a first external demo, plus an outcome dataset.)
 - [ ] **[planned] Parity / snapshot fixtures** — ledger-pinned JSON snapshots for a few sample
       addresses, independently verifiable against the live endpoint. Trust artifact for scoring +
       portfolio outputs.
@@ -168,6 +143,15 @@ offer a public positions API; otherwise Orion is a candidate data source/partner
       feedback.)
 - [ ] **[planned] SDK version tidy-up.** Align the score-api's stellar-sdk (17.2.1) with the
       indexer's (17.4.0).
+- [ ] **[planned] Open-source the Soroban contracts (pool + escrow), Apache-2.0. (SCF T1)** Public
+      repo + README + reproducible build.
+- [ ] **[planned] STRIDE threat model + on-chain monitoring. (SCF T2)** Both docs in the public repo
+      per Stellar templates; extend the live fraud monitor so alerts fire on a simulated attack.
+- [ ] **[planned] End-to-end test suite + CI. (SCF T2)** CI green + coverage report in the public repo.
+- [ ] **[planned] Audited mainnet deployment (pool + escrow). (SCF T3)** Audit via the SCF Audit Bank;
+      contracts live on mainnet with addresses on Stellar Expert and the audit report linked.
+- [ ] **[planned] Mainnet product live — real USDC, monitoring on. (SCF T3)** Real mainnet loans with
+      hashes + a 7-day log; SLOs: score-api p95 < 400ms under load, indexer < 15 min behind tip.
 
 ## Related repos / parallel tracks
 
