@@ -41,7 +41,11 @@ async function fetchOssContribution(wallet) {
     query:
       "WITH paid AS (" +
       "  SELECT engagementId, blockCloseTime, " +
-      "         amount * (1 - SAFE_DIVIDE(platformFeeBps, 10000) - 0.003) AS netUsd " +
+      // Net income, discounted per income type. Sustained bounty/payroll income counts in full;
+      // one-off event/travel grants (incomeType='event_grant', e.g. HackMeridian) are a weaker
+      // creditworthiness signal, so they count at 0.35. Existing rows (oss_bounty) are unaffected.
+      "         amount * (1 - SAFE_DIVIDE(platformFeeBps, 10000) - 0.003) " +
+      "           * (CASE WHEN incomeType = 'event_grant' THEN 0.35 ELSE 1.0 END) AS netUsd " +
       "  FROM " + TABLE +
       "  WHERE receiver = @wallet AND assetCode = 'USDC' " + // USD-pegged only (1:1); extend when more priced
       "    AND blockCloseTime >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 365 DAY)) " +

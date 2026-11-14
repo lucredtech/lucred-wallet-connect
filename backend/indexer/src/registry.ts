@@ -26,6 +26,16 @@ export interface ProtocolInfo {
 }
 
 export const PROTOCOL_REGISTRY: Record<string, ProtocolInfo> = {
+  // --- LCRD credit-line pool (our own) — so a borrower's LCRD repayments build their LCRD score ---
+  // The pool emits borrowed / repaid / cycle / writeoff events (borrower = topic[1]); the scorer's
+  // computeDebtCycles has an 'lcrd' branch that turns borrow→repay into completed loan cycles (the
+  // repayment-speed + completed-loans signal). NOTE: the id below is the TESTNET deployment, so this
+  // entry is DORMANT on the mainnet indexer (a testnet contract id never appears in the mainnet ledger
+  // stream). At mainnet launch, replace it with the mainnet pool id and the flywheel goes live. The
+  // parser still needs an 'lcrd' event resolver (borrowed→amount, repaid→to_principal, borrower from
+  // topic[1] not the payer in the data) — to be written against a real on-chain LCRD event.
+  CDW4G2YMN5RIXFTS6CW6XVNKPHJI4WZNAMUNHVKQZBD3G7QT45HELX63: { protocolName: 'lcrd', category: 'lending_pool' }, // TESTNET — swap for mainnet id at launch
+
   // --- Blend (lending) — #1 by TVL (~$150m) — 12 real pools, fully resolved ---
   // https://docs.blend.capital/mainnet-deployments (factory/backstop);
   // pool addresses are NOT fixed - Blend pools are deployed dynamically, so
